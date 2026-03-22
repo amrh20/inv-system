@@ -1,0 +1,123 @@
+<div class="suppliers-page">
+  <div class="suppliers-page__header">
+    <div>
+      <h1 class="suppliers-page__title">{{ 'SUPPLIERS.TITLE' | translate }}</h1>
+      <p class="suppliers-page__meta">{{ 'SUPPLIERS.SUBTITLE' | translate }}</p>
+    </div>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      class="suppliers-page__new-btn"
+      (click)="openCreate()"
+    >
+      <lucide-icon [img]="lucidePlus" [size]="20" />
+      <span>{{ 'SUPPLIERS.NEW' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="suppliers-page__filters">
+    <nz-input-group [nzPrefix]="searchPrefix" class="suppliers-page__search">
+      <input
+        nz-input
+        [placeholder]="'SUPPLIERS.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="18" class="suppliers-page__search-icon" />
+    </ng-template>
+    <nz-select
+      class="suppliers-page__filter-select"
+      [ngModel]="activeFilter()"
+      (ngModelChange)="activeFilter.set($event); onFilterChange()"
+    >
+      <nz-option [nzValue]="'all'" [nzLabel]="'COMMON.ALL_STATUSES' | translate" />
+      <nz-option [nzValue]="true" [nzLabel]="'COMMON.ACTIVE_ONLY' | translate" />
+      <nz-option [nzValue]="false" [nzLabel]="'COMMON.INACTIVE_ONLY' | translate" />
+    </nz-select>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #tbl
+    [nzData]="suppliers()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[10, 20, 50, 100]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'SUPPLIERS.NO_ITEMS' | translate"
+        [message]="'SUPPLIERS.CREATE_FIRST' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th nzWidth="200px">{{ 'COMMON.NAME' | translate }}</th>
+        <th nzWidth="140px">{{ 'SUPPLIERS.CONTACT_PERSON' | translate }}</th>
+        <th nzWidth="130px">{{ 'SUPPLIERS.PHONE' | translate }}</th>
+        <th nzWidth="180px">{{ 'SUPPLIERS.EMAIL' | translate }}</th>
+        <th nzWidth="140px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of tbl.data; track row.id) {
+        <tr>
+          <td class="suppliers-page__name">{{ row.name }}</td>
+          <td>{{ row.contactPerson || '—' }}</td>
+          <td>{{ row.phone || '—' }}</td>
+          <td>{{ row.email || '—' }}</td>
+          <td nzAlign="center">
+            <app-status-toggle
+              [status]="row.isActive"
+              (statusChange)="onToggleStatus(row)"
+            />
+          </td>
+          <td nzAlign="center">
+            <button
+              nz-button
+              nzType="text"
+              type="button"
+              nz-dropdown
+              [nzDropdownMenu]="menuTpl"
+              nzTrigger="click"
+              nzPlacement="bottomRight"
+              (click)="$event.stopPropagation()"
+            >
+              <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
+            </button>
+            <nz-dropdown-menu #menuTpl="nzDropdownMenu">
+              <ul nz-menu>
+                <li nz-menu-item (click)="openEdit(row)">
+                  <lucide-icon [img]="lucidePencil" [size]="14" />
+                  <span>{{ 'SUPPLIERS.EDIT' | translate }}</span>
+                </li>
+              </ul>
+            </nz-dropdown-menu>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+
+<app-supplier-form
+  [visible]="formOpen()"
+  [supplier]="formSupplier()"
+  (closed)="closeForm()"
+  (saved)="onFormSaved()"
+/>

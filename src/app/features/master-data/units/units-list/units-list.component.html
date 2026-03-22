@@ -1,0 +1,114 @@
+<div class="units-page">
+  <div class="units-page__header">
+    <div>
+      <h1 class="units-page__title">{{ 'UNITS.TITLE' | translate }}</h1>
+      <p class="units-page__meta">{{ 'UNITS.SUBTITLE' | translate }}</p>
+    </div>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      class="units-page__new-btn"
+      (click)="openCreate()"
+    >
+      <lucide-icon [img]="lucidePlus" [size]="20" />
+      <span>{{ 'UNITS.NEW' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="units-page__search">
+    <nz-input-group [nzPrefix]="searchPrefix">
+      <input
+        nz-input
+        [placeholder]="'UNITS.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="18" class="units-page__search-icon" />
+    </ng-template>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #tbl
+    [nzData]="units()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[25, 50, 100]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'UNITS.NO_ITEMS' | translate"
+        [message]="'UNITS.CREATE_FIRST' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th nzWidth="200px">{{ 'COMMON.NAME' | translate }}</th>
+        <th nzWidth="120px">{{ 'UNITS.ABBREVIATION' | translate }}</th>
+        <th>{{ 'COMMON.DESCRIPTION' | translate }}</th>
+        <th nzWidth="100px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of tbl.data; track row.id) {
+        <tr>
+          <td class="units-page__name">{{ row.name }}</td>
+          <td class="units-page__abbr">{{ row.abbreviation }}</td>
+          <td class="units-page__desc">{{ row.description || '—' }}</td>
+          <td nzAlign="center">
+            <span
+              class="status-badge"
+              [ngClass]="row.isActive ? 'status-active' : 'status-inactive'"
+            >
+              {{ row.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+            </span>
+          </td>
+          <td nzAlign="center">
+            <button
+              nz-button
+              nzType="text"
+              type="button"
+              nz-dropdown
+              [nzDropdownMenu]="menuTpl"
+              nzTrigger="click"
+              nzPlacement="bottomRight"
+              (click)="$event.stopPropagation()"
+            >
+              <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
+            </button>
+            <nz-dropdown-menu #menuTpl="nzDropdownMenu">
+              <ul nz-menu>
+                <li nz-menu-item (click)="openEdit(row)">
+                  <lucide-icon [img]="lucidePencil" [size]="14" />
+                  <span>{{ 'UNITS.EDIT' | translate }}</span>
+                </li>
+              </ul>
+            </nz-dropdown-menu>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+
+<app-unit-form
+  [visible]="formOpen()"
+  [unit]="formUnit()"
+  (closed)="closeForm()"
+  (saved)="onFormSaved()"
+/>

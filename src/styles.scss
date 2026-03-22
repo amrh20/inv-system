@@ -1,0 +1,209 @@
+/* ============================================
+   Design System: Global Tokens & NG-ZORRO Overrides
+   ============================================
+
+   ENFORCEMENT POLICY (all future components):
+   - Use Tailwind brand classes: text-brand-primary, bg-brand-surface, etc.
+   - Use NG-ZORRO components (nz-button, nz-input, nz-select, etc.)
+   - Spacing: consistent gaps; border-radius: 6px (var(--radius-brand))
+   - Input height: 38px (var(--input-height))
+   - No hardcoded hex colors — use CSS vars or Tailwind tokens
+   ============================================ */
+
+/* --- Tailwind CSS v4 --- */
+@use 'tailwindcss';
+
+/* --- Centralized Status Badges --- */
+@use './assets/styles/status-badges' as *;
+
+/* --- Design Tokens (CSS Variables) --- */
+:root {
+  --primary-color: #1e40af;
+  --radius-brand: 6px;
+  --input-height: 38px;
+  --font-main: 'Cairo', system-ui, -apple-system, sans-serif;
+  --border-color-input: #d9d9d9;
+  --border-color-split: #f0f0f0;
+  --focus-glow: rgba(30, 64, 175, 0.2);
+  --color-brand-surface: #f5f5f5;
+  --color-brand-dark: #001529;
+  --color-brand-success: #52c41a;
+  --color-brand-warning: #faad14;
+  --color-brand-error: #ff4d4f;
+}
+
+/* Tailwind v4 custom theme colors (brand palette) */
+@theme {
+  --color-brand-primary: #1e40af;
+  --color-brand-dark: #001529;
+  --color-brand-success: #52c41a;
+  --color-brand-warning: #faad14;
+  --color-brand-error: #ff4d4f;
+  --color-brand-surface: #f5f5f5;
+}
+
+/* --- Base --- */
+html,
+body {
+  font-family: var(--font-main) !important;
+}
+
+/* --- NG-ZORRO: Buttons --- */
+.ant-btn {
+  border-radius: var(--radius-brand) !important;
+  white-space: nowrap !important;
+  padding: 0 20px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  &.ant-btn-primary {
+    background: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+  }
+  &:disabled {
+      background: rgba(0, 0, 0, 0.05) !important;
+      border-color: rgba(0, 0, 0, 0.05) !important;
+    color: rgba(0, 0, 0, 0.5) !important;
+    opacity: 0.75 !important;
+  }
+}
+
+/* --- NG-ZORRO: Inputs (Text, Number, Textarea) --- */
+.ant-input,
+.ant-input-number,
+.ant-input-affix-wrapper {
+  height: var(--input-height) !important;
+  min-height: var(--input-height) !important;
+  border-radius: var(--radius-brand) !important;
+  border-color: var(--border-color-input) !important;
+  padding-inline: 11px !important;
+
+  &:focus,
+  &.ant-input-focused,
+  &:focus-within {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 2px var(--focus-glow) !important;
+    outline: none;
+  }
+}
+
+/* Avoid double styling for inputs rendered inside affix wrappers (nz-input-group prefix/suffix). */
+.ant-input-affix-wrapper .ant-input {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.ant-input-affix-wrapper .ant-input:focus {
+  box-shadow: none !important;
+}
+
+.ant-input-number-input {
+  height: calc(var(--input-height) - 2px) !important;
+}
+
+textarea.ant-input {
+  min-height: var(--input-height) !important;
+  height: auto !important;
+  padding: 8px 11px !important;
+}
+
+/* --- NG-ZORRO: Select --- */
+.ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  height: var(--input-height) !important;
+  min-height: var(--input-height) !important;
+  border-radius: var(--radius-brand) !important;
+  border-color: var(--border-color-input) !important;
+  padding-inline: 11px !important;
+}
+
+.ant-select-focused:not(.ant-select-disabled).ant-select:not(.ant-select-customize-input)
+  .ant-select-selector {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px var(--focus-glow) !important;
+}
+
+.ant-select-dropdown {
+  border-radius: var(--radius-brand) !important;
+}
+
+.ant-select-item-option-active,
+.ant-select-item-option-selected {
+  background: rgba(30, 64, 175, 0.08) !important;
+}
+
+/* --- NG-ZORRO: Radios & Checkboxes --- */
+.ant-radio-checked .ant-radio-inner {
+  border-color: var(--primary-color) !important;
+  background-color: var(--primary-color) !important;
+}
+
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.ant-radio-inner,
+.ant-checkbox-inner {
+  transition: all 0.2s ease !important;
+}
+
+/* --- NG-ZORRO: Form Labels --- */
+.ant-form-item-label > label {
+  font-weight: 600 !important;
+  color: rgba(0, 0, 0, 0.7) !important;
+  font-size: 13px !important;
+}
+
+/* --- NG-ZORRO: Tables --- */
+.ant-table-thead > tr > th {
+  background: #fafafa !important;
+  font-weight: 600;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background: rgba(30, 64, 175, 0.04) !important;
+}
+
+.ant-table {
+  border-radius: var(--radius-brand);
+  overflow: hidden;
+}
+
+// /* --- Items list actions dropdown: icon + label inline, no wrap --- */
+// .items-menu__item {
+//   display: inline-flex !important;
+//   align-items: center;
+//   gap: 8px;
+//   white-space: nowrap;
+
+//   lucide-icon,
+//   span {
+//     flex-shrink: 0;
+//   }
+// }
+
+.ant-dropdown-menu-item, .ant-dropdown-menu-submenu-title {
+  border-bottom: 1px solid #e3e3e3;
+  padding: 10px 16px;
+  .ant-menu-title-content {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+}
+
+/* Collapsed sidebar submenu popup — width 250px to match main sider. */
+.collapsed-submenu-popup {
+  min-width: 250px !important;
+  width: 250px !important;
+}
+.ant-modal {
+  width: 500px;
+  margin: 0 auto;
+}

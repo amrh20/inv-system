@@ -1,0 +1,125 @@
+.tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-body {
+  padding-top: 8px;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.image-tab {
+  padding: 8px 0 0;
+}
+
+.image-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.image-preview {
+  width: 192px;
+  height: 192px;
+  object-fit: cover;
+  border-radius: var(--radius-brand);
+  border: 1px solid var(--ng-zorro-border-color-split, #f0f0f0);
+}
+
+.image-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  border: 2px dashed var(--border-color-input);
+  border-radius: var(--radius-brand);
+  cursor: pointer;
+  background: var(--ng-zorro-background-color-light, #fafafa);
+
+  p {
+    margin: 4px 0 0;
+    color: var(--ng-zorro-text-color-secondary, rgba(0, 0, 0, 0.45));
+  }
+
+  .hint {
+    font-size: 12px;
+  }
+}
+
+.muted-icon {
+  opacity: 0.35;
+}
+
+.hidden-file {
+  display: none;
+}
+
+.browse-btn {
+  margin-top: 12px;
+}
+
+.units-hint {
+  font-size: 12px;
+  color: var(--ng-zorro-text-color-secondary, rgba(0, 0, 0, 0.45));
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: rgba(24, 144, 255, 0.08);
+  border: 1px solid rgba(24, 144, 255, 0.4);
+  border-radius: var(--radius-brand);
+}
+
+.unit-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  background: var(--ng-zorro-background-color-light, #fafafa);
+  border-radius: var(--radius-brand);
+}
+
+.unit-type {
+  width: 120px;
+}
+
+.unit-select {
+  flex: 1;
+  min-width: 160px;
+}
+
+.unit-rate {
+  width: 110px;
+}
+
+.add-unit {
+  margin-top: 8px;
+}
+
+.submit-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  color: var(--color-brand-error);
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: var(--radius-brand);
+}
+
+.spin {
+  animation: item-form-spin 0.8s linear infinite;
+}
+
+@keyframes item-form-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

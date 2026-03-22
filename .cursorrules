@@ -1,0 +1,78 @@
+## inv-angular Migration Guardrails
+
+These rules are mandatory for all future work and all React -> Angular migrations in this repository.
+If a generated solution conflicts with these rules, regenerate until compliant.
+
+### 1) UI & Design System (Mandatory)
+
+- Use **NG-ZORRO** components for all UI controls and layouts whenever an equivalent exists.
+- Use project design tokens and brand palette only (Tailwind tokens like `brand-primary`, `brand-dark`, `brand-success`, `brand-warning`, `brand-error`, surface tokens).
+- Enforce consistent control sizing:
+  - Global border radius: `6px`
+  - Standard form control height: `38px`
+  - Applies to input/select/number/date/textarea wrappers (according to existing global styles).
+- Table action pattern:
+  - If a row has more than one action, use `nz-dropdown` for row actions.
+  - Do not place multiple inline action buttons directly in table rows when dropdown is expected.
+- Active/inactive state pattern:
+  - Always use the shared `StatusToggleComponent` for status toggling in tables/forms where applicable.
+- Empty state pattern:
+  - Always use the shared `EmptyStateComponent` (`app-empty-state`) when a list/table has no data.
+  - Pass `title` and optionally `message` as inputs (use translation keys via `| translate`).
+  - For `nz-table`, use `[nzNoResult]` with an `ng-template` that contains `<app-empty-state>`.
+  - Do not introduce custom empty-state markup or the default Ng-Zorro "No Data" placeholder.
+- Icons:
+  - Use **Lucide Angular** only.
+  - Default icon stroke width must be `2`.
+
+### 2) Technical Architecture (Mandatory)
+
+- Use **Angular 21 Standalone Components** only.
+- Use **Signals** for local and shared state management (`signal`, `computed`, `effect` patterns as needed).
+- Use Angular's new template control flow syntax only:
+  - `@if`, `@for`, `@switch`
+  - Avoid legacy structural syntax (`*ngIf`, `*ngFor`) in new/updated migrated code unless required for third-party APIs.
+- All HTTP/data-access calls must go through services that extend or use the project's `BaseApiService`.
+- Confirmation safety:
+  - **NEVER** perform delete or status-toggle actions without routing through `ConfirmationService`.
+  - This applies to both UI-triggered actions and programmatic flows.
+
+### 3) Migration Source of Truth (Read-Only Context)
+
+- During migration, treat `frontend/src/` (React codebase) as **read-only reference for business logic**.
+- Re-implement logic as clean Angular 21 code that matches this project's architecture and conventions.
+- Do not copy React patterns verbatim (hooks/components/state shape) when Angular-native alternatives are required.
+- Align all DTOs, enums, and contracts with `backend/prisma/schema.prisma`.
+- If React behavior conflicts with Prisma schema types, Prisma schema is authoritative.
+
+### 4) Global Status Styling (Mandatory)
+
+- Use shared status SCSS utility classes for all status badges/chips (e.g., `.status-active`, related shared variants).
+- Do not introduce ad-hoc badge color classes when a shared status class exists.
+- Keep status visuals consistent across features (items, stock, ledger, movements, etc.).
+
+### 5) Bilingual Translation (Mandatory)
+
+- Every user-facing text must support **both English and Arabic**.
+- No new hardcoded UI text in templates/components/services.
+- All visible labels, placeholders, button text, alerts, toasts, confirmations, and empty states must come from translation keys.
+- Use `ngx-translate` translation files (`en` + `ar`) and keep keys synchronized.
+- Any new feature must ship with complete `en/ar` translations in the same PR/task.
+
+### 6) Compliance Checklist (Before Finalizing Any Migration)
+
+- NG-ZORRO used for UI building blocks.
+- Form controls respect `6px` radius and `38px` height standards.
+- Lucide icons used with stroke width `2`.
+- Signals + Angular 21 standalone + `@if/@for` syntax applied.
+- API calls implemented via `BaseApiService`-based services.
+- Delete/toggle flows protected by `ConfirmationService`.
+- Logic referenced from `frontend/src/`, types aligned with Prisma schema.
+- Status badges use shared global status classes.
+- Empty states use `EmptyStateComponent` with translated title/message.
+- All user-facing text translated in both `en` and `ar`.
+
+### 7) Keeping Conventions Updated
+
+- When introducing any new shared component, pattern, or convention, add it to this `.cursorrules` file.
+- This ensures consistency across migrated pages and new features.

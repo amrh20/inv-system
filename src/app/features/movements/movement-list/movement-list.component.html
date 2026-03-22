@@ -1,0 +1,91 @@
+<div class="movements-page">
+  <div class="movements-page__header">
+    <div>
+      <h1 class="movements-page__title">{{ 'MOVEMENTS.TITLE' | translate }}</h1>
+      <p class="movements-page__meta">{{ 'MOVEMENTS.SUBTITLE' | translate }}</p>
+    </div>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      class="movements-page__new-btn"
+      (click)="goToNewMovement()"
+    >
+      <lucide-icon [img]="lucidePlus" [size]="20" />
+      <span>{{ 'MOVEMENTS.NEW_MOVEMENT' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="movements-page__search">
+    <nz-input-group [nzPrefix]="searchPrefix">
+      <input
+        nz-input
+        [placeholder]="'MOVEMENTS.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="searchTerm()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="18" class="movements-page__search-icon" />
+    </ng-template>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #docTable
+    [nzData]="documents()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[25, 50, 100]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'MOVEMENTS.NO_DOCUMENTS' | translate"
+        [message]="'MOVEMENTS.CREATE_FIRST' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th nzWidth="160px">{{ 'MOVEMENTS.DOCUMENT_NO' | translate }}</th>
+        <th nzWidth="120px">{{ 'COMMON.DATE' | translate }}</th>
+        <th nzWidth="140px">{{ 'COMMON.TYPE' | translate }}</th>
+        <th nzWidth="120px">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="100px" nzAlign="right">{{ 'COMMON.ITEMS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (doc of docTable.data; track doc.id) {
+        <tr
+          class="movements-page__row"
+          (click)="goToDocument(doc)"
+        >
+          <td class="movements-page__doc-no">{{ doc.documentNo }}</td>
+          <td>{{ doc.documentDate | date: 'mediumDate' }}</td>
+          <td class="movements-page__type">{{ getTypeLabel(doc.movementType) }}</td>
+          <td>
+            <span
+              class="status-badge"
+              [ngClass]="'status-' + getStatusClass(doc.status)"
+            >
+              {{ ('COMMON.STATUS_VALUES.' + doc.status) | translate }}
+            </span>
+          </td>
+          <td nzAlign="right" class="movements-page__lines">
+            {{ 'MOVEMENTS.LINES_COUNT' | translate: { count: doc._count?.lines ?? 0 } }}
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>

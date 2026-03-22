@@ -1,0 +1,315 @@
+<div class="movement-form">
+  @if (loading()) {
+    <div class="movement-form__loading">{{ 'MOVEMENTS.LOADING_DOCUMENT' | translate }}</div>
+  } @else {
+    <div class="movement-form__header">
+      <div class="movement-form__header-left">
+        <button
+          nz-button
+          nzType="text"
+          type="button"
+          class="movement-form__back"
+          (click)="goBack()"
+        >
+          <lucide-icon [img]="lucideArrowLeft" [size]="24" />
+        </button>
+        <div>
+          <h1 class="movement-form__title">
+            {{
+              isNew()
+                ? ('MOVEMENTS.NEW_MOVEMENT' | translate)
+                : (('MOVEMENTS.DOCUMENT_WITH_NO' | translate) + ' ' + (currentDoc()?.documentNo ?? ''))
+            }}
+          </h1>
+          <div class="movement-form__meta">
+            @if (!isNew() && currentDoc(); as doc) {
+              <span
+                class="status-badge"
+                [ngClass]="doc.status === 'POSTED' ? 'status-posted' : 'status-draft'"
+              >
+                {{ ('COMMON.STATUS_VALUES.' + doc.status) | translate }}
+              </span>
+            }
+            <span class="movement-form__meta-text">{{ 'MOVEMENTS.RECORD_TRANSACTIONS' | translate }}</span>
+          </div>
+        </div>
+      </div>
+
+      @if (!isReadOnly()) {
+        <div class="movement-form__actions">
+          <button
+            nz-button
+            nzType="default"
+            type="button"
+            [disabled]="saving()"
+            (click)="saveDraft()"
+          >
+            @if (saving()) {
+              <lucide-icon [img]="lucideLoader" [size]="20" class="spin" />
+            } @else {
+              <lucide-icon [img]="lucideSave" [size]="20" />
+            }
+            <span>{{ isNew() ? ('MOVEMENTS.SAVE_DRAFT' | translate) : ('MOVEMENTS.UPDATE_DRAFT' | translate) }}</span>
+          </button>
+          @if (!isNew()) {
+            <button
+              nz-button
+              nzType="primary"
+              type="button"
+              class="movement-form__post-btn"
+              [disabled]="saving()"
+              (click)="postDocument()"
+            >
+              <lucide-icon [img]="lucideCheck" [size]="20" />
+              <span>{{ 'MOVEMENTS.POST_DOCUMENT' | translate }}</span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    @if (error()) {
+      <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="movement-form__alert" />
+    }
+
+    @if (postResult(); as result) {
+      <nz-alert
+        nzType="success"
+        nzShowIcon
+        [nzMessage]="result.message"
+        [nzDescription]="'MOVEMENTS.POST_SUCCESS_DESCRIPTION' | translate"
+        class="movement-form__alert"
+      />
+    }
+
+    <div class="movement-form__card">
+      <h2 class="movement-form__card-title">{{ 'MOVEMENTS.DOCUMENT_DETAILS' | translate }}</h2>
+      <div class="movement-form__grid">
+        <div class="movement-form__field">
+          <label class="movement-form__label">{{ 'MOVEMENTS.MOVEMENT_TYPE' | translate }}</label>
+          <nz-select
+            class="movement-form__control"
+            [ngModel]="form().movementType"
+            (ngModelChange)="onFieldChange('movementType', $event)"
+            [disabled]="isReadOnly() || !isNew()"
+            nzAllowClear
+          >
+            @for (t of movementTypes; track t.value) {
+              <nz-option [nzValue]="t.value" [nzLabel]="t.label | translate" />
+            }
+          </nz-select>
+        </div>
+        <div class="movement-form__field">
+          <label class="movement-form__label">{{ 'COMMON.DATE' | translate }}</label>
+          <input
+            type="date"
+            class="movement-form__input"
+            [ngModel]="form().documentDate"
+            (ngModelChange)="onFieldChange('documentDate', $event)"
+            [disabled]="isReadOnly()"
+          />
+        </div>
+        <div class="movement-form__field">
+          <label class="movement-form__label">{{ 'MOVEMENTS.REFERENCE_NO_OPTIONAL' | translate }}</label>
+          <input
+            type="text"
+            class="movement-form__input"
+            [ngModel]="form().referenceNumber"
+            (ngModelChange)="onFieldChange('referenceNumber', $event)"
+            [disabled]="isReadOnly()"
+          />
+        </div>
+        @if (showSourceLoc()) {
+          <div class="movement-form__field">
+            <label class="movement-form__label">{{ 'MOVEMENTS.SOURCE_LOCATION' | translate }}</label>
+            <nz-select
+              class="movement-form__control"
+              [nzPlaceHolder]="'MOVEMENTS.SELECT_LOCATION' | translate"
+              [ngModel]="form().sourceLocationId"
+              (ngModelChange)="onFieldChange('sourceLocationId', $event)"
+              [disabled]="isReadOnly()"
+              nzAllowClear
+            >
+              @for (l of locations(); track l.id) {
+                <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+              }
+            </nz-select>
+          </div>
+        }
+        @if (showDestLoc()) {
+          <div class="movement-form__field">
+            <label class="movement-form__label">{{ 'MOVEMENTS.DESTINATION_LOCATION' | translate }}</label>
+            <nz-select
+              class="movement-form__control"
+              [nzPlaceHolder]="'MOVEMENTS.SELECT_LOCATION' | translate"
+              [ngModel]="form().destLocationId"
+              (ngModelChange)="onFieldChange('destLocationId', $event)"
+              [disabled]="isReadOnly()"
+              nzAllowClear
+            >
+              @for (l of locations(); track l.id) {
+                <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+              }
+            </nz-select>
+          </div>
+        }
+        <div class="movement-form__field movement-form__field--full">
+          <label class="movement-form__label">{{ 'COMMON.NOTES' | translate }}</label>
+          <input
+            type="text"
+            class="movement-form__input"
+            [ngModel]="form().notes"
+            (ngModelChange)="onFieldChange('notes', $event)"
+            [disabled]="isReadOnly()"
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="movement-form__card movement-form__card--lines">
+      <div class="movement-form__lines-header">
+        <h2 class="movement-form__card-title">{{ 'MOVEMENTS.LINE_ITEMS' | translate }}</h2>
+        @if (!isReadOnly()) {
+          <button
+            nz-button
+            nzType="link"
+            type="button"
+            (click)="addLine()"
+          >
+            <lucide-icon [img]="lucidePlus" [size]="18" />
+            <span>{{ 'MOVEMENTS.ADD_LINE' | translate }}</span>
+          </button>
+        }
+      </div>
+      <div class="movement-form__table-wrap">
+        <table class="movement-form__table">
+          <thead>
+            <tr>
+              <th>{{ 'COMMON.ITEM' | translate }}</th>
+              <th class="col-qty">{{ 'COMMON.QTY' | translate }}</th>
+              <th>{{ 'COMMON.NOTES' | translate }}</th>
+              @if (!isReadOnly()) {
+                <th class="col-actions"></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of form().lines; track $index; let i = $index) {
+              <tr>
+                <td>
+                  <nz-select
+                    class="movement-form__item-select"
+                    nzShowSearch
+                    [nzPlaceHolder]="'COMMON.SEARCH_BY_NAME_OR_BARCODE' | translate"
+                    [ngModel]="line.itemId"
+                    (ngModelChange)="onLineChange(i, 'itemId', $event)"
+                    [disabled]="isReadOnly()"
+                    nzAllowClear
+                  >
+                    @for (item of items(); track item.id) {
+                      <nz-option [nzValue]="item.id" [nzLabel]="itemLabel(item)" />
+                    }
+                  </nz-select>
+                </td>
+                <td class="col-qty">
+                  <nz-input-number
+                    class="movement-form__qty"
+                    [ngModel]="line.qtyRequested"
+                    (ngModelChange)="onLineChange(i, 'qtyRequested', $event)"
+                    [disabled]="isReadOnly()"
+                    [nzMin]="0.01"
+                    [nzStep]="0.01"
+                    [nzPrecision]="4"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    class="movement-form__input movement-form__input--sm"
+                    [placeholder]="'COMMON.OPTIONAL_NOTES' | translate"
+                    [ngModel]="line.notes"
+                    (ngModelChange)="onLineChange(i, 'notes', $event)"
+                    [disabled]="isReadOnly()"
+                  />
+                </td>
+                @if (!isReadOnly()) {
+                  <td class="col-actions">
+                    <button
+                      nz-button
+                      nzType="text"
+                      nzDanger
+                      type="button"
+                      class="movement-form__remove"
+                      (click)="removeLine(i)"
+                    >
+                      <lucide-icon [img]="lucideTrash" [size]="18" />
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+            @if (form().lines.length === 0) {
+              <tr>
+                <td [attr.colspan]="isReadOnly() ? 3 : 4" class="movement-form__empty">
+                  {{ 'MOVEMENTS.NO_ITEMS_ADDED' | translate }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    @if (isReadOnly() && ledgerEntries().length > 0) {
+      <div class="movement-form__card">
+        <div class="movement-form__ledger-header">
+          <lucide-icon [img]="lucideBook" [size]="20" class="movement-form__ledger-icon" />
+          <h2 class="movement-form__card-title">{{ 'MOVEMENTS.LEDGER_ENTRIES' | translate }}</h2>
+          <span class="movement-form__ledger-count">{{
+            'MOVEMENTS.LEDGER_ENTRIES_COUNT' | translate: { count: ledgerEntries().length }
+          }}</span>
+        </div>
+        <div class="movement-form__table-wrap">
+          <table class="movement-form__table movement-form__table--ledger">
+            <thead>
+              <tr>
+                <th>{{ 'COMMON.ITEM' | translate }}</th>
+                <th>{{ 'COMMON.LOCATION' | translate }}</th>
+                <th>{{ 'COMMON.TYPE' | translate }}</th>
+                <th class="text-right">{{ 'COMMON.QTY_IN' | translate }}</th>
+                <th class="text-right">{{ 'COMMON.QTY_OUT' | translate }}</th>
+                <th class="text-right">{{ 'COMMON.UNIT_COST' | translate }}</th>
+                <th class="text-right">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of ledgerEntries(); track entry.id) {
+                <tr>
+                  <td>{{ entry.item?.name ?? '—' }}</td>
+                  <td>{{ entry.location?.name ?? '—' }}</td>
+                  <td>
+                    @if (qtyIn(entry) > 0) {
+                      <span class="status-badge status-success">
+                        <lucide-icon [img]="lucideIn" [size]="12" class="mr-1" />
+                        {{ ('MOVEMENTS.TYPES.' + entry.movementType) | translate }}
+                      </span>
+                    } @else {
+                      <span class="status-badge status-error">
+                        <lucide-icon [img]="lucideOut" [size]="12" class="mr-1" />
+                        {{ ('MOVEMENTS.TYPES.' + entry.movementType) | translate }}
+                      </span>
+                    }
+                  </td>
+                  <td class="text-right text-green">{{ qtyIn(entry) > 0 ? '+' + qtyIn(entry).toLocaleString() : '—' }}</td>
+                  <td class="text-right text-red">{{ qtyOut(entry) > 0 ? '-' + qtyOut(entry).toLocaleString() : '—' }}</td>
+                  <td class="text-right">{{ unitCostFmt(entry) }}</td>
+                  <td class="text-right font-semibold">{{ totalValue(entry) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  }
+</div>

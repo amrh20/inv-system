@@ -1,0 +1,346 @@
+.main-shell {
+  min-height: 100vh;
+}
+
+.main-shell__sider {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 60px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+
+  &.brand--collapsed {
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+.brand__mark {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-color), #10b981);
+  flex-shrink: 0;
+}
+
+.brand__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.brand__subtitle {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.main-shell__menu {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-inline-end: none !important;
+  padding-block: 8px;
+}
+
+.menu-item-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.menu-item-row span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-item-row--nested {
+  padding-inline-start: 6px;
+}
+
+.menu-lucide {
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.sider-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+
+  &.sider-footer--collapsed {
+    padding: 8px 0;
+    justify-content: center;
+  }
+}
+
+.sider-footer__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary-color);
+  flex-shrink: 0;
+}
+
+.sider-footer__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.sider-footer__name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sider-footer__tenant {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sider-footer__theme {
+  border: none;
+  background: transparent;
+  padding: 6px;
+  border-radius: var(--radius-brand);
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.sider-footer__sun {
+  color: #fbbf24;
+}
+
+.sider-trigger-btn {
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+  }
+}
+
+.main-shell__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-inline: 16px;
+  height: 56px;
+  background: #fff;
+  border-bottom: 1px solid var(--border-color-split);
+  position: relative;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.header-icon-btn {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.header-toggle-btn {
+  min-width: 40px;
+  min-height: 40px;
+  pointer-events: auto;
+}
+
+.header-search {
+  flex: 1;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border-color-input);
+  border-radius: var(--radius-brand);
+  padding: 0 10px;
+  height: var(--input-height);
+  background: #fff;
+
+  input[nz-input] {
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    font-size: 13px;
+  }
+}
+
+.header-search__icon {
+  color: rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.header-right {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: auto;
+  padding: 4px 8px;
+}
+
+.profile-trigger__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-trigger__text {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: start;
+
+  @media (min-width: 576px) {
+    display: flex;
+  }
+}
+
+.profile-trigger__name {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
+  line-height: 1.2;
+}
+
+.profile-trigger__role {
+  font-size: 10px;
+  color: rgba(0, 0, 0, 0.45);
+  line-height: 1.2;
+}
+
+.profile-trigger__chev {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.profile-menu-head.muted,
+.profile-menu-head .muted {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.main-shell__content {
+  background: var(--color-brand-surface);
+  min-height: calc(100vh - 56px);
+}
+
+.main-shell__inner {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.main-shell--dark .main-shell__header {
+  background: #141414;
+  border-bottom-color: #303030;
+}
+
+.main-shell--dark .header-icon-btn,
+.main-shell--dark .theme-toggle {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.main-shell--dark .header-search {
+  background: #141414;
+  border-color: #434343;
+
+  input[nz-input] {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.main-shell--dark .header-search__icon {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.main-shell--dark .profile-trigger__name {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.main-shell--dark .profile-trigger__role,
+.main-shell--dark .profile-trigger__chev {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.main-shell--dark .main-shell__content {
+  background: #000;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.main-shell--dark :host ::ng-deep .ant-breadcrumb a,
+.main-shell--dark :host ::ng-deep .ant-breadcrumb-separator {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.main-shell--dark :host ::ng-deep .ant-breadcrumb > span:last-child {
+  color: rgba(255, 255, 255, 0.85);
+}

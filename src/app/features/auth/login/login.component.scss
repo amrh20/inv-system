@@ -1,0 +1,260 @@
+.login-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.brand-panel {
+  display: none;
+  width: 45%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #212529 0%, #2b3035 50%, #1a1d21 100%);
+
+  @media (min-width: 1024px) {
+    display: flex;
+  }
+}
+
+.brand-decor {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.05;
+
+  &-1 {
+    top: -5rem;
+    right: -5rem;
+    width: 16rem;
+    height: 16rem;
+    background: radial-gradient(circle, var(--primary-color) 0%, transparent 70%);
+  }
+
+  &-2 {
+    bottom: -8rem;
+    left: -5rem;
+    width: 20rem;
+    height: 20rem;
+    background: radial-gradient(circle, var(--color-brand-success) 0%, transparent 70%);
+  }
+}
+
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  z-index: 10;
+}
+
+.logo-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  background: linear-gradient(135deg, var(--primary-color), #10b981);
+}
+
+.logo-title {
+  color: white;
+  font-weight: 600;
+  font-size: 1.125rem;
+  line-height: 1.25;
+}
+
+.logo-subtitle {
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.brand-content {
+  position: relative;
+  z-index: 10;
+  max-width: 28rem;
+}
+
+.brand-heading {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: white;
+  line-height: 1.25;
+  margin-bottom: 1rem;
+}
+
+.brand-accent {
+  color: var(--primary-color);
+}
+
+.brand-description {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.brand-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+}
+
+.brand-footer {
+  font-size: 0.75rem;
+  color: #4b5563;
+  position: relative;
+  z-index: 10;
+}
+
+.form-panel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 2.5rem;
+  background-color: var(--color-brand-surface);
+
+  @media (min-width: 1024px) {
+    width: 55%;
+  }
+}
+
+.form-wrapper {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.form-header {
+  margin-bottom: 2rem;
+}
+
+.form-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.form-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.super-admin-toggle {
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #cbd5e1;
+  }
+
+  &.active {
+    background: #eef2ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+  }
+}
+
+.toggle-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 50%;
+  background: #94a3b8;
+
+  &.active {
+    background: #6366f1;
+  }
+}
+
+.login-form {
+  nz-form-item {
+    margin-bottom: 1rem;
+  }
+
+  .error-alert {
+    margin-bottom: 1rem;
+  }
+}
+
+.demo-credentials {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  text-align: center;
+  font-size: 0.75rem;
+}
+
+.demo-title {
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.demo-list {
+  color: #9ca3af;
+  margin-bottom: 0.75rem;
+
+  p {
+    margin: 0.25rem 0;
+  }
+
+  code {
+    background: #f1f5f9;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    color: #374151;
+    border: 1px solid #e2e8f0;
+  }
+}
+
+.demo-fill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius-brand);
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+}

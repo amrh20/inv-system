@@ -1,0 +1,514 @@
+import { DecimalPipe, NgClass } from '@angular/common';
+import {
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+  TemplateRef,
+  ViewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, first } from 'rxjs/operators';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
+import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { NzGridModule } from 'ng-zorro-antd/grid';
+import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzDropdownModule } from 'ng-zorro-antd/dropdown';
+import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import type { NzTableSortFn } from 'ng-zorro-antd/table';
+import { LucideAngularModule } from 'lucide-angular';
+import {
+  Download,
+  EllipsisVertical,
+  Eye,
+  Loader2,
+  Package,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-angular';
+import { ConfirmationService } from '../../../core/services/confirmation.service';
+import { StatusToggleComponent } from '../../../shared/components/status-toggle/status-toggle.component';
+import { ItemFormComponent } from '../item-form/item-form.component';
+import type { CategoryOption, ItemListRow } from '../models/item.model';
+import { CategoriesService } from '../services/categories.service';
+import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
+import { ItemsService } from '../services/items.service';
+
+@Component({
+  selector: 'app-items-list',
+  standalone: true,
+  providers: [ConfirmationService],
+  imports: [
+    FormsModule,
+    DecimalPipe,
+    NgClass,
+    NzAlertModule,
+    NzButtonModule,
+    NzDescriptionsModule,
+    NzDividerModule,
+    NzDropdownModule,
+    NzGridModule,
+    NzInputModule,
+    NzMenuModule,
+    NzModalModule,
+    NzSelectModule,
+    NzSpinModule,
+    NzTableModule,
+    NzTagModule,
+    NzTooltipModule,
+    TranslatePipe,
+    LucideAngularModule,
+    ItemFormComponent,
+    StatusToggleComponent,
+  ],
+  templateUrl: './items-list.component.html',
+  styleUrl: './items-list.component.scss',
+})
+export class ItemsListComponent implements OnInit {
+  @ViewChild('importFooterTpl', { static: true }) importFooterRef!: TemplateRef<Record<string, unknown>>;
+
+  private readonly itemsApi = inject(ItemsService);
+  private readonly categoriesApi = inject(CategoriesService);
+  private readonly lookups = inject(ItemMasterLookupsService);
+  private readonly message = inject(NzMessageService);
+  private readonly confirmation = inject(ConfirmationService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
+
+  readonly lucidePackage = Package;
+  readonly lucidePlus = Plus;
+  readonly lucideSearch = Search;
+  readonly lucideRefresh = RefreshCw;
+  readonly lucideDownload = Download;
+  readonly lucideUpload = Upload;
+  readonly lucidePencil = Pencil;
+  readonly lucideTrash = Trash2;
+  readonly lucideEye = Eye;
+  readonly lucideLoader = Loader2;
+  readonly lucideX = X;
+  readonly lucideEllipsisVertical = EllipsisVertical;
+
+  /** Current page rows — mirrors React `ItemMasterPage` `items` state. */
+  readonly itemsList = signal<ItemListRow[]>([]);
+  readonly total = signal(0);
+  readonly loading = signal(false);
+  readonly listError = signal('');
+
+  readonly pageIndex = signal(1);
+  readonly pageSize = signal(20);
+
+  readonly searchDraft = signal('');
+  private readonly searchTerm = signal('');
+  private readonly search$ = new Subject<string>();
+
+  readonly categoryId = signal('');
+  readonly departmentId = signal('');
+  readonly locationId = signal('');
+  /** '', 'true', 'false' for all/active/inactive */
+  readonly activeFilter = signal('true');
+
+  readonly categories = signal<CategoryOption[]>([]);
+  readonly departments = signal<{ id: string; name: string }[]>([]);
+  readonly locations = signal<{ id: string; name: string; departmentId: string | null }[]>([]);
+
+  readonly formOpen = signal(false);
+  readonly formItem = signal<ItemListRow | null>(null);
+
+  readonly viewOpen = signal(false);
+  readonly viewItem = signal<ItemListRow | null>(null);
+
+  readonly importOpen = signal(false);
+  readonly importStep = signal(0);
+  readonly importFile = signal<File | null>(null);
+  readonly importPreviewData = signal<{ preview: unknown[]; filePath: string } | null>(null);
+  readonly importLoading = signal(false);
+  readonly importError = signal('');
+  readonly obEligible = signal<{ allowed: boolean; reason?: string } | null>(null);
+  readonly asOpeningBalance = signal(false);
+
+  readonly filteredLocations = computed(() => {
+    const dept = this.departmentId();
+    const locs = this.locations();
+    if (!dept) {
+      return locs;
+    }
+    return locs.filter((l) => !l.departmentId || l.departmentId === dept);
+  });
+
+  readonly sortNameFn: NzTableSortFn<ItemListRow> = (a, b) =>
+    (a.name ?? '').localeCompare(b.name ?? '', undefined, { sensitivity: 'base' });
+
+  readonly sortBarcodeFn: NzTableSortFn<ItemListRow> = (a, b) =>
+    (a.barcode ?? '').localeCompare(b.barcode ?? '', undefined, { sensitivity: 'base' });
+
+  readonly sortCategoryFn: NzTableSortFn<ItemListRow> = (a, b) =>
+    (a.category?.name ?? '').localeCompare(b.category?.name ?? '', undefined, {
+      sensitivity: 'base',
+    });
+
+  readonly sortPriceFn: NzTableSortFn<ItemListRow> = (a, b) =>
+    (Number(a.unitPrice) || 0) - (Number(b.unitPrice) || 0);
+
+  readonly sortQtyFn: NzTableSortFn<ItemListRow> = (a, b) => this.totalQty(a) - this.totalQty(b);
+
+  ngOnInit(): void {
+    this.search$
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((q) => {
+        this.searchTerm.set(q);
+        this.pageIndex.set(1);
+        this.loadItems();
+      });
+
+    this.loadFilterOptions();
+    this.loadItems();
+  }
+
+  onSearchInput(value: string): void {
+    this.searchDraft.set(value);
+    this.search$.next(value.trim());
+  }
+
+  onFilterChange(): void {
+    this.pageIndex.set(1);
+    this.loadItems();
+  }
+
+  onDepartmentChange(): void {
+    this.locationId.set('');
+    this.onFilterChange();
+  }
+
+  clearFilters(): void {
+    this.searchDraft.set('');
+    this.searchTerm.set('');
+    this.categoryId.set('');
+    this.departmentId.set('');
+    this.locationId.set('');
+    this.pageIndex.set(1);
+    this.loadItems();
+  }
+
+  onPageIndexChange(page: number): void {
+    this.pageIndex.set(page);
+    this.loadItems();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.pageIndex.set(1);
+    this.loadItems();
+  }
+
+  loadItems(): void {
+    this.loading.set(true);
+    this.listError.set('');
+    const skip = (this.pageIndex() - 1) * this.pageSize();
+    const active = this.activeFilter();
+    this.itemsApi
+      .list({
+        skip,
+        take: this.pageSize(),
+        search: this.searchTerm() || undefined,
+        categoryId: this.categoryId() || undefined,
+        departmentId: this.departmentId() || undefined,
+        locationId: this.locationId() || undefined,
+        isActive: active === 'all' ? undefined : active,
+      })
+      .pipe(first())
+      .subscribe({
+        next: (res) => {
+          this.itemsList.set(res.items);
+          this.total.set(res.total);
+          this.loading.set(false);
+        },
+        error: (err: { error?: { message?: string } }) => {
+          this.loading.set(false);
+          this.listError.set(err?.error?.message ?? this.t('ITEMS.ERROR_LOAD'));
+        },
+      });
+  }
+
+  openCreate(): void {
+    this.formItem.set(null);
+    this.formOpen.set(true);
+  }
+
+  openEdit(row: ItemListRow): void {
+    this.formItem.set(row);
+    this.formOpen.set(true);
+  }
+
+  closeForm(): void {
+    this.formOpen.set(false);
+    this.formItem.set(null);
+  }
+
+  onFormSaved(): void {
+    this.closeForm();
+    this.message.success(this.t('ITEMS.SUCCESS_SAVED'));
+    this.loadItems();
+  }
+
+  openView(row: ItemListRow): void {
+    this.viewItem.set(row);
+    this.viewOpen.set(true);
+  }
+
+  closeView(): void {
+    this.viewOpen.set(false);
+    this.viewItem.set(null);
+  }
+
+  deleteItem(row: ItemListRow): void {
+    this.itemsApi
+      .deleteItem(row.id)
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.message.success(this.t('ITEMS.SUCCESS_DELETED'));
+          this.loadItems();
+        },
+        error: (err: { error?: { message?: string } }) => {
+          this.message.error(err?.error?.message ?? this.t('ITEMS.ERROR_DELETE'));
+        },
+      });
+  }
+
+  onDeleteClick(row: ItemListRow): void {
+    this.confirmation
+      .confirm({
+        title: this.t('ITEMS.CONFIRM_DELETE_TITLE'),
+        message: this.t('ITEMS.CONFIRM_DELETE_MESSAGE', { name: row.name }),
+        confirmText: this.t('COMMON.DELETE'),
+        cancelText: this.t('COMMON.CANCEL'),
+        confirmDanger: true,
+      })
+      .pipe(first())
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.deleteItem(row);
+        }
+      });
+  }
+
+  /** Same as React `handleToggleActive` — `PATCH /items/:id/toggle-active`. */
+  toggleItemActive(row: ItemListRow): void {
+    this.itemsApi
+      .toggleActive(row.id)
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.message.success(
+            row.isActive ? this.t('ITEMS.SUCCESS_DEACTIVATED') : this.t('ITEMS.SUCCESS_ACTIVATED'),
+          );
+          this.loadItems();
+        },
+        error: (err: { error?: { message?: string } }) => {
+          this.message.error(err?.error?.message ?? this.t('ITEMS.ERROR_TOGGLE_STATUS'));
+        },
+      });
+  }
+
+  onToggleStatusClick(row: ItemListRow): void {
+    this.confirmation
+      .confirm({
+        title: row.isActive
+          ? this.t('ITEMS.CONFIRM_DEACTIVATE_TITLE')
+          : this.t('ITEMS.CONFIRM_ACTIVATE_TITLE'),
+        message: this.t('ITEMS.CONFIRM_TOGGLE_MESSAGE', {
+          action: this.t(row.isActive ? 'COMMON.DEACTIVATE' : 'COMMON.ACTIVATE'),
+          name: row.name,
+        }),
+        confirmText: this.t(row.isActive ? 'COMMON.DEACTIVATE' : 'COMMON.ACTIVATE'),
+        cancelText: this.t('COMMON.CANCEL'),
+      })
+      .pipe(first())
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          this.toggleItemActive(row);
+        }
+      });
+  }
+
+  imageSrc(row: ItemListRow): string | null {
+    return this.itemsApi.resolveAssetUrl(row.imageUrl);
+  }
+
+  baseUnitLabel(row: ItemListRow): string {
+    const base = row.itemUnits?.find((u) => u.unitType === 'BASE');
+    if (!base?.unit) {
+      return '—';
+    }
+    const abbr = base.unit.abbreviation ? ` (${base.unit.abbreviation})` : '';
+    return `${base.unit.name}${abbr}`;
+  }
+
+  totalQty(row: ItemListRow): number {
+    return (row.stockBalances ?? []).reduce(
+      (sum, b) => sum + (Number(b.qtyOnHand) || 0),
+      0,
+    );
+  }
+
+  formatPrice(row: ItemListRow): string {
+    return (Number(row.unitPrice) || 0).toFixed(2);
+  }
+
+  downloadTemplate(): void {
+    this.itemsApi
+      .downloadTemplate()
+      .pipe(first())
+      .subscribe({
+        next: (blob) => this.saveBlob(blob, 'Item_Import_Template.xlsx'),
+        error: () => this.message.error(this.t('ITEMS.ERROR_DOWNLOAD_TEMPLATE')),
+      });
+  }
+
+  exportItems(): void {
+    const active = this.activeFilter();
+    this.itemsApi
+      .exportItems({
+        search: this.searchTerm() || undefined,
+        categoryId: this.categoryId() || undefined,
+        departmentId: this.departmentId() || undefined,
+        locationId: this.locationId() || undefined,
+        isActive: active === 'all' ? undefined : active,
+      })
+      .pipe(first())
+      .subscribe({
+        next: (blob) => {
+          const d = new Date().toISOString().split('T')[0];
+          this.saveBlob(blob, `Items_Export_${d}.xlsx`);
+        },
+        error: () => this.message.error(this.t('COMMON.EXPORT_FAILED')),
+      });
+  }
+
+  openImport(): void {
+    this.importOpen.set(true);
+    this.importStep.set(0);
+    this.importFile.set(null);
+    this.importPreviewData.set(null);
+    this.importError.set('');
+    this.lookups.obEligible().pipe(first()).subscribe({
+      next: (o) => {
+        this.obEligible.set(o);
+        this.asOpeningBalance.set(!!o.allowed);
+      },
+      error: () => {
+        this.obEligible.set({ allowed: false, reason: this.t('ITEMS.ERROR_OB_ELIGIBILITY') });
+        this.asOpeningBalance.set(false);
+      },
+    });
+  }
+
+  closeImport(): void {
+    this.importOpen.set(false);
+  }
+
+  onImportFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const f = input.files?.[0];
+    this.importFile.set(f ?? null);
+    this.importError.set('');
+    input.value = '';
+  }
+
+  runImportPreview(): void {
+    const file = this.importFile();
+    if (!file) {
+      this.importError.set(this.t('ITEMS.ERROR_SELECT_FILE_FIRST'));
+      return;
+    }
+    this.importLoading.set(true);
+    this.importError.set('');
+    this.itemsApi
+      .importPreview(file)
+      .pipe(first())
+      .subscribe({
+        next: (data) => {
+          const preview = Array.isArray(data.preview) ? data.preview : [];
+          const filePath = typeof data.filePath === 'string' ? data.filePath : '';
+          this.importPreviewData.set({ preview, filePath });
+          this.importStep.set(1);
+          this.importLoading.set(false);
+        },
+        error: (err: { error?: { message?: string } }) => {
+          this.importLoading.set(false);
+          this.importError.set(err?.error?.message ?? this.t('ITEMS.ERROR_PARSE_FILE'));
+        },
+      });
+  }
+
+  confirmImport(): void {
+    const prev = this.importPreviewData();
+    if (!prev?.filePath) {
+      return;
+    }
+    this.importLoading.set(true);
+    this.importError.set('');
+    this.itemsApi
+      .importItems(prev.preview, prev.filePath, this.asOpeningBalance())
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.importLoading.set(false);
+          this.importStep.set(2);
+          this.message.success(this.t('ITEMS.SUCCESS_IMPORT_COMPLETED'));
+          this.loadItems();
+        },
+        error: (err: { error?: { message?: string } }) => {
+          this.importLoading.set(false);
+          this.importError.set(err?.error?.message ?? this.t('COMMON.IMPORT_FAILED'));
+        },
+      });
+  }
+
+  private saveBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  private loadFilterOptions(): void {
+    this.categoriesApi
+      .list({ take: 200 })
+      .pipe(first())
+      .subscribe({ next: (c) => this.categories.set(c), error: () => this.categories.set([]) });
+    this.lookups
+      .listDepartments({ take: 200 })
+      .pipe(first())
+      .subscribe({ next: (d) => this.departments.set(d), error: () => this.departments.set([]) });
+    this.lookups
+      .listLocations({ take: 200 })
+      .pipe(first())
+      .subscribe({ next: (l) => this.locations.set(l), error: () => this.locations.set([]) });
+  }
+
+  private t(key: string, params?: Record<string, unknown>): string {
+    return this.translate.instant(key, params);
+  }
+}

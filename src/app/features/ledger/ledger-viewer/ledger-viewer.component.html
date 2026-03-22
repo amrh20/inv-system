@@ -1,0 +1,154 @@
+<div class="ledger-page">
+  <div class="ledger-page__header">
+    <div>
+      <h1 class="ledger-page__title">{{ 'LEDGER.TITLE' | translate }}</h1>
+      <p class="ledger-page__meta">{{ 'LEDGER.SUBTITLE' | translate }}</p>
+    </div>
+  </div>
+
+  <div class="ledger-page__filters">
+    <div class="ledger-page__filters-title">
+      <lucide-icon [img]="lucideFilter" class="ledger-page__icon" />
+      <span>{{ 'LEDGER.FILTERS' | translate }}</span>
+    </div>
+    <div class="ledger-page__filters-grid">
+      <div class="ledger-page__field">
+        <label class="ledger-page__label">{{ 'COMMON.ITEM' | translate }}</label>
+        <nz-select
+          class="ledger-page__control"
+          nzShowSearch
+          nzAllowClear
+          [nzPlaceHolder]="'LEDGER.ALL_ITEMS' | translate"
+          [ngModel]="itemId()"
+          (ngModelChange)="itemId.set($event ?? '')"
+        >
+          <nz-option [nzValue]="''" [nzLabel]="'LEDGER.ALL_ITEMS' | translate" />
+          @for (opt of itemOptions(); track opt.id) {
+            <nz-option [nzValue]="opt.id" [nzLabel]="opt.label" />
+          }
+        </nz-select>
+      </div>
+      <div class="ledger-page__field">
+        <label class="ledger-page__label">{{ 'COMMON.LOCATION' | translate }}</label>
+        <nz-select
+          class="ledger-page__control"
+          nzShowSearch
+          nzAllowClear
+          [nzPlaceHolder]="'LEDGER.ALL_LOCATIONS' | translate"
+          [ngModel]="locationId()"
+          (ngModelChange)="locationId.set($event ?? '')"
+        >
+          <nz-option [nzValue]="''" [nzLabel]="'LEDGER.ALL_LOCATIONS' | translate" />
+          @for (loc of locations(); track loc.id) {
+            <nz-option [nzValue]="loc.id" [nzLabel]="loc.name" />
+          }
+        </nz-select>
+      </div>
+      <div class="ledger-page__field">
+        <label class="ledger-page__label">{{ 'LEDGER.DATE_FROM' | translate }}</label>
+        <nz-date-picker
+          class="ledger-page__control"
+          nzFormat="yyyy-MM-dd"
+          [ngModel]="dateFrom()"
+          (ngModelChange)="dateFrom.set($event ?? null)"
+          [nzAllowClear]="true"
+        />
+      </div>
+      <div class="ledger-page__field">
+        <label class="ledger-page__label">{{ 'LEDGER.DATE_TO' | translate }}</label>
+        <nz-date-picker
+          class="ledger-page__control"
+          nzFormat="yyyy-MM-dd"
+          [ngModel]="dateTo()"
+          (ngModelChange)="dateTo.set($event ?? null)"
+          [nzAllowClear]="true"
+        />
+      </div>
+      <div class="ledger-page__field">
+        <label class="ledger-page__label">{{ 'LEDGER.MOVEMENT_TYPE' | translate }}</label>
+        <nz-select
+          class="ledger-page__control"
+          nzAllowClear
+          [nzPlaceHolder]="'LEDGER.ALL_TYPES' | translate"
+          [ngModel]="movementType()"
+          (ngModelChange)="movementType.set($event ?? '')"
+        >
+          <nz-option [nzValue]="''" [nzLabel]="'LEDGER.ALL_TYPES' | translate" />
+          @for (t of movementTypes; track t) {
+            <nz-option [nzValue]="t" [nzLabel]="movementTypeLabel(t)" />
+          }
+        </nz-select>
+      </div>
+    </div>
+  </div>
+
+  @if (error()) {
+    <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon />
+  }
+
+  @if (!loading()) {
+    <div class="ledger-page__count">
+      {{ 'LEDGER.SHOWING_ENTRIES' | translate: { shown: entries().length, total: total() } }}
+      @if (total() > ledgerFetchTake) {
+        <span class="ledger-page__cap">{{ 'LEDGER.CAPPED_AT' | translate: { cap: ledgerFetchTake } }}</span>
+      }
+    </div>
+  }
+
+  <nz-table
+    #ledgerTable
+    [nzData]="entries()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzPageSize]="25"
+    [nzPageSizeOptions]="[10, 25, 50, 100]"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'LEDGER.NO_ENTRIES_FOUND' | translate"
+        [message]="'LEDGER.EMPTY_HINT' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th nzWidth="160px">{{ 'COMMON.DATE' | translate }}</th>
+        <th nzWidth="130px">{{ 'COMMON.TYPE' | translate }}</th>
+        <th nzWidth="120px">{{ 'LEDGER.REF_NO' | translate }}</th>
+        <th nzWidth="180px">{{ 'COMMON.ITEM' | translate }}</th>
+        <th nzWidth="140px">{{ 'COMMON.LOCATION' | translate }}</th>
+        <th nzWidth="100px" class="ledger-page__num">{{ 'COMMON.QTY_IN' | translate }}</th>
+        <th nzWidth="100px" class="ledger-page__num">{{ 'COMMON.QTY_OUT' | translate }}</th>
+        <th nzWidth="110px" class="ledger-page__num">{{ 'COMMON.UNIT_COST' | translate }}</th>
+        <th nzWidth="120px" class="ledger-page__num">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
+        <th nzWidth="120px" class="ledger-page__num">{{ 'LEDGER.RUNNING_BAL' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of ledgerTable.data; track row.id) {
+        <tr>
+          <td>{{ row.createdAt | date: 'medium' }}</td>
+          <td>
+            <span
+              class="status-badge ledger-page__tag"
+              [ngClass]="'status-' + rowTypeStatusClass(row)"
+            >
+              <lucide-icon [img]="rowTypeIcon(row)" class="ledger-page__tag-icon" />
+              {{ movementTypeHuman(row) }}
+            </span>
+          </td>
+          <td class="ledger-page__ref">{{ row.referenceNo || '—' }}</td>
+          <td class="ledger-page__item">{{ row.item?.name ?? '—' }}</td>
+          <td class="ledger-page__loc">{{ row.location?.name ?? '—' }}</td>
+          <td class="ledger-page__num ledger-page__num--in">{{ formatSignedQtyIn(row) }}</td>
+          <td class="ledger-page__num ledger-page__num--out">{{ formatSignedQtyOut(row) }}</td>
+          <td class="ledger-page__num">{{ formatUnitCost(row) }}</td>
+          <td class="ledger-page__num">{{ formatTotalValue(row) }}</td>
+          <td class="ledger-page__num ledger-page__num--bal">{{ formatBalance(row) }}</td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>

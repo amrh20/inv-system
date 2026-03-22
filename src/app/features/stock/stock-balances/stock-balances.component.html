@@ -1,0 +1,276 @@
+<div class="stock-page">
+  <div class="stock-page__header">
+    <div>
+      <h1 class="stock-page__title">{{ 'STOCK.TITLE' | translate }}</h1>
+      <p class="stock-page__meta">{{ 'STOCK.SUBTITLE' | translate }}</p>
+    </div>
+    <div class="stock-page__actions">
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        (click)="refreshNow()"
+        [attr.title]="'COMMON.REFRESH' | translate"
+      >
+        <lucide-icon [img]="lucideRefresh" class="stock-page__icon" [class.stock-page__icon--spin]="loading()" />
+      </button>
+      <button
+        nz-button
+        nzType="primary"
+        type="button"
+        class="stock-page__export"
+        [disabled]="exporting() || balances().length === 0"
+        (click)="exportExcel()"
+      >
+        @if (exporting()) {
+          <lucide-icon [img]="lucideLoader" class="stock-page__icon stock-page__icon--spin" />
+        } @else {
+          <lucide-icon [img]="lucideDownload" class="stock-page__icon" />
+        }
+        {{ 'COMMON.EXPORT_EXCEL' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div class="stock-page__summary">
+    <div class="summary-card summary-card--blue">
+      <lucide-icon [img]="lucideDollar" class="summary-card__icon" />
+      <div>
+        <p class="summary-card__label">{{ 'STOCK.TOTAL_STOCK_VALUE' | translate }}</p>
+        <p class="summary-card__value">
+          @if (summaryLoading()) {
+            …
+          } @else {
+            {{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(summary()?.totalValue) }}
+          }
+        </p>
+      </div>
+    </div>
+    <div class="summary-card summary-card--green">
+      <lucide-icon [img]="lucidePackage" class="summary-card__icon" />
+      <div>
+        <p class="summary-card__label">{{ 'STOCK.TOTAL_ITEMS_ROWS' | translate }}</p>
+        <p class="summary-card__value">
+          @if (summaryLoading()) {
+            …
+          } @else {
+            {{ formatQty(summary()?.totalItems) }}
+          }
+        </p>
+        @if (!summaryLoading() && summary()?.totalQty != null) {
+          <p class="summary-card__sub">{{ 'STOCK.UNITS_COUNT' | translate: { count: formatQty(summary()?.totalQty) } }}</p>
+        }
+      </div>
+    </div>
+    <div class="summary-card summary-card--amber">
+      <lucide-icon [img]="lucideTrendDown" class="summary-card__icon" />
+      <div>
+        <p class="summary-card__label">{{ 'STOCK.LOW_STOCK_ITEMS' | translate }}</p>
+        <p class="summary-card__value">
+          @if (summaryLoading()) {
+            …
+          } @else {
+            {{ summary()?.lowStockCount ?? 0 }}
+          }
+        </p>
+        <p class="summary-card__sub">{{ 'STOCK.BELOW_REORDER_POINT' | translate }}</p>
+      </div>
+      @if (showLowStockBanner()) {
+        <span class="summary-card__alert">{{ 'STOCK.ACTION_NEEDED' | translate }}</span>
+      }
+    </div>
+    <div class="summary-card summary-card--red">
+      <lucide-icon [img]="lucideAlert" class="summary-card__icon" />
+      <div>
+        <p class="summary-card__label">{{ 'STOCK.ZERO_STOCK_ITEMS' | translate }}</p>
+        <p class="summary-card__value">
+          @if (summaryLoading()) {
+            …
+          } @else {
+            {{ summary()?.zeroStockCount ?? 0 }}
+          }
+        </p>
+        <p class="summary-card__sub">{{ 'STOCK.QTY_ON_HAND_ZERO' | translate }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stock-page__filters">
+    <nz-input-group [nzPrefix]="searchPrefix" class="stock-page__search">
+      <input
+        type="text"
+        nz-input
+        [placeholder]="'COMMON.SEARCH_BY_NAME_OR_BARCODE' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchInput($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="14" class="input-prefix-icon" />
+    </ng-template>
+
+    <nz-select
+      class="stock-page__select"
+      [ngModel]="departmentId()"
+      (ngModelChange)="departmentId.set($event ?? ''); onDepartmentChange()"
+      [nzPlaceHolder]="'STOCK.ALL_DEPARTMENTS' | translate"
+      nzAllowClear
+    >
+      @for (d of departments(); track d.id) {
+        <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+      }
+    </nz-select>
+
+    <nz-select
+      class="stock-page__select"
+      [ngModel]="locationId()"
+      (ngModelChange)="locationId.set($event ?? ''); onFilterChange()"
+      [nzPlaceHolder]="'STOCK.ALL_STORES' | translate"
+      nzAllowClear
+    >
+      @for (l of filteredLocations(); track l.id) {
+        <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+      }
+    </nz-select>
+
+    <nz-select
+      class="stock-page__select"
+      [ngModel]="categoryId()"
+      (ngModelChange)="categoryId.set($event ?? ''); onFilterChange()"
+      [nzPlaceHolder]="'STOCK.ALL_CATEGORIES' | translate"
+      nzAllowClear
+    >
+      @for (c of categories(); track c.id) {
+        <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+      }
+    </nz-select>
+
+    <nz-select
+      class="stock-page__select stock-page__select--narrow"
+      [ngModel]="showZero()"
+      (ngModelChange)="showZero.set($event); onFilterChange()"
+    >
+      <nz-option nzValue="false" [nzLabel]="'STOCK.NON_ZERO_ONLY' | translate" />
+      <nz-option nzValue="true" [nzLabel]="'STOCK.INCLUDE_ZERO_STOCK' | translate" />
+    </nz-select>
+
+    @if (hasFilters()) {
+      <button nz-button nzType="text" type="button" (click)="clearFilters()">
+        <lucide-icon [img]="lucideX" class="stock-page__icon--sm" />
+        {{ 'COMMON.CLEAR' | translate }}
+      </button>
+    }
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon class="stock-page__alert" />
+  }
+
+  <div class="stock-page__table-card">
+    <div class="stock-page__legend">
+      <span
+        ><span class="legend-swatch legend-swatch--red"></span> {{ 'STOCK.STATUS_OUT_OF_STOCK' | translate }}</span
+      >
+      <span
+        ><span class="legend-swatch legend-swatch--amber"></span> {{ 'STOCK.LOW_STOCK_LEGEND' | translate }}</span
+      >
+      <span
+        ><span class="legend-swatch legend-swatch--green"></span> {{ 'STOCK.STATUS_IN_STOCK' | translate }}</span
+      >
+      <span class="stock-page__legend-meta">
+        {{ 'COMMON.ROWS_COUNT' | translate: { count: totalRows() } }}
+        @if (totalRows() > pageSize) {
+          {{ 'COMMON.SHOWING_FIRST' | translate: { count: pageSize } }}
+        }
+      </span>
+    </div>
+
+    <nz-table
+      #st
+      [nzData]="balances()"
+      [nzLoading]="loading()"
+      [nzShowPagination]="false"
+      nzTableLayout="fixed"
+      nzSize="middle"
+      class="stock-table"
+      [nzNoResult]="noResultTpl"
+    >
+      <ng-template #noResultTpl>
+        <app-empty-state
+          [title]="'STOCK.NO_BALANCES_FOUND' | translate"
+          [message]="'STOCK.EMPTY_HINT' | translate"
+        />
+      </ng-template>
+      <thead>
+        <tr>
+          <th nzWidth="220" nzColumnKey="item" [nzSortFn]="sortItemFn" nzShowSort>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+          <th nzWidth="120" nzColumnKey="barcode" [nzSortFn]="sortBarcodeFn" nzShowSort>{{ 'COMMON.BARCODE' | translate }}</th>
+          <th nzWidth="140" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>{{ 'COMMON.CATEGORY' | translate }}</th>
+          <th nzWidth="160" nzColumnKey="location" [nzSortFn]="sortLocationFn" nzShowSort>
+            <span class="stock-th-loc">
+              {{ 'STOCK.LOCATION_STORE' | translate }}
+            </span>
+          </th>
+          <th nzWidth="120" nzAlign="right" nzColumnKey="qty" [nzSortFn]="sortQtyFn" nzShowSort>
+            {{ 'STOCK.QTY_ON_HAND' | translate }}
+          </th>
+          <th nzWidth="130" nzAlign="center" nzColumnKey="status">{{ 'STOCK.REORDER_STATUS' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of st.data; track row.itemId + '-' + row.locationId) {
+          <tr [ngClass]="rowStatusClass(row)">
+            <td>
+              <div class="cell-item">
+                @if (rowReorderStatus(row) === 'out_of_stock') {
+                  <lucide-icon [img]="lucideAlert" class="cell-item__warn cell-item__warn--red" />
+                }
+                @if (rowReorderStatus(row) === 'low_stock') {
+                  <lucide-icon [img]="lucideTrendDown" class="cell-item__warn cell-item__warn--amber" />
+                }
+                <div class="cell-item__text">
+                  <span class="cell-item__name" [title]="row.item?.name ?? ''">{{ row.item?.name ?? '—' }}</span>
+                  @if (row.item?.department?.name) {
+                    <span class="cell-item__dept">
+                      <lucide-icon [img]="lucideBuilding" class="stock-page__icon--xs" />
+                      {{ row.item?.department?.name }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </td>
+            <td class="cell-mono">{{ row.item?.barcode || '—' }}</td>
+            <td>
+              <span class="cell-category">{{ row.item?.category?.name || ('COMMON.UNCATEGORIZED' | translate) }}</span>
+            </td>
+            <td>
+              <span class="cell-loc">
+                <lucide-icon [img]="lucideMapPin" class="stock-page__icon--xs cell-loc__pin" />
+                {{ row.location?.name ?? '—' }}
+              </span>
+            </td>
+            <td nzAlign="right" [class.cell-qty--out]="rowReorderStatus(row) === 'out_of_stock'" [class.cell-qty--low]="rowReorderStatus(row) === 'low_stock'">
+              {{ formatQty(row.qtyOnHand) }}
+            </td>
+            <td nzAlign="center">
+              <span
+                class="status-badge"
+                [ngClass]="'status-' + statusClass(rowReorderStatus(row))"
+              >
+                {{ statusLabel(rowReorderStatus(row)) }}
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+
+    @if (balances().length > 0) {
+      <div class="stock-page__footer-totals">
+        <span>{{ 'STOCK.PAGE_TOTAL_ROWS' | translate: { count: balances().length } }}</span>
+        <span class="stock-page__footer-qty">{{ formatQty(pageTotals().qty) }}</span>
+        <span class="stock-page__footer-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(pageTotals().value) }}</span>
+      </div>
+    }
+  </div>
+</div>

@@ -1,0 +1,52 @@
+.departments-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.departments-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.departments-page__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.departments-page__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.departments-page__new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.departments-page__search {
+  max-width: 400px;
+}
+
+.departments-page__search-icon {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.departments-page__name {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.departments-page__code {
+  font-family: monospace;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+}

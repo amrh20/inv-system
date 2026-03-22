@@ -1,0 +1,283 @@
+.movement-form {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 32px;
+}
+
+.movement-form__loading {
+  padding: 32px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.movement-form__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.movement-form__header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.movement-form__back {
+  padding: 8px;
+  color: rgba(0, 0, 0, 0.45);
+  line-height: 1;
+}
+
+.movement-form__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.movement-form__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.movement-form__meta-text {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.movement-form__actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.movement-form__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.movement-form__post-btn {
+  background: #52c41a;
+  border-color: #52c41a;
+
+  &:hover:not([disabled]) {
+    background: #389e0d;
+    border-color: #389e0d;
+  }
+}
+
+.movement-form__alert {
+  margin-bottom: 0;
+}
+
+.movement-form__card {
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #fff;
+}
+
+.movement-form__card-title {
+  margin: 0 0 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.movement-form__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .movement-form__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .movement-form__grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.movement-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.movement-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.movement-form__label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.movement-form__control,
+.movement-form__input {
+  width: 100%;
+}
+
+.movement-form__input {
+  padding: 8px 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  font-size: 14px;
+
+  &:disabled {
+    background: #f5f5f5;
+    color: rgba(0, 0, 0, 0.25);
+    cursor: not-allowed;
+  }
+}
+
+.movement-form__input--sm {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.movement-form__lines-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.movement-form__lines-header .movement-form__card-title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.movement-form__table-wrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.movement-form__table {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.movement-form__table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.movement-form__table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.movement-form__table .col-qty {
+  width: 120px;
+}
+
+.movement-form__table .col-actions {
+  width: 56px;
+  text-align: center;
+}
+
+.movement-form__item-select {
+  width: 100%;
+  min-width: 200px;
+}
+
+.movement-form__qty {
+  width: 100%;
+}
+
+.movement-form__remove {
+  padding: 4px;
+  color: #ff4d4f;
+}
+
+.movement-form__empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.movement-form__ledger-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.movement-form__ledger-icon {
+  color: #1677ff;
+}
+
+.movement-form__ledger-header .movement-form__card-title {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.movement-form__ledger-count {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.movement-form__table--ledger th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-green {
+  color: #52c41a;
+  font-weight: 500;
+}
+
+.text-red {
+  color: #ff4d4f;
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.mr-1 {
+  margin-right: 4px;
+}
+
+.spin {
+  animation: movement-form-spin 0.8s linear infinite;
+}
+
+@keyframes movement-form-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

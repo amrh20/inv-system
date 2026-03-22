@@ -1,0 +1,57 @@
+.suppliers-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.suppliers-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.suppliers-page__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.suppliers-page__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.suppliers-page__new-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.suppliers-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.suppliers-page__search {
+  max-width: 320px;
+}
+
+.suppliers-page__search-icon {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.suppliers-page__filter-select {
+  min-width: 140px;
+}
+
+.suppliers-page__name {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.88);
+}

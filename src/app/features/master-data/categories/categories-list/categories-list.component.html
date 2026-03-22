@@ -1,0 +1,213 @@
+<div class="categories-page">
+  <div class="categories-page__header">
+    <div>
+      <h1 class="categories-page__title">{{ 'CATEGORIES.TITLE' | translate }}</h1>
+      <p class="categories-page__meta">{{ 'CATEGORIES.SUBTITLE' | translate }}</p>
+    </div>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      class="categories-page__new-btn"
+      (click)="openCreate()"
+    >
+      <lucide-icon [img]="lucidePlus" [size]="20" />
+      <span>{{ 'CATEGORIES.NEW' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="categories-page__filters">
+    <nz-input-group [nzPrefix]="searchPrefix" class="categories-page__search">
+      <input
+        nz-input
+        [placeholder]="'CATEGORIES.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="18" class="categories-page__search-icon" />
+    </ng-template>
+    <nz-select
+      class="categories-page__filter-select"
+      [ngModel]="departmentId()"
+      (ngModelChange)="departmentId.set($event); onDepartmentChange()"
+      [nzPlaceHolder]="'COMMON.DEPARTMENT' | translate"
+      nzAllowClear
+    >
+      @for (d of departments(); track d.id) {
+        <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+      }
+    </nz-select>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #tbl
+    [nzData]="categories()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[25, 50, 100]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'CATEGORIES.NO_ITEMS' | translate"
+        [message]="'CATEGORIES.CREATE_FIRST' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th nzWidth="48px"></th>
+        <th nzWidth="200px">{{ 'COMMON.NAME' | translate }}</th>
+        <th>{{ 'COMMON.DESCRIPTION' | translate }}</th>
+        <th nzWidth="140px">{{ 'COMMON.DEPARTMENT' | translate }}</th>
+        <th nzWidth="100px" nzAlign="center">{{ 'COMMON.SUBCATEGORY' | translate }}</th>
+        <th nzWidth="100px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of tbl.data; track row.id) {
+        <tr>
+          <td
+            [nzExpand]="expandedIds().has(row.id)"
+            [nzShowExpand]="hasSubcategories(row)"
+            (nzExpandChange)="toggleExpand(row.id)"
+          ></td>
+          <td class="categories-page__name">{{ row.name }}</td>
+          <td class="categories-page__desc">{{ row.description || '—' }}</td>
+          <td>{{ row.department?.name || '—' }}</td>
+          <td nzAlign="center">
+            {{ (row.subcategories ?? []).length }}
+          </td>
+          <td nzAlign="center">
+            <span
+              class="status-badge"
+              [ngClass]="row.isActive ? 'status-active' : 'status-inactive'"
+            >
+              {{ row.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+            </span>
+          </td>
+          <td nzAlign="center">
+            <button
+              nz-button
+              nzType="text"
+              type="button"
+              nz-dropdown
+              [nzDropdownMenu]="menuTpl"
+              nzTrigger="click"
+              nzPlacement="bottomRight"
+              (click)="$event.stopPropagation()"
+            >
+              <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
+            </button>
+            <nz-dropdown-menu #menuTpl="nzDropdownMenu">
+              <ul nz-menu>
+                <li nz-menu-item (click)="openEdit(row)">
+                  <lucide-icon [img]="lucidePencil" [size]="14" />
+                  <span>{{ 'CATEGORIES.EDIT' | translate }}</span>
+                </li>
+                <li nz-menu-item (click)="openAddSubcategory(row)">
+                  <lucide-icon [img]="lucidePlus" [size]="14" />
+                  <span>{{ 'CATEGORIES.ADD_SUBCATEGORY' | translate }}</span>
+                </li>
+                <li nz-menu-item nzDanger (click)="onDeleteCategory(row)">
+                  <lucide-icon [img]="lucideTrash" [size]="14" />
+                  <span>{{ 'COMMON.DELETE' | translate }}</span>
+                </li>
+              </ul>
+            </nz-dropdown-menu>
+          </td>
+        </tr>
+        <tr [nzExpand]="expandedIds().has(row.id)">
+          <td [attr.colspan]="7" class="categories-page__expand-td">
+            <div class="categories-page__sub-table-wrap">
+              <div class="categories-page__sub-table-header">
+                <span>{{ 'COMMON.SUBCATEGORY' | translate }}</span>
+                <button nz-button nzType="link" nzSize="small" (click)="openAddSubcategory(row)">
+                  <lucide-icon [img]="lucidePlus" [size]="14" />
+                  {{ 'CATEGORIES.ADD_SUBCATEGORY' | translate }}
+                </button>
+              </div>
+              <nz-table
+                [nzData]="row.subcategories ?? []"
+                nzSize="small"
+                [nzShowPagination]="false"
+              >
+                <thead>
+                  <tr>
+                    <th>{{ 'COMMON.NAME' | translate }}</th>
+                    <th>{{ 'COMMON.DESCRIPTION' | translate }}</th>
+                    <th nzWidth="100px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+                    <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (sub of (row.subcategories ?? []); track sub.id) {
+                    <tr>
+                      <td class="categories-page__sub-name">{{ sub.name }}</td>
+                      <td class="categories-page__desc">{{ sub.description || '—' }}</td>
+                      <td nzAlign="center">
+                        <span
+                          class="status-badge"
+                          [ngClass]="sub.isActive ? 'status-active' : 'status-inactive'"
+                        >
+                          {{ sub.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+                        </span>
+                      </td>
+                      <td nzAlign="center">
+                        <button
+                          nz-button
+                          nzType="text"
+                          nzSize="small"
+                          (click)="openEditSubcategory(row, sub)"
+                        >
+                          <lucide-icon [img]="lucidePencil" [size]="14" />
+                        </button>
+                        <button
+                          nz-button
+                          nzType="text"
+                          nzSize="small"
+                          nzDanger
+                          (click)="onDeleteSubcategory(sub)"
+                        >
+                          <lucide-icon [img]="lucideTrash" [size]="14" />
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </nz-table>
+            </div>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+
+<app-category-form
+  [visible]="formOpen()"
+  [category]="formCategory()"
+  (closed)="closeForm()"
+  (saved)="onFormSaved()"
+/>
+
+<app-subcategory-form
+  [visible]="subFormOpen()"
+  [categoryId]="subFormCategoryId()"
+  [subcategory]="subFormSubcategory()"
+  (closed)="closeSubForm()"
+  (saved)="onSubFormSaved()"
+/>

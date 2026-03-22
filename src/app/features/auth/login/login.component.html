@@ -1,0 +1,135 @@
+<div class="login-container">
+  <!-- Left Branding Panel -->
+  <div class="brand-panel">
+    <div class="brand-decor brand-decor-1"></div>
+    <div class="brand-decor brand-decor-2"></div>
+
+    <div class="brand-logo">
+      <div class="logo-icon">👁️</div>
+      <div>
+        <h2 class="logo-title">iNV Control</h2>
+        <p class="logo-subtitle">{{ 'APP.INVENTORY_MANAGEMENT' | translate }}</p>
+      </div>
+    </div>
+
+    <div class="brand-content">
+      <h1 class="brand-heading">
+        {{ 'LOGIN.BRAND_TITLE_LINE1' | translate }}<br />
+        <span class="brand-accent">{{ 'LOGIN.BRAND_TITLE_LINE2' | translate }}</span>
+      </h1>
+      <p class="brand-description">
+        {{ 'LOGIN.BRAND_DESCRIPTION' | translate }}
+      </p>
+
+      <div class="brand-stats">
+        @for (stat of stats; track stat.label) {
+          <div class="stat-card">
+            <p class="stat-value">{{ stat.value }}</p>
+            <p class="stat-label">{{ stat.label | translate }}</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <p class="brand-footer">{{ 'LOGIN.FOOTER_COPYRIGHT' | translate }}</p>
+  </div>
+
+  <!-- Right Login Form -->
+  <div class="form-panel">
+    <div class="form-wrapper">
+      <div class="form-header">
+        <h2 class="form-title">{{ 'LOGIN.SIGN_IN' | translate }}</h2>
+        <p class="form-subtitle">{{ 'LOGIN.SUBTITLE' | translate }}</p>
+        <button
+          type="button"
+          (click)="toggleSuperAdmin()"
+          class="super-admin-toggle"
+          [class.active]="isSuperAdmin()"
+        >
+          <span class="toggle-dot" [class.active]="isSuperAdmin()"></span>
+          {{
+            isSuperAdmin()
+              ? ('LOGIN.SUPER_ADMIN_MODE_ACTIVE' | translate)
+              : ('LOGIN.SUPER_ADMIN_MODE_SWITCH' | translate)
+          }}
+        </button>
+      </div>
+
+      <form nz-form [formGroup]="form" (ngSubmit)="onSubmit()" nzLayout="vertical" class="login-form">
+        @if (error()) {
+          <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="error-alert" />
+        }
+
+        @if (!isSuperAdmin()) {
+          <nz-form-item>
+            <nz-form-label nzRequired>{{ 'LOGIN.HOTEL_ID' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input
+                nz-input
+                id="tenantSlug"
+                formControlName="tenantSlug"
+                [placeholder]="'LOGIN.HOTEL_ID_PLACEHOLDER' | translate"
+                autocomplete="organization"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        }
+
+        <nz-form-item>
+          <nz-form-label nzRequired>{{ 'LOGIN.EMAIL' | translate }}</nz-form-label>
+          <nz-form-control>
+            <input
+              nz-input
+              id="email"
+              type="email"
+              formControlName="email"
+              [placeholder]="'LOGIN.EMAIL_PLACEHOLDER' | translate"
+              autocomplete="email"
+            />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-label nzRequired>{{ 'LOGIN.PASSWORD' | translate }}</nz-form-label>
+          <nz-form-control>
+            <input
+              nz-input
+              id="password"
+              type="password"
+              formControlName="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            />
+          </nz-form-control>
+        </nz-form-item>
+
+        <nz-form-item>
+          <nz-form-control>
+            <button
+              id="login-btn"
+              nz-button
+              nzType="primary"
+              nzBlock
+              type="submit"
+              [nzLoading]="loading()"
+            >
+              {{ 'LOGIN.SIGN_IN' | translate }}
+            </button>
+          </nz-form-control>
+        </nz-form-item>
+      </form>
+
+      <div class="demo-credentials">
+        <p class="demo-title"><strong>{{ 'LOGIN.DEMO_CREDENTIALS' | translate }}</strong></p>
+        <div class="demo-list">
+          <p>{{ 'LOGIN.HOTEL_ID' | translate }}: <code>grand-horizon</code></p>
+          <p>{{ 'LOGIN.EMAIL' | translate }}: <code>admin@grandhorizon.com</code></p>
+          <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>Admin@123</code></p>
+        </div>
+        <button type="button" (click)="fillDemo()" class="demo-fill-btn">
+          {{ 'LOGIN.FILL_DEMO' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

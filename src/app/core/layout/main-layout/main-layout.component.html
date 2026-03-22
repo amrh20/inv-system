@@ -1,0 +1,247 @@
+<nz-layout class="main-shell" [class.main-shell--dark]="isDarkMode()">
+  <nz-sider
+    nzTheme="dark"
+    nzCollapsible
+    nzWidth="250"
+    [nzCollapsedWidth]="64"
+    [nzTrigger]="null"
+    [nzCollapsed]="!sidebarExpanded()"
+    (nzCollapsedChange)="onSiderCollapsedChange($event)"
+    class="main-shell__sider"
+  >
+    <div class="brand" [class.brand--collapsed]="!sidebarExpanded()">
+      <div class="brand__mark">iN</div>
+      @if (sidebarExpanded()) {
+        <div class="brand__text">
+          <div class="brand__title">iNV Control</div>
+          <div class="brand__subtitle">{{ 'APP.INVENTORY_MANAGEMENT' | translate }}</div>
+        </div>
+      }
+    </div>
+
+    <ul
+      nz-menu
+      nzTheme="dark"
+      nzMode="inline"
+      [nzInlineCollapsed]="!sidebarExpanded()"
+      class="main-shell__menu"
+    >
+      @for (section of nav.sections(); track section.heading) {
+        @if (sidebarExpanded()) {
+          <li nz-menu-group [nzTitle]="section.heading | translate">
+            @for (item of section.items; track trackEntry(item)) {
+              @if (item.kind === 'link') {
+                <li
+                  nz-menu-item
+                  nzMatchRouter
+                  [nzMatchRouterExact]="item.pathMatch === 'full'"
+                  [routerLink]="item.path"
+                >
+                  <span class="menu-item-row">
+                    <lucide-icon class="menu-lucide" [img]="item.icon" [size]="16" />
+                    <span>{{ item.label | translate }}</span>
+                  </span>
+                </li>
+              } @else {
+                <li
+                  nz-submenu
+                  [nzOpen]="submenuOpenFor(item.key)"
+                  [nzTitle]="item.label | translate"
+                >
+                  @for (child of item.children; track child.path) {
+                    <li nz-menu-item nzMatchRouter [routerLink]="child.path">
+                      <span class="menu-item-row menu-item-row--nested">
+                        <lucide-icon class="menu-lucide" [img]="child.icon" [size]="14" />
+                        <span>{{ child.label | translate }}</span>
+                      </span>
+                    </li>
+                  }
+                </li>
+              }
+            }
+          </li>
+        } @else {
+          @for (item of section.items; track trackEntry(item)) {
+            @if (item.kind === 'link') {
+              <li
+                nz-menu-item
+                nzMatchRouter
+                [nzMatchRouterExact]="item.pathMatch === 'full'"
+                [routerLink]="item.path"
+                [nzTooltipTitle]="item.label | translate"
+                nz-tooltip
+                nzTooltipPlacement="right"
+              >
+                <lucide-icon class="menu-lucide" [img]="item.icon" [size]="18" />
+              </li>
+            } @else {
+              <li
+                nz-submenu
+                [nzOpen]="submenuOpenFor(item.key)"
+                [nzTitle]="submenuCollapsedTitle"
+                nzMenuClassName="collapsed-submenu-popup"
+              >
+                <ng-template #submenuCollapsedTitle>
+                  <lucide-icon class="menu-lucide" [img]="item.icon" [size]="18" />
+                </ng-template>
+                @for (child of item.children; track child.path) {
+                  <li nz-menu-item nzMatchRouter [routerLink]="child.path">
+                    <span class="menu-item-row">
+                      <lucide-icon class="menu-lucide" [img]="child.icon" [size]="14" />
+                      <span>{{ child.label | translate }}</span>
+                    </span>
+                  </li>
+                }
+              </li>
+            }
+          }
+        }
+      }
+    </ul>
+
+    <div class="sider-footer" [class.sider-footer--collapsed]="!sidebarExpanded()">
+      @if (sidebarExpanded()) {
+        <div class="sider-footer__avatar">{{ avatarLetter() }}</div>
+        <div class="sider-footer__meta">
+          <div class="sider-footer__name">{{ displayName() }}</div>
+          <div class="sider-footer__tenant">{{ tenantLabel() }}</div>
+        </div>
+        <button
+          type="button"
+          class="sider-footer__theme"
+          (click)="toggleTheme()"
+          [attr.aria-label]="
+            isDarkMode()
+              ? ('LAYOUT.SWITCH_TO_LIGHT_MODE' | translate)
+              : ('LAYOUT.SWITCH_TO_DARK_MODE' | translate)
+          "
+        >
+          @if (isDarkMode()) {
+            <lucide-icon [img]="lucideSun" [size]="14" class="sider-footer__sun" />
+          } @else {
+            <lucide-icon [img]="lucideMoon" [size]="14" class="sider-footer__moon" />
+          }
+        </button>
+      }
+      <button type="button" class="sider-trigger-btn" (click)="toggleSidebar()" [attr.aria-label]="'LAYOUT.TOGGLE_SIDEBAR' | translate">
+        @if (sidebarExpanded()) {
+          <lucide-icon [img]="lucideClose" [size]="18" />
+        } @else {
+          <lucide-icon [img]="lucideMenu" [size]="18" />
+        }
+      </button>
+    </div>
+  </nz-sider>
+
+  <nz-layout>
+    <nz-header class="main-shell__header">
+      <div class="header-left">
+        <button
+          nz-button
+          nzType="text"
+          type="button"
+          class="header-icon-btn header-toggle-btn"
+          (click)="toggleSidebar()"
+          [attr.aria-label]="'LAYOUT.TOGGLE_SIDEBAR' | translate"
+        >
+          @if (sidebarExpanded()) {
+            <lucide-icon [img]="lucideClose" [size]="20" />
+          } @else {
+            <lucide-icon [img]="lucideMenu" [size]="20" />
+          }
+        </button>
+        <nz-breadcrumb nzSeparator="/">
+          @for (crumb of breadcrumbs(); track $index) {
+            <nz-breadcrumb-item>
+              @if (crumb.link) {
+                <a [routerLink]="crumb.link">{{ crumb.label | translate }}</a>
+              } @else {
+                <span>{{ crumb.label | translate }}</span>
+              }
+            </nz-breadcrumb-item>
+          }
+        </nz-breadcrumb>
+      </div>
+
+      <div class="header-search">
+        <lucide-icon class="header-search__icon" [img]="lucideSearch" [size]="15" />
+        <input
+          type="text"
+          nz-input
+          [placeholder]="'COMMON.SEARCH' | translate"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+        />
+      </div>
+
+      <div class="header-right">
+        <button
+          nz-button
+          nzType="text"
+          type="button"
+          class="header-icon-btn theme-toggle"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDarkMode() ? ('LAYOUT.LIGHT_MODE' | translate) : ('LAYOUT.DARK_MODE' | translate)"
+        >
+          @if (isDarkMode()) {
+            <lucide-icon [img]="lucideSun" [size]="18" />
+          } @else {
+            <lucide-icon [img]="lucideMoon" [size]="18" />
+          }
+        </button>
+        <button
+          nz-button
+          nzType="text"
+          type="button"
+          class="header-icon-btn"
+          (click)="language.toggleLanguage()"
+          [attr.aria-label]="'LAYOUT.CHANGE_LANGUAGE' | translate"
+        >
+          <lucide-icon [img]="lucideLanguages" [size]="18" />
+          <span>{{ language.current() === 'en' ? ('COMMON.ENGLISH' | translate) : ('COMMON.ARABIC' | translate) }}</span>
+        </button>
+
+        <button
+          nz-button
+          nzType="text"
+          nz-dropdown
+          [nzDropdownMenu]="profileMenu"
+          nzTrigger="click"
+          nzPlacement="bottomRight"
+          class="profile-trigger"
+          type="button"
+        >
+          <span class="profile-trigger__avatar">{{ avatarLetter() }}</span>
+          <span class="profile-trigger__text">
+            <span class="profile-trigger__name">{{ displayName() }}</span>
+            <span class="profile-trigger__role">{{
+              auth.currentUser()?.role ? (('COMMON.ROLES.' + auth.currentUser()?.role) | translate) : '—'
+            }}</span>
+          </span>
+          <lucide-icon [img]="lucideChevronDown" [size]="14" class="profile-trigger__chev" />
+        </button>
+        <nz-dropdown-menu #profileMenu="nzDropdownMenu">
+          <ul nz-menu>
+            <li nz-menu-item class="profile-menu-head" nzDisabled>
+              <div>{{ auth.currentUser()?.email }}</div>
+              <div class="muted">{{ tenantLabel() }}</div>
+            </li>
+            <li nz-menu-divider></li>
+            <li nz-menu-item nzDanger (click)="logout()">
+              <span class="menu-item-row">
+                <lucide-icon [img]="lucideLogOut" [size]="14" />
+                {{ 'COMMON.LOGOUT' | translate }}
+              </span>
+            </li>
+          </ul>
+        </nz-dropdown-menu>
+      </div>
+    </nz-header>
+
+    <nz-content class="main-shell__content">
+      <div class="main-shell__inner">
+        <router-outlet />
+      </div>
+    </nz-content>
+  </nz-layout>
+</nz-layout>

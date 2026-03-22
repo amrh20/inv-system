@@ -1,0 +1,95 @@
+/* ============================================
+   Centralized Status Badge Styles
+   Use with: <span class="status-badge status-active">Active</span>
+   ============================================ */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+/* Item / Entity status: Active / Inactive */
+.status-active {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+}
+
+.status-inactive {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Movement / Document status */
+.status-draft,
+.status-pending {
+  background: rgba(250, 173, 20, 0.1);
+  color: #fa8c16;
+  border: 1px solid rgba(250, 173, 20, 0.3);
+}
+
+.status-posted,
+.status-success {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+}
+
+.status-rejected,
+.status-error {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+}
+
+/* Stock reorder status */
+.status-out-of-stock {
+  background: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+  border: 1px solid rgba(255, 77, 79, 0.3);
+}
+
+.status-low-stock {
+  background: rgba(250, 173, 20, 0.1);
+  color: #fa8c16;
+  border: 1px solid rgba(250, 173, 20, 0.3);
+}
+
+.status-overstock {
+  background: rgba(250, 173, 20, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(250, 173, 20, 0.35);
+}
+
+.status-in-stock {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+}
+
+/* Ledger / Movement direction */
+.status-processing {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+  border: 1px solid rgba(24, 144, 255, 0.3);
+}
+
+/* Quantity indicators (e.g. has stock / no stock) */
+.status-has-stock {
+  background: rgba(82, 196, 26, 0.1);
+  color: #52c41a;
+  border: 1px solid rgba(82, 196, 26, 0.3);
+}
+
+.status-no-stock {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}

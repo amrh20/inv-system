@@ -1,0 +1,182 @@
+<div class="locations-page">
+  <div class="locations-page__header">
+    <div>
+      <h1 class="locations-page__title">
+        <lucide-icon [img]="lucideMapPin" [size]="24" class="locations-page__title-icon" />
+        {{ 'LOCATIONS.LOCATIONS_AND_STORES' | translate }}
+      </h1>
+      <p class="locations-page__meta">
+        {{ locations().length }} {{ 'LOCATIONS.LOCATIONS_COUNT_LABEL' | translate }}
+      </p>
+    </div>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      class="locations-page__new-btn"
+      (click)="openCreate()"
+    >
+      <lucide-icon [img]="lucidePlus" [size]="20" />
+      <span>{{ 'LOCATIONS.ADD_LOCATION' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="locations-page__filters">
+    <nz-input-group [nzPrefix]="searchPrefix" class="locations-page__search">
+      <input
+        nz-input
+        [placeholder]="'LOCATIONS.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="18" class="locations-page__search-icon" />
+    </ng-template>
+    <div class="locations-page__filter-dept">
+      <lucide-icon [img]="lucideFilter" [size]="16" class="locations-page__filter-icon" />
+      <nz-select
+        class="locations-page__dept-select"
+        [ngModel]="departmentId()"
+        (ngModelChange)="departmentId.set($event); onDepartmentChange()"
+        [nzPlaceHolder]="'LOCATIONS.ALL_DEPARTMENTS' | translate"
+        nzAllowClear
+      >
+        @for (d of departments(); track d.id) {
+          <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+        }
+      </nz-select>
+    </div>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  @if (loading()) {
+    <div class="locations-page__loading">
+      <nz-spin nzSimple [nzSize]="'large'" />
+    </div>
+  } @else if (locations().length === 0) {
+    <div class="locations-page__empty">
+      <app-empty-state
+        [title]="'LOCATIONS.NO_ITEMS' | translate"
+        [message]="'LOCATIONS.CREATE_FIRST' | translate"
+      />
+    </div>
+  } @else {
+    <div class="locations-page__groups">
+      @for (group of groupedLocations(); track group.departmentName) {
+        <div class="locations-page__group">
+          <div class="locations-page__group-header">
+            <lucide-icon [img]="lucideBuilding" [size]="16" class="locations-page__group-icon" />
+            <h2 class="locations-page__group-title">{{ group.departmentName }}</h2>
+            <span class="locations-page__group-count">({{ group.locations.length }})</span>
+          </div>
+          <div class="locations-page__cards">
+            @for (loc of group.locations; track loc.id) {
+              <div class="location-card locations-page__card">
+                <div class="location-card__top">
+                  <div class="location-card__main">
+                    <div class="location-card__icon-wrap">
+                      <lucide-icon [img]="lucideMapPin" [size]="18" class="location-card__icon" />
+                    </div>
+                    <div class="location-card__info">
+                      <h3 class="location-card__name">{{ loc.name }}</h3>
+                      <div class="location-card__badges">
+                        <span
+                          class="location-card__badge location-card__badge--type"
+                          [attr.data-type]="loc.type"
+                        >
+                          {{ getTypeLabel(loc.type) }}
+                        </span>
+                        @if (loc.department?.code) {
+                          <span class="location-card__badge location-card__badge--code">
+                            {{ loc.department?.code }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  <div class="location-card__actions">
+                   
+                    <button
+                      nz-button
+                      nzType="text"
+                      type="button"
+                      nz-dropdown
+                      [nzDropdownMenu]="menuTpl"
+                      nzTrigger="click"
+                      nzPlacement="bottomRight"
+                      (click)="$event.stopPropagation()"
+                      class="location-card__action-btn"
+                      [nz-tooltip]="'COMMON.ACTIONS' | translate"
+                    >
+                      <lucide-icon [img]="lucideEllipsisVertical" [size]="14" />
+                    </button>
+                    <nz-dropdown-menu #menuTpl="nzDropdownMenu">
+                      <ul nz-menu>
+                        <li nz-menu-item (click)="openEdit(loc)">
+                          <lucide-icon [img]="lucidePencil" [size]="14" />
+                          <span>{{ 'LOCATIONS.EDIT' | translate }}</span>
+                        </li>
+                        <li nz-menu-item nzDanger (click)="onDeleteClick(loc)">
+                          <lucide-icon [img]="lucideTrash" [size]="14" />
+                          <span>{{ 'COMMON.DELETE' | translate }}</span>
+                        </li>
+                      </ul>
+                    </nz-dropdown-menu>
+                  </div>
+                </div>
+                @if (loc.description) {
+                  <p class="location-card__desc">{{ loc.description }}</p>
+                }
+                <div class="location-card__manage">
+                  <button
+                    nz-button
+                    nzType="default"
+                    type="button"
+                    class="location-card__manage-btn"
+                    (click)="openCategoriesModal(loc)"
+                  >
+                    <lucide-icon [img]="lucideTag" [size]="14" />
+                    {{ 'LOCATIONS.MANAGE_ALLOWED_CATEGORIES' | translate }}
+                  </button>
+                </div>
+                <div class="location-card__footer">
+                  <span class="location-card__stat">
+                    <lucide-icon [img]="lucidePackage" [size]="12" />
+                    {{ loc._count?.defaultItems ?? 0 }} {{ 'COMMON.ITEMS' | translate }}
+                  </span>
+                  <span class="location-card__stat">
+                    <lucide-icon [img]="lucideUsers" [size]="12" />
+                    {{ loc._count?.locationUsers ?? 0 }} {{ 'LOCATIONS.USERS_COUNT' | translate }}
+                  </span>
+                  <span
+                    class="status-badge location-card__status"
+                    [ngClass]="loc.isActive ? 'status-active' : 'status-inactive'"
+                  >
+                    {{ loc.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<app-location-form
+  [visible]="formOpen()"
+  [location]="formLocation()"
+  (closed)="closeForm()"
+  (saved)="onFormSaved()"
+/>
+
+<app-location-categories-modal
+  [location]="categoriesModalLocation()"
+  (closed)="closeCategoriesModal()"
+  (saved)="onCategoriesSaved()"
+/>

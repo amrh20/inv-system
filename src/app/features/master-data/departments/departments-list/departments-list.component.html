@@ -1,0 +1,118 @@
+<div class="departments-page">
+  <div class="departments-page__header">
+    <div>
+      <h1 class="departments-page__title">{{ 'DEPARTMENTS.TITLE' | translate }}</h1>
+      <p class="departments-page__meta">{{ 'DEPARTMENTS.SUBTITLE' | translate }}</p>
+    </div>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      class="departments-page__new-btn"
+      (click)="openCreate()"
+    >
+      <lucide-icon [img]="lucidePlus" [size]="20" />
+      <span>{{ 'DEPARTMENTS.NEW' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="departments-page__search">
+    <nz-input-group [nzPrefix]="searchPrefix">
+      <input
+        nz-input
+        [placeholder]="'DEPARTMENTS.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="18" class="departments-page__search-icon" />
+    </ng-template>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #tbl
+    [nzData]="departments()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[25, 50, 100]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'DEPARTMENTS.NO_ITEMS' | translate"
+        [message]="'DEPARTMENTS.CREATE_FIRST' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th nzWidth="200px">{{ 'COMMON.NAME' | translate }}</th>
+        <th nzWidth="120px">{{ 'DEPARTMENTS.CODE' | translate }}</th>
+        <th nzWidth="100px" nzAlign="right">{{ 'DEPARTMENTS.LOCATIONS_COUNT' | translate }}</th>
+        <th nzWidth="100px" nzAlign="right">{{ 'COMMON.ITEMS' | translate }}</th>
+        <th nzWidth="140px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of tbl.data; track row.id) {
+        <tr>
+          <td class="departments-page__name">{{ row.name }}</td>
+          <td class="departments-page__code">{{ row.code }}</td>
+          <td nzAlign="right">{{ row._count?.locations ?? 0 }}</td>
+          <td nzAlign="right">{{ row._count?.items ?? 0 }}</td>
+          <td nzAlign="center">
+            <app-status-toggle
+              [status]="row.isActive"
+              (statusChange)="onToggleStatus(row)"
+            />
+          </td>
+          <td nzAlign="center">
+            <button
+              nz-button
+              nzType="text"
+              type="button"
+              nz-dropdown
+              [nzDropdownMenu]="menuTpl"
+              nzTrigger="click"
+              nzPlacement="bottomRight"
+              (click)="$event.stopPropagation()"
+            >
+              <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
+            </button>
+            <nz-dropdown-menu #menuTpl="nzDropdownMenu">
+              <ul nz-menu>
+                <li nz-menu-item (click)="openEdit(row)">
+                  <lucide-icon [img]="lucidePencil" [size]="14" />
+                  <span>{{ 'DEPARTMENTS.EDIT' | translate }}</span>
+                </li>
+                <li nz-menu-item nzDanger (click)="onDeleteClick(row)">
+                  <lucide-icon [img]="lucideTrash" [size]="14" />
+                  <span>{{ 'COMMON.DELETE' | translate }}</span>
+                </li>
+              </ul>
+            </nz-dropdown-menu>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+
+<app-department-form
+  [visible]="formOpen()"
+  [department]="formDepartment()"
+  (closed)="closeForm()"
+  (saved)="onFormSaved()"
+/>

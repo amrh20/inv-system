@@ -1,0 +1,335 @@
+<div class="items-page">
+  <div class="items-page__header">
+    <div>
+      <h1 class="items-page__title">
+        <lucide-icon [img]="lucidePackage" [size]="22" class="title-icon" />
+        {{ 'ITEMS.TITLE' | translate }}
+      </h1>
+      <p class="items-page__meta">{{ 'ITEMS.TOTAL_ITEMS' | translate: { count: total() } }}</p>
+    </div>
+    <div class="items-page__actions">
+      <button nz-button nzType="default" type="button" (click)="downloadTemplate()">
+        <lucide-icon [img]="lucideDownload" [size]="14" />
+        {{ 'ITEMS.TEMPLATE' | translate }}
+      </button>
+      <button nz-button nzType="default" type="button" (click)="exportItems()">
+        <lucide-icon [img]="lucideDownload" [size]="14" />
+        {{ 'COMMON.EXPORT' | translate }}
+      </button>
+      <button nz-button nzType="default" type="button" (click)="openImport()">
+        <lucide-icon [img]="lucideUpload" [size]="14" />
+        {{ 'COMMON.IMPORT_EXCEL' | translate }}
+      </button>
+      <button nz-button nzType="primary" type="button" (click)="openCreate()">
+        <lucide-icon [img]="lucidePlus" [size]="14" />
+        {{ 'ITEMS.NEW_ITEM' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div class="items-page__filters">
+    <nz-input-group [nzPrefix]="searchPrefix" class="filter-search">
+      <input
+        type="text"
+        nz-input
+        [placeholder]="'COMMON.SEARCH_BY_NAME_OR_BARCODE' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchInput($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="14" class="input-prefix-icon" />
+    </ng-template>
+
+    <nz-select
+      class="filter-select"
+      [nzPlaceHolder]="'COMMON.DEPARTMENT' | translate"
+      [ngModel]="departmentId()"
+      (ngModelChange)="departmentId.set($event); onDepartmentChange()"
+      nzAllowClear
+    >
+      @for (d of departments(); track d.id) {
+        <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+      }
+    </nz-select>
+
+    <nz-select
+      class="filter-select"
+      [nzPlaceHolder]="'COMMON.STORE' | translate"
+      [ngModel]="locationId()"
+      (ngModelChange)="locationId.set($event); onFilterChange()"
+      nzAllowClear
+    >
+      @for (l of filteredLocations(); track l.id) {
+        <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+      }
+    </nz-select>
+
+    <nz-select
+      class="filter-select"
+      [nzPlaceHolder]="'COMMON.CATEGORY' | translate"
+      [ngModel]="categoryId()"
+      (ngModelChange)="categoryId.set($event); onFilterChange()"
+      nzAllowClear
+    >
+      @for (c of categories(); track c.id) {
+        <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+      }
+    </nz-select>
+
+    <nz-select
+      class="filter-select filter-select--sm"
+      [ngModel]="activeFilter()"
+      (ngModelChange)="activeFilter.set($event); onFilterChange()"
+    >
+      <nz-option nzValue="true" [nzLabel]="'COMMON.ACTIVE_ONLY' | translate" />
+      <nz-option nzValue="false" [nzLabel]="'COMMON.INACTIVE_ONLY' | translate" />
+      <nz-option nzValue="all" [nzLabel]="'COMMON.ALL_STATUSES' | translate" />
+    </nz-select>
+
+    @if (searchDraft() || categoryId() || departmentId() || locationId()) {
+      <button nz-button nzType="link" type="button" (click)="clearFilters()">
+        <lucide-icon [img]="lucideX" [size]="12" />
+        {{ 'COMMON.CLEAR' | translate }}
+      </button>
+    }
+
+    <button
+      nz-button
+      nzType="text"
+      type="button"
+      class="filter-refresh"
+      (click)="loadItems()"
+      nz-tooltip
+      [nzTooltipTitle]="'COMMON.REFRESH' | translate"
+    >
+      <lucide-icon [img]="lucideRefresh" [size]="16" [class.spin]="loading()" />
+    </button>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon class="items-alert" />
+  }
+
+  <nz-table
+    #itemsTable
+    class="items-table"
+    [nzData]="itemsList()"
+    [nzLoading]="loading()"
+    [nzTotal]="total()"
+    [nzPageSize]="pageSize()"
+    [nzPageIndex]="pageIndex()"
+    [nzFrontPagination]="false"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    [nzPageSizeOptions]="[10, 20, 50, 100]"
+    nzShowSizeChanger
+    [nzShowTotal]="totalTemplate"
+    nzTableLayout="fixed"
+  >
+    <ng-template #totalTemplate let-total let-range="range">
+      {{ 'COMMON.RANGE_OF_ITEMS' | translate: { from: range[0], to: range[1], total: total } }}
+    </ng-template>
+    <thead>
+      <tr>
+        <th nzWidth="56"></th>
+        <th nzColumnKey="name" [nzSortFn]="sortNameFn" nzShowSort>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+        <th nzWidth="120" nzColumnKey="barcode" [nzSortFn]="sortBarcodeFn" nzShowSort>
+          {{ 'COMMON.BARCODE' | translate }}
+        </th>
+        <th nzWidth="120" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>
+          {{ 'COMMON.CATEGORY' | translate }}
+        </th>
+        <th nzWidth="120">{{ 'COMMON.VENDOR' | translate }}</th>
+        <th nzWidth="140">{{ 'COMMON.BASE_UNIT' | translate }}</th>
+        <th nzWidth="100" nzAlign="right" nzColumnKey="unitPrice" [nzSortFn]="sortPriceFn" nzShowSort>
+          {{ 'COMMON.UNIT_PRICE' | translate }}
+        </th>
+        <th nzWidth="100" nzAlign="right" nzColumnKey="totalQty" [nzSortFn]="sortQtyFn" nzShowSort>
+          {{ 'COMMON.TOTAL_QTY' | translate }}
+        </th>
+        <th nzWidth="140" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="176" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of itemsTable.data; track row.id) {
+        <tr>
+          <td>
+            @if (imageSrc(row); as src) {
+              <img [src]="src" [alt]="row.name" class="thumb" />
+            } @else {
+              <div class="thumb thumb--placeholder">
+                <lucide-icon [img]="lucidePackage" [size]="16" />
+              </div>
+            }
+          </td>
+          <td>
+            <div class="cell-name">{{ row.name }}</div>
+            @if (row.department?.name) {
+              <div class="cell-sub">{{ row.department?.name }}</div>
+            }
+          </td>
+          <td class="mono">{{ row.barcode || '—' }}</td>
+          <td>{{ row.category?.name || '—' }}</td>
+          <td>{{ row.supplier?.name || '—' }}</td>
+          <td>{{ baseUnitLabel(row) }}</td>
+          <td nzAlign="right" class="num">{{ formatPrice(row) }}</td>
+          <td nzAlign="right">
+            <span
+              class="status-badge"
+              [ngClass]="totalQty(row) > 0 ? 'status-has-stock' : 'status-no-stock'"
+            >
+              {{ totalQty(row) | number: '1.0-0' }}
+            </span>
+          </td>
+          <td nzAlign="center">
+            <app-status-toggle
+              [status]="row.isActive"
+              (statusChange)="onToggleStatusClick(row)"
+            />
+          </td>
+          <td nzAlign="center">
+            <button
+              nz-button
+              nzType="text"
+              type="button"
+              nz-dropdown
+              [nzDropdownMenu]="itemMenuTpl"
+              nzTrigger="click"
+              nzPlacement="bottomRight"
+            >
+              <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
+            </button>
+            <nz-dropdown-menu #itemMenuTpl="nzDropdownMenu">
+              <ul nz-menu>
+                <li nz-menu-item class="items-menu__item" (click)="openView(row)">
+                  <lucide-icon [img]="lucideEye" [size]="14" />
+                  <span>{{ 'COMMON.VIEW_DETAILS' | translate }}</span>
+                </li>
+                <li nz-menu-item class="items-menu__item" (click)="openEdit(row)">
+                  <lucide-icon [img]="lucidePencil" [size]="14" />
+                  <span>{{ 'COMMON.EDIT_ITEM' | translate }}</span>
+                </li>
+                <li nz-menu-item nzDanger class="items-menu__item" (click)="onDeleteClick(row)">
+                  <lucide-icon [img]="lucideTrash" [size]="14" />
+                  <span>{{ 'COMMON.DELETE_ITEM' | translate }}</span>
+                </li>
+              </ul>
+            </nz-dropdown-menu>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+
+<app-item-form
+  [visible]="formOpen()"
+  [item]="formItem()"
+  (closed)="closeForm()"
+  (saved)="onFormSaved()"
+/>
+
+<nz-modal
+  [nzVisible]="viewOpen()"
+  [nzTitle]="'ITEMS.ITEM_DETAILS' | translate"
+  [nzFooter]="null"
+  (nzOnCancel)="closeView()"
+  nzWidth="560"
+>
+  <ng-container *nzModalContent>
+    @if (viewItem(); as v) {
+      <nz-descriptions nzBordered [nzColumn]="1" nzSize="small">
+        <nz-descriptions-item [nzTitle]="'COMMON.NAME' | translate">{{ v.name }}</nz-descriptions-item>
+        <nz-descriptions-item [nzTitle]="'COMMON.BARCODE' | translate">{{ v.barcode || '—' }}</nz-descriptions-item>
+        <nz-descriptions-item [nzTitle]="'COMMON.CATEGORY' | translate">{{ v.category?.name || '—' }}</nz-descriptions-item>
+        <nz-descriptions-item [nzTitle]="'COMMON.VENDOR' | translate">{{ v.supplier?.name || '—' }}</nz-descriptions-item>
+        <nz-descriptions-item [nzTitle]="'COMMON.BASE_UNIT' | translate">{{ baseUnitLabel(v) }}</nz-descriptions-item>
+        <nz-descriptions-item [nzTitle]="'COMMON.UNIT_PRICE' | translate">{{ formatPrice(v) }}</nz-descriptions-item>
+        <nz-descriptions-item [nzTitle]="'COMMON.TOTAL_QTY' | translate">{{ totalQty(v) | number: '1.0-0' }}</nz-descriptions-item>
+        <nz-descriptions-item [nzTitle]="'COMMON.STATUS' | translate">
+          <span
+            class="status-badge"
+            [ngClass]="v.isActive ? 'status-active' : 'status-inactive'"
+          >
+            {{ v.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+          </span>
+        </nz-descriptions-item>
+      </nz-descriptions>
+    }
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="importOpen()"
+  [nzTitle]="'ITEMS.IMPORT_FROM_EXCEL' | translate"
+  [nzFooter]="importFooterRef"
+  (nzOnCancel)="closeImport()"
+  nzWidth="720"
+>
+  <ng-template #importFooterTpl>
+    @if (importStep() === 0) {
+      <button nz-button type="button" (click)="closeImport()">{{ 'COMMON.CANCEL' | translate }}</button>
+      <button
+        nz-button
+        nzType="primary"
+        type="button"
+        [disabled]="!importFile() || importLoading()"
+        (click)="runImportPreview()"
+      >
+        @if (importLoading()) {
+          <lucide-icon [img]="lucideLoader" [size]="14" class="spin" />
+        }
+        {{ 'COMMON.NEXT' | translate }}
+      </button>
+    } @else if (importStep() === 1) {
+      <button nz-button type="button" (click)="importStep.set(0)">{{ 'COMMON.BACK' | translate }}</button>
+      <button
+        nz-button
+        nzType="primary"
+        type="button"
+        [disabled]="importLoading()"
+        (click)="confirmImport()"
+      >
+        @if (importLoading()) {
+          <lucide-icon [img]="lucideLoader" [size]="14" class="spin" />
+        }
+        {{ 'COMMON.CONFIRM_IMPORT' | translate }}
+      </button>
+    } @else {
+      <button nz-button nzType="primary" type="button" (click)="closeImport()">{{ 'COMMON.DONE' | translate }}</button>
+    }
+  </ng-template>
+
+  <ng-container *nzModalContent>
+    @if (importStep() === 0) {
+      <p class="import-hint">
+        {{ 'ITEMS.IMPORT_HINT' | translate }}
+      </p>
+      @if (obEligible()?.allowed) {
+        <label class="ob-row">
+          <input type="checkbox" [checked]="asOpeningBalance()" (change)="asOpeningBalance.set($any($event.target).checked)" />
+          <span>{{ 'ITEMS.IMPORT_AS_OPENING_BALANCE' | translate }}</span>
+        </label>
+      } @else if (obEligible()) {
+        <nz-alert
+          nzType="info"
+          [nzMessage]="obEligible()?.reason || ('ITEMS.OPENING_BALANCE_NOT_AVAILABLE' | translate)"
+          class="import-alert"
+        />
+      }
+      <input type="file" accept=".xlsx,.xls" (change)="onImportFile($event)" />
+      @if (importFile(); as f) {
+        <p class="file-name">{{ f.name }}</p>
+      }
+    } @else if (importStep() === 1) {
+      <p>{{ 'ITEMS.PREVIEW_ROWS' | translate: { count: importPreviewData()?.preview?.length ?? 0 } }}</p>
+    } @else {
+      <p>{{ 'ITEMS.IMPORT_FINISHED' | translate }}</p>
+    }
+    @if (importError()) {
+      <nz-alert nzType="error" [nzMessage]="importError()" nzShowIcon class="import-alert" />
+    }
+  </ng-container>
+</nz-modal>
