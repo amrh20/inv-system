@@ -47,6 +47,7 @@
     "SUPER_ADMIN": "المشرف الأعلى"
   },
   "COMMON": {
+    "USER": "مستخدم",
     "SEARCH": "بحث...",
     "SEARCH_BY_NAME_OR_BARCODE": "ابحث بالاسم أو الباركود...",
     "SEARCH_BY_NAME_OR_BARCODE_ELLIPSIS": "ابحث بالاسم أو الباركود...",
@@ -355,7 +356,34 @@
     "SUCCESS_SAVED": "تم حفظ حدود المخزون"
   },
   "DASHBOARD": {
-    "PLACEHOLDER": "هذه شاشة مؤقتة - ستوضع لوحة المخزون هنا."
+    "PLACEHOLDER": "هذه شاشة مؤقتة - ستوضع لوحة المخزون هنا.",
+    "WELCOME": "مرحباً، ",
+    "UNAVAILABLE": "لوحة التحكم غير متاحة",
+    "TOTAL_VALUE": "القيمة الإجمالية",
+    "ACTIVE_STORES": "المخازن النشطة",
+    "ACTIVE_ITEMS": "الأصناف النشطة",
+    "UNITS_ON_HAND": "وحدات متوفرة",
+    "LOCATIONS_TRACKED": "مواقع متتبعة",
+    "IN_ITEM_MASTER": "في دليل الأصناف",
+    "VALUE_BY_DEPARTMENT": "القيمة حسب القسم",
+    "NO_STOCK_DATA": "لا توجد بيانات أرصدة",
+    "MONTHLY_PERFORMANCE": "الأداء الشهري",
+    "TRANSFERS": "التحويلات",
+    "LOSS_VALUE": "قيمة الهالك",
+    "THIS_MONTH": "هذا الشهر",
+    "RISK_INDICATORS": "مؤشرات المخاطر",
+    "INVENTORY_AGING": "عمر المخزون",
+    "DAYS": "يوم",
+    "TOP_5_SLOW_MOVING": "أعلى 5 أصناف بطيئة الحركة",
+    "NEVER": "أبداً",
+    "NO_SLOW_MOVING": "لا توجد أصناف بطيئة الحركة",
+    "OPERATIONAL_HEALTH": "الصحة التشغيلية",
+    "PENDING_TRANSFERS": "تحويلات معلقة",
+    "OVERDUE_LOANS": "قروض متأخرة",
+    "PENDING_BREAKAGE": "كسر معلق",
+    "PENDING_GRNS": "إشعارات استلام معلقة",
+    "PENDING_STOCK_REPORTS": "تقارير مخزون معلقة",
+    "DATA_AS_OF": "البيانات حتى"
   },
   "INVENTORY": {
     "PLACEHOLDER": "هذه شاشة مؤقتة - ستظهر أرصدة المخزون هنا."

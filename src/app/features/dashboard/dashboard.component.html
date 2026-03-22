@@ -1,0 +1,242 @@
+<div class="dashboard-page">
+  @if (error()) {
+    <div class="dashboard-page__error">
+      <lucide-icon [img]="lucideAlertTriangle" [size]="48" class="dashboard-page__error-icon" [strokeWidth]="2" />
+      <h2 class="dashboard-page__error-title">{{ 'DASHBOARD.UNAVAILABLE' | translate }}</h2>
+      <p class="dashboard-page__error-message">{{ error() }}</p>
+      <button nz-button nzType="primary" (click)="fetchDashboard()">
+        <lucide-icon [img]="lucideRefresh" [size]="16" [strokeWidth]="2" />
+        <span>{{ 'COMMON.REFRESH' | translate }}</span>
+      </button>
+    </div>
+  } @else {
+    <!-- Header -->
+    <div class="dashboard-page__header">
+      <div>
+        <h1 class="dashboard-page__title">
+          {{ 'DASHBOARD.WELCOME' | translate }}{{ currentUser()?.firstName || ('COMMON.USER' | translate) }}
+        </h1>
+        <p class="dashboard-page__meta">
+          {{ tenantName() }} — {{ dateStr() }}
+        </p>
+      </div>
+      <div class="dashboard-page__header-actions">
+        @if (responseTimeMs() !== null && !loading()) {
+          <span class="dashboard-page__response-time">{{ responseTimeMs() }}ms</span>
+        }
+        <button
+          nz-button
+          nzType="link"
+          [disabled]="loading()"
+          (click)="fetchDashboard()"
+          class="dashboard-page__refresh-btn"
+        >
+          @if (loading()) {
+            <lucide-icon [img]="lucideLoader" [size]="14" class="dashboard-page__spin" [strokeWidth]="2" />
+          } @else {
+            <lucide-icon [img]="lucideRefresh" [size]="14" [strokeWidth]="2" />
+          }
+          <span>{{ 'COMMON.REFRESH' | translate }}</span>
+        </button>
+        <span class="dashboard-page__time">{{ timeStr() }}</span>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="dashboard-page__cards">
+      @if (loading()) {
+        @for (i of [1, 2, 3]; track i) {
+          <div class="dashboard-page__card dashboard-page__card--skeleton">
+            <div class="dashboard-page__skeleton dashboard-page__skeleton--label"></div>
+            <div class="dashboard-page__skeleton dashboard-page__skeleton--value"></div>
+            <div class="dashboard-page__skeleton dashboard-page__skeleton--sub"></div>
+          </div>
+        }
+      } @else {
+        <!-- Total Value -->
+        <div class="dashboard-page__card">
+          <div class="dashboard-page__card-head">
+            <span class="dashboard-page__card-label">{{ 'DASHBOARD.TOTAL_VALUE' | translate }}</span>
+            <div class="dashboard-page__card-icon dashboard-page__card-icon--blue">
+              <lucide-icon [img]="lucideDollarSign" [size]="18" [strokeWidth]="2" />
+            </div>
+          </div>
+          <p class="dashboard-page__card-value">{{ fmtSAR(ov()?.totalValue) }}</p>
+          <p class="dashboard-page__card-sub">{{ fmt(ov()?.totalQtyOnHand) }} {{ 'DASHBOARD.UNITS_ON_HAND' | translate }}</p>
+        </div>
+        <!-- Active Stores -->
+        <div class="dashboard-page__card">
+          <div class="dashboard-page__card-head">
+            <span class="dashboard-page__card-label">{{ 'DASHBOARD.ACTIVE_STORES' | translate }}</span>
+            <div class="dashboard-page__card-icon dashboard-page__card-icon--green">
+              <lucide-icon [img]="lucideStore" [size]="18" [strokeWidth]="2" />
+            </div>
+          </div>
+          <p class="dashboard-page__card-value">{{ ov()?.totalStores ?? 0 }}</p>
+          <p class="dashboard-page__card-sub">{{ 'DASHBOARD.LOCATIONS_TRACKED' | translate }}</p>
+        </div>
+        <!-- Active Items -->
+        <div class="dashboard-page__card">
+          <div class="dashboard-page__card-head">
+            <span class="dashboard-page__card-label">{{ 'DASHBOARD.ACTIVE_ITEMS' | translate }}</span>
+            <div class="dashboard-page__card-icon dashboard-page__card-icon--purple">
+              <lucide-icon [img]="lucidePackage" [size]="18" [strokeWidth]="2" />
+            </div>
+          </div>
+          <p class="dashboard-page__card-value">{{ fmt(ov()?.totalActiveItems) }}</p>
+          <p class="dashboard-page__card-sub">{{ 'DASHBOARD.IN_ITEM_MASTER' | translate }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- Value by Department -->
+    <div class="dashboard-page__section">
+      <h2 class="dashboard-page__section-title">{{ 'DASHBOARD.VALUE_BY_DEPARTMENT' | translate }}</h2>
+      @if (loading()) {
+        <div class="dashboard-page__bars">
+          @for (i of [1, 2, 3]; track i) {
+            <div class="dashboard-page__skeleton dashboard-page__skeleton--bar"></div>
+          }
+        </div>
+      } @else if (valueByDept().length > 0) {
+        <div class="dashboard-page__bars">
+          @for (dept of valueByDept(); track dept.departmentName) {
+            <div class="dashboard-page__bar">
+              <div class="dashboard-page__bar-head">
+                <span class="dashboard-page__bar-label">{{ dept.departmentName }}</span>
+                <span class="dashboard-page__bar-value">{{ fmtSARFull(dept.value) }}</span>
+              </div>
+              <div class="dashboard-page__bar-track">
+                <div
+                  class="dashboard-page__bar-fill"
+                  [style.width.%]="maxDeptValue() > 0 ? (dept.value / maxDeptValue()) * 100 : 0"
+                ></div>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <p class="dashboard-page__empty">{{ 'DASHBOARD.NO_STOCK_DATA' | translate }}</p>
+      }
+    </div>
+
+    <!-- Two-column: Monthly Performance, Risk, Operational Health -->
+    <div class="dashboard-page__grid">
+      <div class="dashboard-page__col">
+        <!-- Monthly Performance -->
+        <div class="dashboard-page__section">
+          <h2 class="dashboard-page__section-title">{{ 'DASHBOARD.MONTHLY_PERFORMANCE' | translate }}</h2>
+          @if (loading()) {
+            <div class="dashboard-page__perf-skeletons">
+              <div class="dashboard-page__skeleton dashboard-page__skeleton--perf"></div>
+              <div class="dashboard-page__skeleton dashboard-page__skeleton--perf"></div>
+            </div>
+          } @else {
+            <div class="dashboard-page__perf-list">
+              <div class="dashboard-page__perf-item">
+                <div class="dashboard-page__perf-content">
+                  <lucide-icon [img]="lucideArrowRightLeft" [size]="18" class="dashboard-page__perf-icon dashboard-page__perf-icon--indigo" [strokeWidth]="2" />
+                  <div>
+                    <p class="dashboard-page__perf-label">{{ 'DASHBOARD.TRANSFERS' | translate }}</p>
+                    <p class="dashboard-page__perf-value">{{ mp()?.transfersCount ?? 0 }}</p>
+                  </div>
+                </div>
+                <span class="dashboard-page__perf-meta">{{ 'DASHBOARD.THIS_MONTH' | translate }}</span>
+              </div>
+              <div class="dashboard-page__perf-item">
+                <div class="dashboard-page__perf-content">
+                  <lucide-icon [img]="lucideTrendingDown" [size]="18" class="dashboard-page__perf-icon dashboard-page__perf-icon--red" [strokeWidth]="2" />
+                  <div>
+                    <p class="dashboard-page__perf-label">{{ 'DASHBOARD.LOSS_VALUE' | translate }}</p>
+                    <p class="dashboard-page__perf-value">{{ fmtSAR(mp()?.lossValue) }}</p>
+                  </div>
+                </div>
+                <span class="delta-badge" [class.delta-positive]="(mp()?.lossDelta ?? 0) > 0" [class.delta-negative]="(mp()?.lossDelta ?? 0) < 0">
+                  {{ (mp()?.lossDelta ?? 0) > 0 ? '+' : '' }}{{ mp()?.lossDelta ?? 0 }}%
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Risk Indicators -->
+        <div class="dashboard-page__section">
+          <h2 class="dashboard-page__section-title">{{ 'DASHBOARD.RISK_INDICATORS' | translate }}</h2>
+          @if (loading()) {
+            <div class="dashboard-page__skeleton dashboard-page__skeleton--risk"></div>
+          } @else {
+            <div class="dashboard-page__risk">
+              <p class="dashboard-page__risk-label">
+                <lucide-icon [img]="lucideClock" [size]="14" [strokeWidth]="2" />
+                {{ 'DASHBOARD.INVENTORY_AGING' | translate }}
+              </p>
+              <div class="dashboard-page__aging">
+                @for (bucket of ['0-30', '31-60', '60+']; track bucket) {
+                  @let found = agingForBucket(bucket);
+                  <div class="dashboard-page__aging-item" [ngClass]="'dashboard-page__aging-item--' + bucket.replace('+', 'plus')">
+                    <p class="dashboard-page__aging-count">{{ found?.count ?? 0 }}</p>
+                    <p class="dashboard-page__aging-days">{{ bucket }} {{ 'DASHBOARD.DAYS' | translate }}</p>
+                    <p class="dashboard-page__aging-value">{{ fmtSAR(found?.value) }}</p>
+                  </div>
+                }
+              </div>
+              <p class="dashboard-page__risk-label">{{ 'DASHBOARD.TOP_5_SLOW_MOVING' | translate }}</p>
+              @if ((ri()?.topSlow?.length ?? 0) > 0) {
+                <div class="dashboard-page__slow-list">
+                  @for (item of ri()!.topSlow!; track $index; let i = $index) {
+                    <div class="dashboard-page__slow-row">
+                      <span class="dashboard-page__slow-name">{{ i + 1 }}. {{ item.itemName }}</span>
+                      <span class="dashboard-page__slow-date">
+                        {{ item.lastMovement ? (item.lastMovement | date:'MMM d') : ('DASHBOARD.NEVER' | translate) }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="dashboard-page__empty">{{ 'DASHBOARD.NO_SLOW_MOVING' | translate }}</p>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Operational Health -->
+      <div class="dashboard-page__section">
+        <h2 class="dashboard-page__section-title">{{ 'DASHBOARD.OPERATIONAL_HEALTH' | translate }}</h2>
+        @if (loading()) {
+          <div class="dashboard-page__health-skeletons">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="dashboard-page__skeleton dashboard-page__skeleton--health"></div>
+            }
+          </div>
+        } @else {
+          <div class="dashboard-page__health-grid">
+            @for (item of operationalHealthItems(); track item.label) {
+              <div
+                class="dashboard-page__health-card"
+                [class.dashboard-page__health-card--clickable]="item.link"
+                (click)="item.link && navigateTo(item.link)"
+              >
+                <div class="dashboard-page__health-head">
+                  <div class="dashboard-page__health-icon" [ngClass]="'dashboard-page__health-icon--' + item.color">
+                    <lucide-icon [img]="item.icon" [size]="20" [strokeWidth]="2" />
+                  </div>
+                  <div>
+                    <p class="dashboard-page__health-value">{{ item.count }}</p>
+                    <p class="dashboard-page__health-label">{{ item.label | translate }}</p>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (data()?.generatedAt) {
+      <p class="dashboard-page__footer">
+        {{ 'DASHBOARD.DATA_AS_OF' | translate }} {{ data()!.generatedAt | date:'medium' }}
+      </p>
+    }
+  }
+</div>

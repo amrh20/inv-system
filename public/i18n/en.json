@@ -47,6 +47,7 @@
     "SUPER_ADMIN": "Super Admin"
   },
   "COMMON": {
+    "USER": "User",
     "SEARCH": "Search...",
     "SEARCH_BY_NAME_OR_BARCODE": "Search by name or barcode...",
     "SEARCH_BY_NAME_OR_BARCODE_ELLIPSIS": "Search by name or barcode...",
@@ -355,7 +356,34 @@
     "SUCCESS_SAVED": "Par levels saved"
   },
   "DASHBOARD": {
-    "PLACEHOLDER": "Placeholder - inventory dashboard will live here."
+    "PLACEHOLDER": "Placeholder - inventory dashboard will live here.",
+    "WELCOME": "Welcome, ",
+    "UNAVAILABLE": "Dashboard Unavailable",
+    "TOTAL_VALUE": "Total Value",
+    "ACTIVE_STORES": "Active Stores",
+    "ACTIVE_ITEMS": "Active Items",
+    "UNITS_ON_HAND": "units on hand",
+    "LOCATIONS_TRACKED": "locations tracked",
+    "IN_ITEM_MASTER": "in item master",
+    "VALUE_BY_DEPARTMENT": "Value by Department",
+    "NO_STOCK_DATA": "No stock balance data",
+    "MONTHLY_PERFORMANCE": "Monthly Performance",
+    "TRANSFERS": "Transfers",
+    "LOSS_VALUE": "Loss Value",
+    "THIS_MONTH": "this month",
+    "RISK_INDICATORS": "Risk Indicators",
+    "INVENTORY_AGING": "Inventory Aging",
+    "DAYS": "days",
+    "TOP_5_SLOW_MOVING": "Top 5 Slow Moving",
+    "NEVER": "Never",
+    "NO_SLOW_MOVING": "No slow-moving items",
+    "OPERATIONAL_HEALTH": "Operational Health",
+    "PENDING_TRANSFERS": "Pending Transfers",
+    "OVERDUE_LOANS": "Overdue Loans",
+    "PENDING_BREAKAGE": "Pending Breakage",
+    "PENDING_GRNS": "Pending GRNs",
+    "PENDING_STOCK_REPORTS": "Pending Stock Reports",
+    "DATA_AS_OF": "Data as of"
   },
   "INVENTORY": {
     "PLACEHOLDER": "Placeholder - stock balances will live here."

@@ -1,0 +1,592 @@
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0;
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.dashboard-page__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  gap: 16px;
+}
+
+.dashboard-page__error-icon {
+  color: var(--color-brand-error);
+}
+
+.dashboard-page__error-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+  margin: 0;
+}
+
+.dashboard-page__error-message {
+  color: rgba(0, 0, 0, 0.5);
+  text-align: center;
+  max-width: 400px;
+  margin: 0;
+}
+
+.dashboard-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboard-page__title {
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.9);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.dashboard-page__meta {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 4px 0 0;
+}
+
+.dashboard-page__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-page__response-time {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+  font-family: monospace;
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: var(--radius-brand);
+}
+
+.dashboard-page__refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-page__time {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.dashboard-page__spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* KPI Cards */
+.dashboard-page__cards {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .dashboard-page__cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-page__cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.dashboard-page__card {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 20px;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+}
+
+.dashboard-page__card--skeleton {
+  min-height: 120px;
+}
+
+.dashboard-page__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.dashboard-page__card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dashboard-page__card-icon {
+  padding: 8px;
+  border-radius: 8px;
+
+  &--blue {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+  }
+
+  &--green {
+    background: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+  }
+
+  &--purple {
+    background: rgba(147, 51, 234, 0.1);
+    color: #7c3aed;
+  }
+}
+
+.dashboard-page__card-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0 0 4px;
+}
+
+.dashboard-page__card-sub {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+  margin: 0;
+}
+
+/* Skeletons */
+.dashboard-page__skeleton {
+  background: #e8e8e8;
+  border-radius: 4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.dashboard-page__skeleton--label {
+  height: 14px;
+  width: 80px;
+  margin-bottom: 12px;
+}
+
+.dashboard-page__skeleton--value {
+  height: 28px;
+  width: 100px;
+  margin-bottom: 8px;
+}
+
+.dashboard-page__skeleton--sub {
+  height: 12px;
+  width: 60px;
+}
+
+.dashboard-page__skeleton--bar {
+  height: 24px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.dashboard-page__skeleton--perf {
+  height: 64px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.dashboard-page__skeleton--risk {
+  height: 120px;
+  width: 100%;
+}
+
+.dashboard-page__skeleton--health {
+  height: 80px;
+  width: 100%;
+}
+
+/* Sections */
+.dashboard-page__section {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.dashboard-page__section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 16px;
+}
+
+/* Value by Department bars */
+.dashboard-page__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dashboard-page__bar {
+  .group & {
+    margin-bottom: 8px;
+  }
+}
+
+.dashboard-page__bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.dashboard-page__bar-label {
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-page__bar-value {
+  font-family: monospace;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.dashboard-page__bar-track {
+  width: 100%;
+  height: 20px;
+  background: #f5f5f5;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.dashboard-page__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.5s ease-out;
+  background: linear-gradient(90deg, #0369a1 0%, #0284c7 50%, #38bdf8 100%);
+}
+
+.dashboard-page__empty {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.4);
+  font-style: italic;
+  margin: 0;
+}
+
+/* Grid layout */
+.dashboard-page__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-page__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.dashboard-page__col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Monthly Performance */
+.dashboard-page__perf-list,
+.dashboard-page__perf-skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dashboard-page__perf-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.dashboard-page__perf-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-page__perf-icon {
+  flex-shrink: 0;
+
+  &--indigo {
+    color: #6366f1;
+  }
+
+  &--red {
+    color: #ef4444;
+  }
+}
+
+.dashboard-page__perf-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.65);
+  margin: 0 0 2px;
+}
+
+.dashboard-page__perf-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0;
+}
+
+.dashboard-page__perf-meta {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.delta-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+
+  &.delta-positive {
+    background: rgba(239, 68, 68, 0.1);
+    color: #b91c1c;
+  }
+
+  &.delta-negative {
+    background: rgba(34, 197, 94, 0.1);
+    color: #15803d;
+  }
+}
+
+/* Risk Indicators */
+.dashboard-page__risk-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-page__aging {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.dashboard-page__aging-item {
+  text-align: center;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid;
+
+  &--0-30 {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #15803d;
+  }
+
+  &--31-60 {
+    background: rgba(234, 179, 8, 0.08);
+    border-color: rgba(234, 179, 8, 0.3);
+    color: #a16207;
+  }
+
+  &--60plus {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #b91c1c;
+  }
+}
+
+.dashboard-page__aging-count {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 2px;
+}
+
+.dashboard-page__aging-days {
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0 0 4px;
+}
+
+.dashboard-page__aging-value {
+  font-size: 12px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.dashboard-page__slow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashboard-page__slow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.dashboard-page__slow-name {
+  color: rgba(0, 0, 0, 0.65);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-page__slow-date {
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  font-family: monospace;
+}
+
+/* Operational Health */
+.dashboard-page__health-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .dashboard-page__health-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.dashboard-page__health-skeletons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.dashboard-page__health-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f0f0f0;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &--clickable {
+    cursor: pointer;
+
+    &:hover {
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+  }
+}
+
+.dashboard-page__health-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-page__health-icon {
+  padding: 10px;
+  border-radius: 8px;
+  flex-shrink: 0;
+
+  &--indigo {
+    background: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+  }
+
+  &--red {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+  }
+
+  &--orange {
+    background: rgba(249, 115, 22, 0.1);
+    color: #ea580c;
+  }
+
+  &--teal {
+    background: rgba(20, 184, 166, 0.1);
+    color: #0d9488;
+  }
+
+  &--purple {
+    background: rgba(147, 51, 234, 0.1);
+    color: #7c3aed;
+  }
+}
+
+.dashboard-page__health-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0 0 2px;
+}
+
+.dashboard-page__health-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 0;
+}
+
+.dashboard-page__footer {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.4);
+  text-align: right;
+  margin: 0;
+}
