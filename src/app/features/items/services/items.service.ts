@@ -5,6 +5,7 @@ import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import type {
   ItemDetail,
+  ItemImportResult,
   ItemImportPreviewResponse,
   ItemListRow,
   ItemPayload,
@@ -100,9 +101,13 @@ export class ItemsService {
    * Excel import — confirm step (`POST /items/import/confirm`).
    * Alias name matches legacy `importItems` usage from the React client.
    */
-  importItems(rows: unknown[], filePath: string, asOpeningBalance = false): Observable<unknown> {
+  importItems(
+    rows: unknown[],
+    filePath: string,
+    asOpeningBalance = false,
+  ): Observable<ItemImportResult> {
     return this.http
-      .post<ApiResponse<unknown>>(`${this.base}/import/confirm`, {
+      .post<ApiResponse<ItemImportResult>>(`${this.base}/import/confirm`, {
         rows,
         filePath,
         asOpeningBalance,
@@ -112,7 +117,16 @@ export class ItemsService {
           if (!res.success) {
             throw new Error(res.message || 'Import failed');
           }
-          return res.data;
+          return (
+            res.data ?? {
+              inserted: 0,
+              updated: 0,
+              failed: 0,
+              obCount: 0,
+              obDocuments: [],
+              failures: [],
+            }
+          );
         }),
       );
   }

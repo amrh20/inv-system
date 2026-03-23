@@ -88,13 +88,43 @@ export interface LocationOption {
 }
 
 export interface ItemImportPreviewData {
-  preview: unknown[];
+  preview: ItemImportPreviewRow[];
   filePath: string;
-  errors?: unknown;
+  total?: number;
+  valid?: number;
+  invalid?: number;
+  storeColumns?: string[];
+  unknownColumns?: string[];
   [key: string]: unknown;
 }
 
 export type ItemImportPreviewResponse = ApiResponse<ItemImportPreviewData>;
+
+export interface ItemImportPreviewRow {
+  rowNum: number;
+  status: 'VALID' | 'ERROR' | string;
+  errors?: string[];
+  data: {
+    name?: string;
+    deptName?: string;
+    storeQuantities?: Record<string, number | string>;
+    [key: string]: unknown;
+  };
+}
+
+export interface ItemImportFailureRow {
+  rowNum: number;
+  errors?: string[];
+}
+
+export interface ItemImportResult {
+  inserted: number;
+  updated: number;
+  failed: number;
+  obCount?: number;
+  obDocuments?: string[];
+  failures?: ItemImportFailureRow[];
+}
 
 /** Body for `POST /items` and `PUT /items/:id` — aligns with React `ItemFormModal` submit payload. */
 export interface ItemPayload {

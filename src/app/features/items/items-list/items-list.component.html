@@ -263,11 +263,18 @@
 
 <nz-modal
   [nzVisible]="importOpen()"
-  [nzTitle]="'ITEMS.IMPORT_FROM_EXCEL' | translate"
+  [nzTitle]="importTitleTpl"
   [nzFooter]="importFooterRef"
   (nzOnCancel)="closeImport()"
-  nzWidth="720"
+  nzWidth="860"
 >
+  <ng-template #importTitleTpl>
+    <span class="import-title">
+      <lucide-icon [img]="lucideFileSpreadsheet" [size]="18" />
+      {{ 'ITEMS.IMPORT_FROM_EXCEL' | translate }}
+    </span>
+  </ng-template>
+
   <ng-template #importFooterTpl>
     @if (importStep() === 0) {
       <button nz-button type="button" (click)="closeImport()">{{ 'COMMON.CANCEL' | translate }}</button>
@@ -280,53 +287,219 @@
       >
         @if (importLoading()) {
           <lucide-icon [img]="lucideLoader" [size]="14" class="spin" />
+          {{ 'ITEMS.PROCESSING' | translate }}
+        } @else {
+          <lucide-icon [img]="lucideArrowRight" [size]="14" />
+          {{ 'ITEMS.PARSE_FILE' | translate }}
         }
-        {{ 'COMMON.NEXT' | translate }}
       </button>
     } @else if (importStep() === 1) {
-      <button nz-button type="button" (click)="importStep.set(0)">{{ 'COMMON.BACK' | translate }}</button>
+      <button nz-button type="button" (click)="goBackImportStep()">
+        <lucide-icon [img]="lucideArrowLeft" [size]="14" />
+        {{ 'COMMON.BACK' | translate }}
+      </button>
       <button
         nz-button
         nzType="primary"
         type="button"
-        [disabled]="importLoading()"
+        [disabled]="importLoading() || (importPreviewData()?.valid ?? 0) === 0"
         (click)="confirmImport()"
       >
         @if (importLoading()) {
           <lucide-icon [img]="lucideLoader" [size]="14" class="spin" />
+          {{ 'ITEMS.PROCESSING' | translate }}
+        } @else {
+          <lucide-icon [img]="lucideCheckCircle" [size]="14" />
+          {{ 'ITEMS.CONFIRM_IMPORT_ROWS' | translate: { count: importPreviewData()?.valid ?? 0 } }}
         }
-        {{ 'COMMON.CONFIRM_IMPORT' | translate }}
       </button>
     } @else {
-      <button nz-button nzType="primary" type="button" (click)="closeImport()">{{ 'COMMON.DONE' | translate }}</button>
+      <button nz-button nzType="primary" type="button" (click)="closeImport()">
+        <lucide-icon [img]="lucideCheckCircle" [size]="14" />
+        {{ 'COMMON.DONE' | translate }}
+      </button>
     }
   </ng-template>
 
   <ng-container *nzModalContent>
+    <div class="import-steps">
+      @for (stepKey of importStepKeys; track stepKey; let i = $index) {
+        <div class="import-step" [ngClass]="{ 'is-active': i === importStep(), 'is-done': i < importStep() }">
+          <span class="import-step__bullet">{{ i < importStep() ? '✓' : i + 1 }}</span>
+          <span class="import-step__label">{{ stepKey | translate }}</span>
+        </div>
+        @if (i < importStepKeys.length - 1) {
+          <div class="import-step__line"></div>
+        }
+      }
+    </div>
+
     @if (importStep() === 0) {
-      <p class="import-hint">
-        {{ 'ITEMS.IMPORT_HINT' | translate }}
-      </p>
-      @if (obEligible()?.allowed) {
-        <label class="ob-row">
-          <input type="checkbox" [checked]="asOpeningBalance()" (change)="asOpeningBalance.set($any($event.target).checked)" />
-          <span>{{ 'ITEMS.IMPORT_AS_OPENING_BALANCE' | translate }}</span>
-        </label>
+      <div class="import-info-card">
+        <p class="import-info-card__title">{{ 'ITEMS.EXPECTED_COLUMNS_TITLE' | translate }}</p>
+        <p class="import-info-card__body">{{ 'ITEMS.EXPECTED_COLUMNS_VALUE' | translate }}</p>
+        <p class="import-info-card__hint">{{ 'ITEMS.IMPORT_HINT' | translate }}</p>
+      </div>
+      @if (obLoading()) {
+        <div class="ob-loading">
+          <lucide-icon [img]="lucideLoader" [size]="14" class="spin" />
+          {{ 'ITEMS.CHECKING_OB_ELIGIBILITY' | translate }}
+        </div>
+      } @else if (obEligible()?.allowed) {
+        <div class="ob-card">
+          <label nz-checkbox [ngModel]="asOpeningBalance()" (ngModelChange)="asOpeningBalance.set($event)">
+            <span class="ob-card__title">{{ 'ITEMS.IMPORT_AS_OPENING_BALANCE' | translate }}</span>
+            <span class="ob-card__hint">{{ 'ITEMS.IMPORT_AS_OPENING_BALANCE_HINT' | translate }}</span>
+          </label>
+        </div>
       } @else if (obEligible()) {
-        <nz-alert
-          nzType="info"
-          [nzMessage]="obEligible()?.reason || ('ITEMS.OPENING_BALANCE_NOT_AVAILABLE' | translate)"
-          class="import-alert"
-        />
+        <div class="ob-card ob-card--locked">
+          <div class="ob-card__title">{{ 'ITEMS.OPENING_BALANCE_LOCKED' | translate }}</div>
+          <div class="ob-card__hint">
+            {{ obEligible()?.reason || ('ITEMS.OPENING_BALANCE_NOT_AVAILABLE' | translate) }}
+          </div>
+        </div>
       }
-      <input type="file" accept=".xlsx,.xls" (change)="onImportFile($event)" />
-      @if (importFile(); as f) {
-        <p class="file-name">{{ f.name }}</p>
-      }
+      <div class="file-dropzone" [ngClass]="{ 'file-dropzone--selected': !!importFile() }" (click)="triggerImportFileSelection()">
+        @if (importFile(); as f) {
+          <lucide-icon [img]="lucideCheckCircle" [size]="36" class="file-dropzone__icon file-dropzone__icon--ok" />
+          <p class="file-dropzone__title">{{ f.name }}</p>
+          <p class="file-dropzone__hint">
+            {{ importFileSizeLabel(f) }} - {{ 'ITEMS.CLICK_TO_CHANGE_FILE' | translate }}
+          </p>
+        } @else {
+          <lucide-icon [img]="lucideUpload" [size]="36" class="file-dropzone__icon" />
+          <p class="file-dropzone__title">{{ 'ITEMS.CLICK_TO_SELECT_FILE' | translate }}</p>
+          <p class="file-dropzone__hint">{{ 'ITEMS.FILE_FORMAT_HINT' | translate }}</p>
+        }
+      </div>
+      <input
+        #importFileInput
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        class="hidden-file-input"
+        (change)="onImportFile($event)"
+      />
     } @else if (importStep() === 1) {
-      <p>{{ 'ITEMS.PREVIEW_ROWS' | translate: { count: importPreviewData()?.preview?.length ?? 0 } }}</p>
-    } @else {
-      <p>{{ 'ITEMS.IMPORT_FINISHED' | translate }}</p>
+      @if (importPreviewData(); as preview) {
+      <div class="import-preview-grid">
+        <div class="preview-stat">
+          <div class="preview-stat__value">{{ preview.total ?? 0 }}</div>
+          <div class="preview-stat__label">{{ 'ITEMS.PREVIEW_TOTAL_ROWS' | translate }}</div>
+        </div>
+        <div class="preview-stat preview-stat--valid">
+          <div class="preview-stat__value">{{ preview.valid ?? 0 }}</div>
+          <div class="preview-stat__label">{{ 'ITEMS.PREVIEW_VALID' | translate }}</div>
+        </div>
+        <div class="preview-stat preview-stat--invalid">
+          <div class="preview-stat__value">{{ preview.invalid ?? 0 }}</div>
+          <div class="preview-stat__label">{{ 'ITEMS.PREVIEW_ERRORS' | translate }}</div>
+        </div>
+      </div>
+      @if (asOpeningBalance()) {
+        <div class="preview-ob-badge">
+          <lucide-icon [img]="lucidePackage" [size]="14" />
+          {{ 'ITEMS.OPENING_BALANCE_MODE_BADGE' | translate }}
+        </div>
+      }
+      @if ((preview.storeColumns?.length ?? 0) > 0) {
+        <p class="preview-subline">
+          <strong>{{ 'ITEMS.STORE_COLUMNS_DETECTED' | translate }}</strong>
+          {{ preview.storeColumns?.join(', ') }}
+        </p>
+      }
+      @if ((preview.unknownColumns?.length ?? 0) > 0) {
+        <p class="preview-subline preview-subline--warn">
+          {{ 'ITEMS.UNKNOWN_COLUMNS_IGNORED' | translate: { columns: preview.unknownColumns?.join(', ') } }}
+        </p>
+      }
+      <div class="preview-table-wrap">
+        <nz-table
+          #previewTable
+          [nzData]="preview.preview"
+          [nzFrontPagination]="false"
+          [nzShowPagination]="false"
+          nzSize="small"
+        >
+          <thead>
+            <tr>
+              <th nzWidth="60">{{ 'ITEMS.PREVIEW_ROW' | translate }}</th>
+              <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+              <th>{{ 'ITEMS.PREVIEW_DEPT' | translate }}</th>
+              <th nzWidth="80" nzAlign="center">{{ 'ITEMS.PREVIEW_STORES' | translate }}</th>
+              <th nzWidth="90" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+              <th>{{ 'ITEMS.PREVIEW_ISSUES' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of previewTable.data; track row.rowNum) {
+              <tr [ngClass]="{ 'preview-row--error': row.status === 'ERROR' }">
+                <td>{{ row.rowNum }}</td>
+                <td>{{ row.data.name || '—' }}</td>
+                <td>{{ row.data.deptName || '—' }}</td>
+                <td nzAlign="center">{{ importRowStoreCount(row) }}</td>
+                <td nzAlign="center">
+                  @if (row.status === 'VALID') {
+                    <span class="preview-status preview-status--valid">{{ 'ITEMS.PREVIEW_STATUS_VALID' | translate }}</span>
+                  } @else {
+                    <span class="preview-status preview-status--error">{{ 'ITEMS.PREVIEW_STATUS_ERROR' | translate }}</span>
+                  }
+                </td>
+                <td>{{ row.errors?.join(', ') || '' }}</td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      </div>
+      @if ((preview.invalid ?? 0) > 0) {
+        <div class="preview-warning">
+          <lucide-icon [img]="lucideAlertCircle" [size]="14" />
+          {{ 'ITEMS.INVALID_ROWS_WARNING' | translate: { invalid: preview.invalid ?? 0, valid: preview.valid ?? 0 } }}
+        </div>
+      }
+      }
+    } @else if (importStep() === 2) {
+      @if (importResult(); as result) {
+      <div class="import-result">
+        <lucide-icon [img]="lucideCheckCircle" [size]="56" class="import-result__icon" />
+        <h3 class="import-result__title">{{ 'ITEMS.IMPORT_COMPLETE' | translate }}</h3>
+        <div class="import-preview-grid">
+          <div class="preview-stat preview-stat--valid">
+            <div class="preview-stat__value">{{ result.inserted }}</div>
+            <div class="preview-stat__label">{{ 'ITEMS.RESULT_INSERTED' | translate }}</div>
+          </div>
+          <div class="preview-stat">
+            <div class="preview-stat__value">{{ result.updated }}</div>
+            <div class="preview-stat__label">{{ 'ITEMS.RESULT_UPDATED' | translate }}</div>
+          </div>
+          <div class="preview-stat preview-stat--invalid">
+            <div class="preview-stat__value">{{ result.failed }}</div>
+            <div class="preview-stat__label">{{ 'ITEMS.RESULT_FAILED' | translate }}</div>
+          </div>
+        </div>
+        @if ((result.obCount ?? 0) > 0) {
+          <div class="result-ob-card">
+            <p class="result-ob-card__title">
+              <lucide-icon [img]="lucidePackage" [size]="14" />
+              {{ 'ITEMS.OB_DOCUMENTS_POSTED' | translate: { count: result.obCount ?? 0 } }}
+            </p>
+            <p class="result-ob-card__docs">
+              {{ 'ITEMS.OB_DOCUMENTS_LIST' | translate: { docs: result.obDocuments?.join(', ') || '-' } }}
+            </p>
+          </div>
+        }
+        @if ((result.failures?.length ?? 0) > 0) {
+          <div class="result-failures">
+            <p class="result-failures__title">{{ 'ITEMS.FAILED_ROWS' | translate }}</p>
+            @for (f of result.failures ?? []; track f.rowNum) {
+              <div class="result-failures__row">
+                {{ 'ITEMS.FAILED_ROW_ITEM' | translate: { rowNum: f.rowNum, errors: f.errors?.join(', ') || '-' } }}
+              </div>
+            }
+          </div>
+        }
+      </div>
+      }
     }
     @if (importError()) {
       <nz-alert nzType="error" [nzMessage]="importError()" nzShowIcon class="import-alert" />

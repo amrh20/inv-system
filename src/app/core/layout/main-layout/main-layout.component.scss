@@ -129,6 +129,21 @@ $sider-active-glow: 0 4px 12px rgba(99, 102, 241, 0.4);
     margin: 0 0 0.5rem;
     padding: 0 0.75rem;
   }
+
+  /* Keep icons perfectly centered when sider is collapsed. */
+  .ant-menu-inline-collapsed > .ant-menu-item,
+  .ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding-inline: 0 !important;
+  }
+
+  .ant-menu-inline-collapsed > .ant-menu-item .menu-lucide,
+  .ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title .menu-lucide {
+    margin-inline: 0 !important;
+  }
 }
 
 .menu-item-row {

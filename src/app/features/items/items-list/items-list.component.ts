@@ -3,6 +3,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  ElementRef,
   inject,
   OnInit,
   signal,
@@ -15,6 +16,7 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, first } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -32,9 +34,14 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { NzTableSortFn } from 'ng-zorro-antd/table';
 import { LucideAngularModule } from 'lucide-angular';
 import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
   Download,
   EllipsisVertical,
   Eye,
+  FileSpreadsheet,
   Loader2,
   Package,
   Pencil,
@@ -48,7 +55,13 @@ import {
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import { StatusToggleComponent } from '../../../shared/components/status-toggle/status-toggle.component';
 import { ItemFormComponent } from '../item-form/item-form.component';
-import type { CategoryOption, ItemListRow } from '../models/item.model';
+import type {
+  CategoryOption,
+  ItemImportPreviewData,
+  ItemImportPreviewRow,
+  ItemImportResult,
+  ItemListRow,
+} from '../models/item.model';
 import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
@@ -63,6 +76,7 @@ import { ItemsService } from '../services/items.service';
     NgClass,
     NzAlertModule,
     NzButtonModule,
+    NzCheckboxModule,
     NzDescriptionsModule,
     NzDividerModule,
     NzDropdownModule,
@@ -85,6 +99,7 @@ import { ItemsService } from '../services/items.service';
 })
 export class ItemsListComponent implements OnInit {
   @ViewChild('importFooterTpl', { static: true }) importFooterRef!: TemplateRef<Record<string, unknown>>;
+  @ViewChild('importFileInput') importFileInputRef?: ElementRef<HTMLInputElement>;
 
   private readonly itemsApi = inject(ItemsService);
   private readonly categoriesApi = inject(CategoriesService);
@@ -100,12 +115,22 @@ export class ItemsListComponent implements OnInit {
   readonly lucideRefresh = RefreshCw;
   readonly lucideDownload = Download;
   readonly lucideUpload = Upload;
+  readonly lucideFileSpreadsheet = FileSpreadsheet;
   readonly lucidePencil = Pencil;
   readonly lucideTrash = Trash2;
   readonly lucideEye = Eye;
   readonly lucideLoader = Loader2;
+  readonly lucideCheckCircle = CheckCircle2;
+  readonly lucideArrowLeft = ArrowLeft;
+  readonly lucideArrowRight = ArrowRight;
+  readonly lucideAlertCircle = AlertCircle;
   readonly lucideX = X;
   readonly lucideEllipsisVertical = EllipsisVertical;
+  readonly importStepKeys = [
+    'ITEMS.STEP_UPLOAD_FILE',
+    'ITEMS.STEP_PREVIEW_VALIDATE',
+    'ITEMS.STEP_CONFIRM_IMPORT',
+  ] as const;
 
   /** Current page rows — mirrors React `ItemMasterPage` `items` state. */
   readonly itemsList = signal<ItemListRow[]>([]);
@@ -139,8 +164,10 @@ export class ItemsListComponent implements OnInit {
   readonly importOpen = signal(false);
   readonly importStep = signal(0);
   readonly importFile = signal<File | null>(null);
-  readonly importPreviewData = signal<{ preview: unknown[]; filePath: string } | null>(null);
+  readonly importPreviewData = signal<ItemImportPreviewData | null>(null);
+  readonly importResult = signal<ItemImportResult | null>(null);
   readonly importLoading = signal(false);
+  readonly obLoading = signal(false);
   readonly importError = signal('');
   readonly obEligible = signal<{ allowed: boolean; reason?: string } | null>(null);
   readonly asOpeningBalance = signal(false);
@@ -406,24 +433,25 @@ export class ItemsListComponent implements OnInit {
 
   openImport(): void {
     this.importOpen.set(true);
-    this.importStep.set(0);
-    this.importFile.set(null);
-    this.importPreviewData.set(null);
-    this.importError.set('');
+    this.resetImportState();
+    this.obLoading.set(true);
     this.lookups.obEligible().pipe(first()).subscribe({
       next: (o) => {
         this.obEligible.set(o);
         this.asOpeningBalance.set(!!o.allowed);
+        this.obLoading.set(false);
       },
       error: () => {
         this.obEligible.set({ allowed: false, reason: this.t('ITEMS.ERROR_OB_ELIGIBILITY') });
         this.asOpeningBalance.set(false);
+        this.obLoading.set(false);
       },
     });
   }
 
   closeImport(): void {
     this.importOpen.set(false);
+    this.resetImportState();
   }
 
   onImportFile(event: Event): void {
@@ -432,6 +460,10 @@ export class ItemsListComponent implements OnInit {
     this.importFile.set(f ?? null);
     this.importError.set('');
     input.value = '';
+  }
+
+  triggerImportFileSelection(): void {
+    this.importFileInputRef?.nativeElement.click();
   }
 
   runImportPreview(): void {
@@ -447,9 +479,16 @@ export class ItemsListComponent implements OnInit {
       .pipe(first())
       .subscribe({
         next: (data) => {
-          const preview = Array.isArray(data.preview) ? data.preview : [];
-          const filePath = typeof data.filePath === 'string' ? data.filePath : '';
-          this.importPreviewData.set({ preview, filePath });
+          this.importPreviewData.set({
+            ...data,
+            preview: Array.isArray(data.preview) ? data.preview : [],
+            filePath: typeof data.filePath === 'string' ? data.filePath : '',
+            total: Number(data.total) || 0,
+            valid: Number(data.valid) || 0,
+            invalid: Number(data.invalid) || 0,
+            storeColumns: Array.isArray(data.storeColumns) ? data.storeColumns : [],
+            unknownColumns: Array.isArray(data.unknownColumns) ? data.unknownColumns : [],
+          });
           this.importStep.set(1);
           this.importLoading.set(false);
         },
@@ -462,7 +501,8 @@ export class ItemsListComponent implements OnInit {
 
   confirmImport(): void {
     const prev = this.importPreviewData();
-    if (!prev?.filePath) {
+    if (!prev?.filePath || (Number(prev.valid) || 0) <= 0) {
+      this.importError.set(this.t('ITEMS.ERROR_NO_VALID_ROWS'));
       return;
     }
     this.importLoading.set(true);
@@ -471,8 +511,9 @@ export class ItemsListComponent implements OnInit {
       .importItems(prev.preview, prev.filePath, this.asOpeningBalance())
       .pipe(first())
       .subscribe({
-        next: () => {
+        next: (result) => {
           this.importLoading.set(false);
+          this.importResult.set(result);
           this.importStep.set(2);
           this.message.success(this.t('ITEMS.SUCCESS_IMPORT_COMPLETED'));
           this.loadItems();
@@ -482,6 +523,28 @@ export class ItemsListComponent implements OnInit {
           this.importError.set(err?.error?.message ?? this.t('COMMON.IMPORT_FAILED'));
         },
       });
+  }
+
+  goBackImportStep(): void {
+    if (this.importStep() > 0 && this.importStep() < 2) {
+      this.importStep.set(this.importStep() - 1);
+      this.importError.set('');
+    }
+  }
+
+  importRowStoreCount(row: ItemImportPreviewRow): number {
+    return row.data?.storeQuantities ? Object.keys(row.data.storeQuantities).length : 0;
+  }
+
+  importFileSizeLabel(file: File | null): string {
+    if (!file) {
+      return '';
+    }
+    const sizeKb = file.size / 1024;
+    if (sizeKb < 1024) {
+      return `${sizeKb.toFixed(1)} KB`;
+    }
+    return `${(sizeKb / 1024).toFixed(1)} MB`;
   }
 
   private saveBlob(blob: Blob, filename: string): void {
@@ -510,5 +573,15 @@ export class ItemsListComponent implements OnInit {
 
   private t(key: string, params?: Record<string, unknown>): string {
     return this.translate.instant(key, params);
+  }
+
+  private resetImportState(): void {
+    this.importStep.set(0);
+    this.importFile.set(null);
+    this.importPreviewData.set(null);
+    this.importResult.set(null);
+    this.importLoading.set(false);
+    this.obLoading.set(false);
+    this.importError.set('');
   }
 }
