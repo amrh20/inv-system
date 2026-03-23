@@ -1,6 +1,7 @@
 <div class="login-container">
-  <!-- Left Branding Panel -->
+  <!-- Left Branding Panel (hidden on mobile) -->
   <div class="brand-panel">
+    <div class="brand-panel-mesh"></div>
     <div class="brand-decor brand-decor-1"></div>
     <div class="brand-decor brand-decor-2"></div>
 
@@ -37,21 +38,54 @@
   <!-- Right Login Form -->
   <div class="form-panel">
     <div class="form-wrapper">
-      <div class="form-header">
-        <h2 class="form-title">{{ 'LOGIN.SIGN_IN' | translate }}</h2>
-        <p class="form-subtitle">{{ 'LOGIN.SUBTITLE' | translate }}</p>
+      <div class="form-header-row">
+        <div class="form-header">
+          <h2 class="form-title">{{ 'LOGIN.TITLE' | translate }}</h2>
+          <p class="form-subtitle">{{ 'LOGIN.SUBTITLE' | translate }}</p>
+        </div>
+        <button
+          nz-button
+          nzType="text"
+          type="button"
+          nz-dropdown
+          [nzDropdownMenu]="langMenu"
+          nzTrigger="click"
+          nzPlacement="bottomRight"
+          class="lang-switcher-btn"
+          [attr.aria-label]="'LAYOUT.CHANGE_LANGUAGE' | translate"
+        >
+          <lucide-icon [img]="lucideLanguages" [size]="18" />
+          <span>{{ language.current() === 'en' ? ('COMMON.ENGLISH' | translate) : ('COMMON.ARABIC' | translate) }}</span>
+        </button>
+        <nz-dropdown-menu #langMenu="nzDropdownMenu">
+          <ul nz-menu>
+            <li nz-menu-item [class.ant-menu-item-selected]="language.current() === 'en'" (click)="language.setLanguage('en')">
+              <span class="menu-item-row">English</span>
+            </li>
+            <li nz-menu-item [class.ant-menu-item-selected]="language.current() === 'ar'" (click)="language.setLanguage('ar')">
+              <span class="menu-item-row">العربية</span>
+            </li>
+          </ul>
+        </nz-dropdown-menu>
+      </div>
+
+      <!-- Auth Type Segmented -->
+      <div class="auth-type-segmented">
         <button
           type="button"
-          (click)="toggleSuperAdmin()"
-          class="super-admin-toggle"
-          [class.active]="isSuperAdmin()"
+          class="segmented-option"
+          [class.segmented-option--active]="authType() === 'hotel'"
+          (click)="setAuthType('hotel')"
         >
-          <span class="toggle-dot" [class.active]="isSuperAdmin()"></span>
-          {{
-            isSuperAdmin()
-              ? ('LOGIN.SUPER_ADMIN_MODE_ACTIVE' | translate)
-              : ('LOGIN.SUPER_ADMIN_MODE_SWITCH' | translate)
-          }}
+          {{ 'LOGIN.TYPE_HOTEL' | translate }}
+        </button>
+        <button
+          type="button"
+          class="segmented-option"
+          [class.segmented-option--active]="authType() === 'admin'"
+          (click)="setAuthType('admin')"
+        >
+          {{ 'LOGIN.TYPE_ADMIN' | translate }}
         </button>
       </div>
 
@@ -60,17 +94,20 @@
           <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="error-alert" />
         }
 
-        @if (!isSuperAdmin()) {
+        @if (authType() === 'hotel') {
           <nz-form-item>
             <nz-form-label nzRequired>{{ 'LOGIN.HOTEL_ID' | translate }}</nz-form-label>
             <nz-form-control>
-              <input
-                nz-input
-                id="tenantSlug"
-                formControlName="tenantSlug"
-                [placeholder]="'LOGIN.HOTEL_ID_PLACEHOLDER' | translate"
-                autocomplete="organization"
-              />
+              <div class="input-with-icon">
+                <lucide-icon [img]="lucideHotel" [size]="18" class="input-icon" />
+                <input
+                  nz-input
+                  id="tenantSlug"
+                  formControlName="tenantSlug"
+                  [placeholder]="'LOGIN.HOTEL_ID_PLACEHOLDER' | translate"
+                  autocomplete="organization"
+                />
+              </div>
             </nz-form-control>
           </nz-form-item>
         }
@@ -78,28 +115,42 @@
         <nz-form-item>
           <nz-form-label nzRequired>{{ 'LOGIN.EMAIL' | translate }}</nz-form-label>
           <nz-form-control>
-            <input
-              nz-input
-              id="email"
-              type="email"
-              formControlName="email"
-              [placeholder]="'LOGIN.EMAIL_PLACEHOLDER' | translate"
-              autocomplete="email"
-            />
+            <div class="input-with-icon">
+              <lucide-icon [img]="lucideMail" [size]="18" class="input-icon" />
+              <input
+                nz-input
+                id="email"
+                type="email"
+                formControlName="email"
+                [placeholder]="'LOGIN.EMAIL_PLACEHOLDER' | translate"
+                autocomplete="email"
+              />
+            </div>
           </nz-form-control>
         </nz-form-item>
 
         <nz-form-item>
           <nz-form-label nzRequired>{{ 'LOGIN.PASSWORD' | translate }}</nz-form-label>
           <nz-form-control>
-            <input
-              nz-input
-              id="password"
-              type="password"
-              formControlName="password"
-              placeholder="••••••••"
-              autocomplete="current-password"
-            />
+            <div class="input-with-icon">
+              <lucide-icon [img]="lucideLock" [size]="18" class="input-icon" />
+              <input
+                nz-input
+                id="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                formControlName="password"
+                [placeholder]="'LOGIN.PASSWORD_PLACEHOLDER' | translate"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                class="password-visibility-btn"
+                (click)="togglePasswordVisibility()"
+                [attr.aria-label]="(showPassword() ? 'LOGIN.HIDE_PASSWORD' : 'LOGIN.SHOW_PASSWORD') | translate"
+              >
+                <lucide-icon [img]="showPassword() ? lucideEyeOff : lucideEye" [size]="18" />
+              </button>
+            </div>
           </nz-form-control>
         </nz-form-item>
 
@@ -112,23 +163,35 @@
               nzBlock
               type="submit"
               [nzLoading]="loading()"
+              class="login-submit-btn"
             >
-              {{ 'LOGIN.SIGN_IN' | translate }}
+              {{ 'LOGIN.SUBMIT' | translate }}
             </button>
           </nz-form-control>
         </nz-form-item>
       </form>
 
-      <div class="demo-credentials">
-        <p class="demo-title"><strong>{{ 'LOGIN.DEMO_CREDENTIALS' | translate }}</strong></p>
-        <div class="demo-list">
-          <p>{{ 'LOGIN.HOTEL_ID' | translate }}: <code>grand-horizon</code></p>
-          <p>{{ 'LOGIN.EMAIL' | translate }}: <code>admin@grandhorizon.com</code></p>
-          <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>Admin@123</code></p>
-        </div>
-        <button type="button" (click)="fillDemo()" class="demo-fill-btn">
+      <div class="demo-section">
+        <button type="button" class="demo-toggle-btn" (click)="toggleDemoPanel()">
           {{ 'LOGIN.FILL_DEMO' | translate }}
         </button>
+        @if (showDemoPanel()) {
+          <div class="demo-credentials">
+            <div class="demo-list">
+              @if (authType() === 'admin') {
+                <p>{{ 'LOGIN.EMAIL' | translate }}: <code>superadmin@ose.cloud</code></p>
+                <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>SuperAdmin@2026</code></p>
+              } @else {
+                <p>{{ 'LOGIN.HOTEL_ID' | translate }}: <code>grand-horizon</code></p>
+                <p>{{ 'LOGIN.EMAIL' | translate }}: <code>admin@grandhorizon.com</code></p>
+                <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>Admin@123</code></p>
+              }
+            </div>
+            <button type="button" nz-button nzType="default" (click)="fillDemo()" class="demo-apply-btn">
+              {{ 'LOGIN.FILL_DEMO' | translate }}
+            </button>
+          </div>
+        }
       </div>
     </div>
   </div>

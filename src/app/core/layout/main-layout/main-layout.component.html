@@ -205,13 +205,34 @@
           nz-button
           nzType="text"
           type="button"
-          class="header-icon-btn"
-          (click)="language.toggleLanguage()"
+          nz-dropdown
+          [nzDropdownMenu]="langMenu"
+          nzTrigger="click"
+          nzPlacement="bottomRight"
+          class="header-icon-btn lang-switcher"
           [attr.aria-label]="'LAYOUT.CHANGE_LANGUAGE' | translate"
         >
           <lucide-icon [img]="lucideLanguages" [size]="18" />
           <span>{{ language.current() === 'en' ? ('COMMON.ENGLISH' | translate) : ('COMMON.ARABIC' | translate) }}</span>
         </button>
+        <nz-dropdown-menu #langMenu="nzDropdownMenu">
+          <ul nz-menu>
+            <li
+              nz-menu-item
+              [class.ant-menu-item-selected]="language.current() === 'en'"
+              (click)="language.setLanguage('en')"
+            >
+              <span class="menu-item-row">English</span>
+            </li>
+            <li
+              nz-menu-item
+              [class.ant-menu-item-selected]="language.current() === 'ar'"
+              (click)="language.setLanguage('ar')"
+            >
+              <span class="menu-item-row">العربية</span>
+            </li>
+          </ul>
+        </nz-dropdown-menu>
 
         <button
           nz-button

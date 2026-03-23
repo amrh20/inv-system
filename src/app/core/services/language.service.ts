@@ -24,7 +24,11 @@ export class LanguageService {
     this.current.set(language);
     this.translate.use(language);
     this.document.documentElement.lang = language;
-    this.document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    const dir = language === 'ar' ? 'rtl' : 'ltr';
+    this.document.documentElement.dir = dir;
+    this.document.body.dir = dir;
+    this.document.body.style.fontFamily =
+      language === 'ar' ? "'Cairo', 'Tajawal', system-ui, sans-serif" : "var(--font-main)";
     localStorage.setItem(STORAGE_KEY, language);
   }
 
