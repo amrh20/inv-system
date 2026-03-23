@@ -1,0 +1,160 @@
+<div class="overflow-auto rounded-[6px] border border-[var(--ose-border)]" style="max-height: calc(100vh - 230px)">
+  <table class="min-w-[1200px] border-collapse text-left text-[11px]">
+    <thead>
+      <tr>
+        <th colspan="4" class="sticky top-0 z-[6] border-b border-r border-gray-700 bg-gray-900 py-1 text-center text-xs font-bold text-gray-300">
+          {{ 'REPORTS.DETAIL.GROUP_ITEM' | translate }}
+        </th>
+        <th colspan="2" class="sticky top-0 border-b border-amber-500 bg-amber-950 py-1 text-center text-xs font-bold text-white">
+          {{ 'REPORTS.DETAIL.GROUP_OPENING' | translate }}
+        </th>
+        <th colspan="2" class="sticky top-0 border-b border-blue-500 bg-blue-950 py-1 text-center text-xs font-bold text-white">
+          {{ 'REPORTS.DETAIL.GROUP_RECEIPTS' | translate }}
+        </th>
+        <th colspan="2" class="sticky top-0 border-b border-red-500 bg-red-950 py-1 text-center text-xs font-bold text-white">
+          {{ 'REPORTS.DETAIL.GROUP_DEDUCTIONS' | translate }}
+        </th>
+        <th colspan="2" class="sticky top-0 border-b border-purple-500 bg-purple-950 py-1 text-center text-xs font-bold text-white">
+          {{ 'REPORTS.DETAIL.GROUP_THEORETICAL' | translate }}
+        </th>
+        @if (locations().length > 0) {
+          <th
+            [attr.colspan]="locations().length"
+            class="sticky top-0 border-b border-cyan-500 bg-teal-950 py-1 text-center text-xs font-bold text-white"
+          >
+            {{ 'REPORTS.DETAIL.GROUP_LOC_QTY' | translate }}
+          </th>
+        }
+        <th colspan="1" class="sticky top-0 border-b border-orange-400 bg-orange-950 py-1 text-center text-xs font-bold text-white">
+          {{ 'REPORTS.DETAIL.GROUP_COUNT' | translate }}
+        </th>
+        <th colspan="4" class="sticky top-0 border-b border-emerald-500 bg-emerald-950 py-1 text-center text-xs font-bold text-white">
+          {{ 'REPORTS.DETAIL.GROUP_FINAL' | translate }}
+        </th>
+      </tr>
+      <tr class="bg-gray-800 text-white">
+        <th class="sticky left-0 z-[5] w-[90px] min-w-[90px] border-r border-gray-700 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'COMMON.CATEGORY' | translate }}
+        </th>
+        <th class="sticky left-[90px] z-[5] w-20 min-w-20 border-r border-gray-700 px-2 py-1.5 text-left text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_CODE' | translate }}
+        </th>
+        <th class="sticky left-[170px] z-[5] w-[180px] min-w-[180px] border-r border-gray-600 px-2 py-1.5 text-left text-xs font-semibold">
+          {{ 'COMMON.ITEM_NAME' | translate }}
+        </th>
+        <th class="sticky left-[350px] z-[5] w-[50px] min-w-[50px] border-r border-gray-600 px-2 py-1.5 text-right text-xs font-semibold">
+          {{ 'COMMON.UNIT_PRICE' | translate }}
+        </th>
+        <th class="min-w-[70px] border-l-[3px] border-amber-500 bg-amber-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_OPEN_STOCK' | translate }}
+        </th>
+        <th class="min-w-[80px] bg-amber-950 px-2 py-1.5 text-right text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_OPEN_VALUE' | translate }}
+        </th>
+        <th class="min-w-[70px] border-l-[3px] border-blue-500 bg-blue-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_GRN_QTY' | translate }}
+        </th>
+        <th class="min-w-[80px] bg-blue-950 px-2 py-1.5 text-right text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_GRN_VALUE' | translate }}
+        </th>
+        <th class="min-w-[70px] border-l-[3px] border-red-500 bg-red-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_BREAKAGES' | translate }}
+        </th>
+        <th class="min-w-[70px] bg-red-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_GATE_PASS' | translate }}
+        </th>
+        <th class="min-w-[80px] border-l-[3px] border-purple-500 bg-purple-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_THEORETICAL' | translate }}
+        </th>
+        <th class="min-w-[80px] bg-purple-950 px-2 py-1.5 text-right text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_THEOR_VALUE' | translate }}
+        </th>
+          @for (loc of locations(); track loc.id; let i = $index) {
+            <th
+              class="min-w-[80px] bg-teal-950 px-2 py-1.5 text-center text-xs font-semibold text-white"
+              [style.border-left]="i === 0 ? '3px solid #06b6d4' : null"
+            >
+              {{ loc.name }}
+            </th>
+          }
+        <th class="min-w-[80px] border-l-[3px] border-orange-400 bg-orange-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_PHYS_QTY' | translate }}
+        </th>
+        <th class="min-w-[80px] border-l-[3px] border-emerald-500 bg-emerald-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_VAR_QTY' | translate }}
+        </th>
+        <th class="min-w-[80px] bg-emerald-950 px-2 py-1.5 text-right text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_VAR_VALUE' | translate }}
+        </th>
+        <th class="min-w-[70px] bg-emerald-950 px-2 py-1.5 text-center text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_CLOSE_STOCK' | translate }}
+        </th>
+        <th class="min-w-[80px] bg-emerald-950 px-2 py-1.5 text-right text-xs font-semibold">
+          {{ 'REPORTS.DETAIL.COL_CLOSE_VALUE' | translate }}
+        </th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-[var(--ose-border)] bg-white">
+      @for (r of rows(); track $index) {
+        <tr class="border-b border-[var(--ose-border)] hover:bg-surface-muted/40">
+          <td class="sticky left-0 z-[1] w-[90px] border-r border-gray-100 bg-white px-2 py-1.5 text-center text-gray-500">
+            {{ r.category }}
+          </td>
+          <td class="sticky left-[90px] z-[1] w-20 border-r border-gray-100 bg-white px-2 py-1.5 font-mono text-xs text-gray-400">
+            {{ r.itemCode }}
+          </td>
+          <td class="sticky left-[170px] z-[1] w-[180px] border-r border-gray-200 bg-white px-2 py-1.5 font-medium text-brand-dark">
+            {{ r.itemName }}
+          </td>
+          <td class="sticky left-[350px] z-[1] w-[50px] border-r border-gray-300 bg-gray-50 px-2 py-1.5 text-right text-gray-500">
+            {{ fmt(r.unitPrice) }}
+          </td>
+          <td class="border-l border-amber-200 bg-amber-50/30 px-2 py-1.5 text-center">{{ fmtQty(r.openingQty) }}</td>
+          <td class="bg-amber-50/30 px-2 py-1.5 text-right text-gray-500">{{ fmt(r.openingValue) }}</td>
+          <td class="border-l border-blue-200 bg-blue-50/40 px-2 py-1.5 text-center font-semibold text-blue-700">
+            {{ r.inwardQty && r.inwardQty > 0 ? '+' + fmtQty(r.inwardQty) : '—' }}
+          </td>
+          <td class="bg-blue-50/40 px-2 py-1.5 text-right text-gray-500">{{ fmt(r.inwardValue) }}</td>
+          <td class="border-l border-red-200 bg-red-50/30 px-2 py-1.5 text-center font-semibold text-red-700">
+            {{ r.breakageQty && r.breakageQty > 0 ? '-' + fmtQty(r.breakageQty) : '—' }}
+          </td>
+          <td class="bg-red-50/30 px-2 py-1.5 text-center font-semibold text-orange-700">
+            {{ r.gatePassQty && r.gatePassQty > 0 ? '-' + fmtQty(r.gatePassQty) : '—' }}
+          </td>
+          <td class="border-l border-purple-200 bg-purple-50/30 px-2 py-1.5 text-center font-bold text-gray-700">
+            {{ fmtQty(r.theoreticalQty) }}
+          </td>
+          <td class="bg-purple-50/30 px-2 py-1.5 text-right text-gray-500">{{ fmt(r.theoreticalValue) }}</td>
+          @for (loc of locations(); track loc.id; let i = $index) {
+            <td
+              class="bg-cyan-50/20 px-2 py-1.5 text-center text-gray-600"
+              [style.border-left]="i === 0 ? '1px solid rgb(165 243 252)' : null"
+            >
+              {{ locQty(r, loc.id) }}
+            </td>
+          }
+          <td class="border-l border-orange-200 bg-orange-50/40 px-2 py-1.5 text-center font-bold text-amber-900">
+            {{ fmtQty(r.physicalQty) }}
+          </td>
+          <td
+            class="border-l border-emerald-200 bg-emerald-50/20 px-2 py-1.5 text-center font-bold"
+            [class.text-green-600]="(r.varianceQty ?? 0) > 0"
+            [class.text-red-600]="(r.varianceQty ?? 0) < 0"
+            [class.text-gray-400]="(r.varianceQty ?? 0) === 0"
+          >
+            {{ (r.varianceQty ?? 0) > 0 ? '+' : '' }}{{ fmtQty(r.varianceQty) }}
+          </td>
+          <td
+            class="bg-emerald-50/20 px-2 py-1.5 text-right font-mono"
+            [class.text-green-600]="(r.varianceValue ?? 0) > 0"
+            [class.text-red-600]="(r.varianceValue ?? 0) < 0"
+          >
+            {{ fmt(r.varianceValue) }}
+          </td>
+          <td class="bg-gray-100 px-2 py-1.5 text-center font-bold text-brand-dark">{{ fmtQty(r.closingQty) }}</td>
+          <td class="bg-gray-100 px-2 py-1.5 text-right font-bold text-brand-dark">{{ fmt(r.closingValue) }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

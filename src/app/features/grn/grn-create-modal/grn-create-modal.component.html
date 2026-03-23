@@ -1,0 +1,589 @@
+<nz-modal
+  [nzVisible]="open()"
+  [nzTitle]="titleTpl"
+  (nzOnCancel)="close()"
+  [nzFooter]="null"
+  nzWidth="900"
+  [nzMaskClosable]="false"
+  [nzClosable]="true"
+  nzClassName="grn-create-modal"
+>
+  <ng-template #titleTpl>
+    <span class="grn-create-modal__title">
+      <lucide-icon [img]="lucideFileText" [size]="20" />
+      {{ 'GRN.CREATE.TITLE' | translate }}
+    </span>
+  </ng-template>
+
+  <ng-container *nzModalContent>
+  <div class="grn-create-modal__wrap">
+  <div class="grn-create-modal__body">
+    @if (!isDone()) {
+      @if (step() === 1) {
+        <div class="grn-create-modal__mode-bar">
+          <button
+            nz-button
+            type="button"
+            [nzType]="mode() === 'manual' ? 'primary' : 'default'"
+            (click)="switchMode('manual')"
+          >
+            <lucide-icon [img]="lucidePackage" [size]="16" />
+            {{ 'GRN.CREATE.TAB_MANUAL' | translate }}
+          </button>
+          <button
+            nz-button
+            type="button"
+            [nzType]="mode() === 'excel' ? 'primary' : 'default'"
+            (click)="switchMode('excel')"
+          >
+            <lucide-icon [img]="lucideSheet" [size]="16" />
+            {{ 'GRN.CREATE.TAB_EXCEL' | translate }}
+          </button>
+        </div>
+      }
+
+      <div class="grn-create-modal__steps">
+        @for (label of mode() === 'manual' ? stepsManual : stepsExcel; track $index; let i = $index) {
+          <div class="grn-create-modal__step-row">
+            <span
+              class="grn-create-modal__step"
+              [class.grn-create-modal__step--active]="step() - 1 === i"
+              [class.grn-create-modal__step--done]="step() - 1 > i"
+            >
+              <span class="grn-create-modal__step-num">{{ step() - 1 > i ? '✓' : i + 1 }}</span>
+              {{ label | translate }}
+            </span>
+            @if (i < (mode() === 'manual' ? stepsManual.length : stepsExcel.length) - 1) {
+              <span class="grn-create-modal__step-line"></span>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    @if (error()) {
+      <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="grn-create-modal__alert" />
+    }
+
+    <!-- Manual step 1 -->
+    @if (mode() === 'manual' && step() === 1) {
+      <div class="grn-create-modal__grid">
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.SUPPLIER' | translate }} *</label>
+          <nz-select
+            class="grn-create-modal__control"
+            [nzPlaceHolder]="'GRN.CREATE.SUPPLIER_PH' | translate"
+            [ngModel]="supplierId()"
+            (ngModelChange)="supplierId.set($event ?? '')"
+            nzShowSearch
+            nzAllowClear
+          >
+            @for (s of suppliers(); track s.id) {
+              <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
+            }
+          </nz-select>
+        </div>
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.WAREHOUSE' | translate }} *</label>
+          <nz-select
+            class="grn-create-modal__control"
+            [nzPlaceHolder]="'GRN.CREATE.WAREHOUSE_PH' | translate"
+            [ngModel]="locationId()"
+            (ngModelChange)="locationId.set($event ?? '')"
+            nzShowSearch
+            nzAllowClear
+          >
+            @for (l of locations(); track l.id) {
+              <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+            }
+          </nz-select>
+        </div>
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.GRN_NO' | translate }} *</label>
+          <input
+            nz-input
+            class="grn-create-modal__control"
+            [ngModel]="grnNumber()"
+            (ngModelChange)="grnNumber.set($event)"
+            [placeholder]="'GRN.CREATE.GRN_NO_PH' | translate"
+          />
+        </div>
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.RECEIVING_DATE' | translate }} *</label>
+          <nz-date-picker
+            class="grn-create-modal__control grn-create-modal__date"
+            [ngModel]="receivingDatePicker()"
+            (ngModelChange)="onReceivingDateChange($event)"
+            nzFormat="yyyy-MM-dd"
+          />
+        </div>
+      </div>
+
+      <div class="grn-create-modal__field">
+        <label class="grn-create-modal__label">
+          {{ 'GRN.CREATE.ADD_ITEMS' | translate }} *
+          <span class="grn-create-modal__hint">{{ 'GRN.CREATE.ADD_ITEMS_HINT' | translate }}</span>
+        </label>
+        <nz-input-group [nzPrefix]="searchIcon" class="grn-create-modal__search-wrap">
+          <input
+            nz-input
+            [ngModel]="itemQuery()"
+            (ngModelChange)="onItemQueryChange($event)"
+            [placeholder]="'GRN.CREATE.ITEM_SEARCH_PH' | translate"
+            (focus)="itemDropdownOpen.set(true)"
+          />
+        </nz-input-group>
+        <ng-template #searchIcon>
+          @if (itemSearchLoading()) {
+            <lucide-icon [img]="lucideLoader" [size]="16" class="grn-create-modal__spin" />
+          } @else {
+            <lucide-icon [img]="lucideSearch" [size]="16" />
+          }
+        </ng-template>
+        @if (itemDropdownOpen() && itemQuery().length >= 2) {
+          <div class="grn-create-modal__dropdown">
+            @for (item of itemResults(); track item.id) {
+              <button type="button" class="grn-create-modal__dd-item" (click)="addItem(item)">
+                @if (item.imageUrl) {
+                  <img [src]="item.imageUrl" [alt]="item.name" class="grn-create-modal__thumb" />
+                } @else {
+                  <span class="grn-create-modal__thumb grn-create-modal__thumb--ph">
+                    <lucide-icon [img]="lucidePackage" [size]="14" />
+                  </span>
+                }
+                <div>
+                  <div class="grn-create-modal__dd-name">{{ item.name }}</div>
+                  <div class="grn-create-modal__dd-meta">
+                    @if (item.barcode) {
+                      <span class="font-mono">{{ item.barcode }}</span>
+                    }
+                  </div>
+                </div>
+              </button>
+            }
+            @if (!itemSearchLoading() && itemResults().length === 0) {
+              <div class="grn-create-modal__dd-empty">{{ 'GRN.CREATE.NO_ITEMS' | translate }}</div>
+            }
+          </div>
+        }
+      </div>
+
+      @if (lines().length > 0) {
+        <nz-table [nzData]="lines()" [nzShowPagination]="false" nzSize="small" class="grn-create-modal__table">
+          <thead>
+            <tr>
+              <th>{{ 'GRN.CREATE.COL_ITEM' | translate }}</th>
+              <th nzWidth="72px">{{ 'GRN.CREATE.COL_UOM' | translate }}</th>
+              <th nzWidth="100px" nzAlign="right">{{ 'GRN.CREATE.COL_ORDERED' | translate }}</th>
+              <th nzWidth="100px" nzAlign="right">{{ 'GRN.CREATE.COL_RECEIVED' | translate }} *</th>
+              <th nzWidth="100px" nzAlign="right">{{ 'GRN.CREATE.COL_PRICE' | translate }}</th>
+              <th nzWidth="48px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of lines(); track line.itemId; let idx = $index) {
+              <tr [class.grn-create-modal__tr--invalid]="invalidLineIndexes().includes(idx)">
+                <td>
+                  <div class="grn-create-modal__line-name">{{ line.itemName }}</div>
+                  @if (line.barcode) {
+                    <div class="grn-create-modal__line-bc font-mono">{{ line.barcode }}</div>
+                  }
+                </td>
+                <td>{{ line.uomName }}</td>
+                <td>
+                  <input
+                    nz-input
+                    type="number"
+                    min="0"
+                    [ngModel]="line.orderedQty"
+                    (ngModelChange)="updateLine(idx, 'orderedQty', $event)"
+                  />
+                </td>
+                <td>
+                  <input
+                    nz-input
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    class="grn-create-modal__input-received"
+                    [ngModel]="line.receivedQty"
+                    (ngModelChange)="updateLine(idx, 'receivedQty', $event)"
+                  />
+                </td>
+                <td>
+                  <input
+                    nz-input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="line.unitPrice"
+                    (ngModelChange)="updateLine(idx, 'unitPrice', $event)"
+                  />
+                </td>
+                <td>
+                  <button nz-button nzType="text" nzDanger type="button" (click)="removeLine(idx)">
+                    <lucide-icon [img]="lucideTrash" [size]="16" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+        <div class="grn-create-modal__total">
+          {{ 'GRN.CREATE.TOTAL' | translate }}:
+          <strong>{{ manualTotal() | number: '1.2-2' }}</strong>
+        </div>
+      }
+
+      <div class="grn-create-modal__row2">
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.NOTES' | translate }}</label>
+          <textarea
+            nz-input
+            rows="2"
+            [ngModel]="notes()"
+            (ngModelChange)="notes.set($event)"
+            [placeholder]="'GRN.CREATE.NOTES_PH' | translate"
+          ></textarea>
+        </div>
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.INVOICE' | translate }} *</label>
+          <button
+            type="button"
+            class="grn-create-modal__upload"
+            [class.grn-create-modal__upload--ok]="invoiceFile()"
+            (click)="invoiceInput.click()"
+          >
+            @if (invoiceFile(); as f) {
+              <lucide-icon [img]="lucideCheck" [size]="18" />
+              <span>{{ f.name }} ({{ (f.size / 1024).toFixed(0) }} KB)</span>
+            } @else {
+              <lucide-icon [img]="lucideUpload" [size]="18" />
+              <span>{{ 'GRN.CREATE.INVOICE_PH' | translate }}</span>
+            }
+          </button>
+          <input
+            #invoiceInput
+            type="file"
+            accept=".pdf,image/*"
+            hidden
+            (change)="onInvoiceSelected($any($event.target).files)"
+          />
+        </div>
+      </div>
+    }
+
+    <!-- Manual step 2 confirm -->
+    @if (mode() === 'manual' && step() === 2) {
+      <div class="grn-create-modal__summary">
+        <div><span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_SUPPLIER' | translate }}</span> {{ supplierLabel() }}</div>
+        <div><span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_WAREHOUSE' | translate }}</span> {{ locationLabel() }}</div>
+        <div><span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_GRN' | translate }}</span> {{ grnNumber() }}</div>
+        <div><span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_DATE' | translate }}</span> {{ receivingDate() }}</div>
+        @if (invoiceFile(); as inv) {
+          <div class="grn-create-modal__sum-inv">
+            {{ 'GRN.CREATE.SUM_INVOICE' | translate }} ✓ {{ inv.name }}
+          </div>
+        }
+      </div>
+      <nz-table [nzData]="lines()" [nzShowPagination]="false" nzSize="small">
+        <thead>
+          <tr>
+            <th>{{ 'GRN.CREATE.COL_ITEM' | translate }}</th>
+            <th nzAlign="right">{{ 'GRN.CREATE.COL_RECEIVED' | translate }}</th>
+            <th nzAlign="right">{{ 'GRN.CREATE.COL_UOM' | translate }}</th>
+            <th nzAlign="right">{{ 'GRN.CREATE.COL_PRICE' | translate }}</th>
+            <th nzAlign="right">{{ 'GRN.CREATE.COL_LINE_TOTAL' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (l of lines(); track l.itemId) {
+            <tr>
+              <td>{{ l.itemName }}</td>
+              <td nzAlign="right">{{ l.receivedQty }}</td>
+              <td nzAlign="right">{{ l.uomName }}</td>
+              <td nzAlign="right">{{ l.unitPrice | number: '1.2-2' }}</td>
+              <td nzAlign="right">{{ lineTotal(l) | number: '1.2-2' }}</td>
+            </tr>
+          }
+        </tbody>
+      </nz-table>
+      <div class="grn-create-modal__total">
+        {{ 'GRN.CREATE.TOTAL' | translate }}: <strong>{{ manualTotal() | number: '1.2-2' }}</strong>
+      </div>
+    }
+
+    <!-- Excel step 1 -->
+    @if (mode() === 'excel' && step() === 1) {
+      <div class="grn-create-modal__grid">
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.SUPPLIER' | translate }} *</label>
+          <nz-select
+            class="grn-create-modal__control"
+            [nzPlaceHolder]="'GRN.CREATE.SUPPLIER_PH' | translate"
+            [ngModel]="supplierId()"
+            (ngModelChange)="supplierId.set($event ?? '')"
+            nzShowSearch
+          >
+            @for (s of suppliers(); track s.id) {
+              <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
+            }
+          </nz-select>
+        </div>
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.WAREHOUSE' | translate }} *</label>
+          <nz-select
+            class="grn-create-modal__control"
+            [nzPlaceHolder]="'GRN.CREATE.WAREHOUSE_PH' | translate"
+            [ngModel]="locationId()"
+            (ngModelChange)="locationId.set($event ?? '')"
+            nzShowSearch
+          >
+            @for (l of locations(); track l.id) {
+              <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+            }
+          </nz-select>
+        </div>
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.GRN_NO' | translate }} *</label>
+          <input
+            nz-input
+            [ngModel]="grnNumber()"
+            (ngModelChange)="grnNumber.set($event)"
+            [placeholder]="'GRN.CREATE.GRN_NO_PH' | translate"
+          />
+        </div>
+        <div class="grn-create-modal__field">
+          <label class="grn-create-modal__label">{{ 'GRN.CREATE.RECEIVING_DATE' | translate }} *</label>
+          <nz-date-picker
+            class="grn-create-modal__date"
+            [ngModel]="receivingDatePicker()"
+            (ngModelChange)="onReceivingDateChange($event)"
+            nzFormat="yyyy-MM-dd"
+          />
+        </div>
+      </div>
+
+      <div class="grn-create-modal__excel-row">
+        <div class="grn-create-modal__template-card">
+          <p class="grn-create-modal__template-title">{{ 'GRN.CREATE.TEMPLATE_TITLE' | translate }}</p>
+          <p class="grn-create-modal__template-desc">{{ 'GRN.CREATE.TEMPLATE_DESC' | translate }}</p>
+          <button nz-button nzType="primary" type="button" (click)="downloadTemplate()">
+            <lucide-icon [img]="lucideDownload" [size]="14" />
+            {{ 'GRN.CREATE.TEMPLATE_BTN' | translate }}
+          </button>
+        </div>
+        <button
+          type="button"
+          class="grn-create-modal__excel-zone"
+          [class.grn-create-modal__excel-zone--ok]="excelFile()"
+          (click)="xlInput.click()"
+        >
+          @if (excelFile(); as xf) {
+            <lucide-icon [img]="lucideCheck" [size]="24" />
+            <span>{{ xf.name }}</span>
+          } @else {
+            <lucide-icon [img]="lucideSheet" [size]="24" />
+            <span>{{ 'GRN.CREATE.EXCEL_ZONE' | translate }}</span>
+          }
+        </button>
+        <input
+          #xlInput
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          hidden
+          (change)="onExcelSelected($any($event.target).files)"
+        />
+      </div>
+      <div class="grn-create-modal__field">
+        <label class="grn-create-modal__label">{{ 'GRN.CREATE.NOTES' | translate }}</label>
+        <textarea
+          nz-input
+          rows="1"
+          [ngModel]="notes()"
+          (ngModelChange)="notes.set($event)"
+          [placeholder]="'GRN.CREATE.NOTES_PH' | translate"
+        ></textarea>
+      </div>
+    }
+
+    <!-- Excel step 2 preview -->
+    @if (mode() === 'excel' && step() === 2 && preview(); as pv) {
+      <div class="grn-create-modal__stats">
+        <div class="grn-create-modal__stat">
+          <div class="grn-create-modal__stat-val">{{ pv.total }}</div>
+          <div class="grn-create-modal__stat-lbl">{{ 'GRN.CREATE.PV_TOTAL' | translate }}</div>
+        </div>
+        <div class="grn-create-modal__stat grn-create-modal__stat--ok">
+          <div class="grn-create-modal__stat-val">{{ pv.valid }}</div>
+          <div class="grn-create-modal__stat-lbl">{{ 'GRN.CREATE.PV_VALID' | translate }}</div>
+        </div>
+        <div class="grn-create-modal__stat grn-create-modal__stat--err">
+          <div class="grn-create-modal__stat-val">{{ pv.invalid || 0 }}</div>
+          <div class="grn-create-modal__stat-lbl">{{ 'GRN.CREATE.PV_INVALID' | translate }}</div>
+        </div>
+      </div>
+      <nz-table [nzData]="pv.rows" [nzShowPagination]="false" nzSize="small">
+        <thead>
+          <tr>
+            <th>{{ 'GRN.CREATE.PV_ROW' | translate }}</th>
+            <th>{{ 'GRN.CREATE.COL_ITEM' | translate }}</th>
+            <th nzAlign="right">{{ 'GRN.CREATE.COL_RECEIVED' | translate }}</th>
+            <th nzAlign="right">{{ 'GRN.CREATE.COL_PRICE' | translate }}</th>
+            <th>{{ 'COMMON.STATUS' | translate }}</th>
+            <th>{{ 'GRN.CREATE.PV_ISSUES' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of pv.rows; track $index) {
+            <tr [class.grn-create-modal__row-err]="row.status === 'ERROR'">
+              <td>{{ row.rowNum }}</td>
+              <td>{{ row.itemName || row.barcode || '—' }}</td>
+              <td nzAlign="right">{{ row.receivedQty }}</td>
+              <td nzAlign="right">{{ row.unitPrice ?? '—' }}</td>
+              <td>
+                @if (row.status === 'VALID') {
+                  <span class="status-badge status-posted">{{ 'GRN.CREATE.PV_OK' | translate }}</span>
+                } @else {
+                  <span class="status-badge status-rejected">{{ 'GRN.CREATE.PV_BAD' | translate }}</span>
+                }
+              </td>
+              <td class="grn-create-modal__issues">{{ row.errors?.join(', ') }}</td>
+            </tr>
+          }
+        </tbody>
+      </nz-table>
+      @if ((pv.invalid || 0) > 0) {
+        <nz-alert
+          nzType="warning"
+          nzShowIcon
+          [nzMessage]="'GRN.CREATE.PV_SKIP_HINT' | translate: { invalid: pv.invalid, valid: pv.valid }"
+        />
+      }
+    }
+
+    <!-- Excel step 3 invoice -->
+    @if (mode() === 'excel' && step() === 3) {
+      <div class="grn-create-modal__summary">
+        <div><span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_SUPPLIER' | translate }}</span> {{ supplierLabel() }}</div>
+        <div><span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_WAREHOUSE' | translate }}</span> {{ locationLabel() }}</div>
+        <div><span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_GRN' | translate }}</span> {{ grnNumber() }}</div>
+        <div>
+          <span class="grn-create-modal__muted">{{ 'GRN.CREATE.SUM_LINES' | translate }}</span>
+          {{ preview()?.valid }} {{ 'GRN.CREATE.ITEMS' | translate }}
+        </div>
+      </div>
+      <div class="grn-create-modal__field">
+        <label class="grn-create-modal__label">{{ 'GRN.CREATE.INVOICE' | translate }} *</label>
+        <button
+          type="button"
+          class="grn-create-modal__upload"
+          [class.grn-create-modal__upload--ok]="invoiceFile()"
+          (click)="invoiceInput2.click()"
+        >
+          @if (invoiceFile(); as f) {
+            <lucide-icon [img]="lucideCheck" [size]="18" />
+            <span>{{ f.name }}</span>
+          } @else {
+            <lucide-icon [img]="lucideUpload" [size]="18" />
+            <span>{{ 'GRN.CREATE.INVOICE_PH' | translate }}</span>
+          }
+        </button>
+        <input
+          #invoiceInput2
+          type="file"
+          accept=".pdf,image/*"
+          hidden
+          (change)="onInvoiceSelected($any($event.target).files)"
+        />
+      </div>
+    }
+
+    @if (isDone()) {
+      <div class="grn-create-modal__done">
+        <lucide-icon [img]="lucideCheck" [size]="64" class="grn-create-modal__done-icon" />
+        <p class="grn-create-modal__done-title">{{ 'GRN.CREATE.SUCCESS_TITLE' | translate }}</p>
+        <p class="grn-create-modal__done-sub">{{ 'GRN.CREATE.SUCCESS_SUB' | translate }}</p>
+      </div>
+    }
+  </div>
+
+  @if (!isDone()) {
+    <div class="grn-create-modal__footer">
+      <div>
+        @if (step() > 1) {
+          <button nz-button type="button" (click)="goBack()" [disabled]="loading()">
+            <lucide-icon [img]="lucideArrowLeft" [size]="16" />
+            {{ 'COMMON.BACK' | translate }}
+          </button>
+        }
+      </div>
+      <div class="grn-create-modal__footer-actions">
+        @if (step() === 1) {
+          <button nz-button type="button" (click)="close()">{{ 'COMMON.CANCEL' | translate }}</button>
+        }
+
+        @if (mode() === 'manual' && step() === 1) {
+          <button nz-button nzType="primary" type="button" (click)="handleManualNext()">
+            <lucide-icon [img]="lucidePlus" [size]="15" />
+            {{ 'GRN.CREATE.REVIEW' | translate }}
+          </button>
+        }
+        @if (mode() === 'manual' && step() === 2) {
+          <button nz-button nzType="primary" type="button" [disabled]="loading()" (click)="handleSubmit()">
+            @if (loading()) {
+              <lucide-icon [img]="lucideLoader" [size]="16" class="grn-create-modal__spin" />
+              {{ 'GRN.CREATE.CREATING' | translate }}
+            } @else {
+              <lucide-icon [img]="lucideCheck" [size]="15" />
+              {{ 'GRN.CREATE.CONFIRM_CREATE' | translate }}
+            }
+          </button>
+        }
+
+        @if (mode() === 'excel' && step() === 1) {
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="loading() || !excelFile()"
+            (click)="handleExcelPreview()"
+          >
+            @if (loading()) {
+              <lucide-icon [img]="lucideLoader" [size]="16" class="grn-create-modal__spin" />
+              {{ 'GRN.CREATE.PARSING' | translate }}
+            } @else {
+              <lucide-icon [img]="lucideArrowRight" [size]="15" />
+              {{ 'GRN.CREATE.PARSE_PREVIEW' | translate }}
+            }
+          </button>
+        }
+        @if (mode() === 'excel' && step() === 2 && (preview()?.valid ?? 0) > 0) {
+          <button nz-button nzType="primary" type="button" (click)="excelNextFromPreview()">
+            <lucide-icon [img]="lucideArrowRight" [size]="15" />
+            {{ 'GRN.CREATE.NEXT_INVOICE' | translate }}
+          </button>
+        }
+        @if (mode() === 'excel' && step() === 3) {
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="loading() || !invoiceFile()"
+            (click)="handleSubmit()"
+          >
+            @if (loading()) {
+              <lucide-icon [img]="lucideLoader" [size]="16" class="grn-create-modal__spin" />
+              {{ 'GRN.CREATE.CREATING' | translate }}
+            } @else {
+              <lucide-icon [img]="lucideCheck" [size]="15" />
+              {{ 'GRN.CREATE.CONFIRM_CREATE' | translate }}
+            }
+          </button>
+        }
+      </div>
+    </div>
+  }
+  </div>
+  </ng-container>
+</nz-modal>

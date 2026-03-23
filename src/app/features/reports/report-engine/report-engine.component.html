@@ -1,0 +1,318 @@
+<div class="report-engine space-y-6">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h2 class="text-xl font-bold text-brand-dark">{{ titleKey() | translate }}</h2>
+      <p class="mt-0.5 text-sm text-subtle">
+        @if (viewMode === 'result' && activeReport) {
+          {{ activeReport.reportName }}
+        } @else {
+          {{ 'REPORTS.ENGINE.SUBTITLE_GENERATE' | translate }}
+        }
+      </p>
+    </div>
+    @if (viewMode === 'result') {
+      <div class="flex flex-wrap gap-2">
+        <button type="button" nz-button (click)="backToFilters()">
+          <lucide-icon [img]="lucideHistory" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+          {{ 'COMMON.BACK' | translate }}
+        </button>
+        <button type="button" nz-button (click)="print()">
+          <lucide-icon [img]="lucidePrint" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+          {{ 'COMMON.PRINT' | translate }}
+        </button>
+        <button type="button" nz-button nzType="primary" class="!bg-brand-success border-0" (click)="downloadExcel()">
+          <lucide-icon [img]="lucideExcel" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+          {{ 'COMMON.EXPORT_EXCEL' | translate }}
+        </button>
+        <button type="button" nz-button nzDanger (click)="downloadPdf()">
+          <lucide-icon [img]="lucidePdf" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+          {{ 'REPORTS.ACTIONS.EXPORT_PDF' | translate }}
+        </button>
+      </div>
+    }
+  </div>
+
+  @if (viewMode === 'filters') {
+    <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+      <div class="grid grid-cols-1 items-end gap-4 xl:grid-cols-5">
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+            <lucide-icon [img]="lucideCalendar" class="mr-1 inline h-3.5 w-3.5" [strokeWidth]="2" />
+            {{ 'REPORTS.FILTERS.FROM_DATE' | translate }}
+          </label>
+          <nz-date-picker class="w-full" [(ngModel)]="startDate" nzFormat="dd/MM/yyyy" [nzInputReadOnly]="true" />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+            {{ 'REPORTS.FILTERS.TO_DATE' | translate }}
+          </label>
+          <nz-date-picker class="w-full" [(ngModel)]="endDate" nzFormat="dd/MM/yyyy" [nzInputReadOnly]="true" />
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+            <lucide-icon [img]="lucideBuilding" class="mr-1 inline h-3.5 w-3.5" [strokeWidth]="2" />
+            {{ 'REPORTS.FILTERS.DEPARTMENTS' | translate }}
+          </label>
+          <nz-select
+            class="w-full"
+            nzMode="multiple"
+            [(ngModel)]="selectedDeptIds"
+            (ngModelChange)="onDeptChange()"
+            nzPlaceHolder="{{ 'REPORTS.FILTERS.ALL_DEPARTMENTS' | translate }}"
+            [nzMaxTagCount]="2"
+          >
+            @for (d of departmentList; track d.id) {
+              <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+            {{ 'COMMON.CATEGORY' | translate }}
+          </label>
+          <nz-select
+            class="w-full"
+            [(ngModel)]="categoryId"
+            nzAllowClear
+            nzPlaceHolder="{{ 'REPORTS.FILTERS.ALL_CATEGORIES' | translate }}"
+          >
+            @for (c of categories; track c.id) {
+              <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <button
+            type="button"
+            nz-button
+            nzType="primary"
+            class="flex h-[38px] w-full items-center justify-center gap-2"
+            [disabled]="generating"
+            (click)="generate()"
+          >
+            @if (generating) {
+              <nz-spin nzSimple />
+            } @else {
+              <lucide-icon [img]="lucideSearch" class="h-4 w-4" [strokeWidth]="2" />
+            }
+            {{ 'REPORTS.ACTIONS.GENERATE' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <app-empty-state
+      [title]="'REPORTS.ENGINE.EMPTY_TITLE' | translate"
+      [message]="'REPORTS.ENGINE.EMPTY_HINT' | translate"
+    />
+  }
+
+  @if (viewMode === 'result' && activeReport) {
+    <div class="overflow-hidden rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated shadow-sm print:border-none">
+      <div
+        class="bg-gradient-to-r from-blue-800 to-brand-primary px-6 py-5 text-white print:bg-brand-primary"
+      >
+        <h3 class="text-xl font-bold">{{ activeReport.reportName }}</h3>
+        <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-blue-100">
+          <span>{{ formatRange(activeReport.startDate, activeReport.endDate) }}</span>
+          <span>•</span>
+          <span>{{ 'REPORTS.ENGINE.GENERATED_AT' | translate }} {{ activeReport.createdAt | date: 'medium' }}</span>
+        </div>
+      </div>
+
+      <div class="p-6 print-container">
+        @if (rowsGeneric().length === 0 && reportType !== 'DETAIL') {
+          <app-empty-state
+            [title]="'REPORTS.ENGINE.NO_ROWS_TITLE' | translate"
+            [message]="'REPORTS.ENGINE.NO_ROWS_HINT' | translate"
+          />
+        } @else {
+          @switch (reportType) {
+            @case ('DETAIL') {
+              @if (detailRows().length === 0) {
+                <app-empty-state
+                  [title]="'REPORTS.ENGINE.NO_ROWS_TITLE' | translate"
+                  [message]="'REPORTS.ENGINE.NO_ROWS_HINT' | translate"
+                />
+              } @else {
+                <app-detail-report-table [rows]="detailRows()" [locations]="detailLocations()" />
+              }
+            }
+            @case ('BREAKAGE') {
+              <nz-table
+                #brkTable
+                [nzData]="rowsGeneric()"
+                [nzShowPagination]="false"
+                nzSize="small"
+                [nzNoResult]="emptyBrk"
+              >
+                <ng-template #emptyBrk>
+                  <app-empty-state
+                    [title]="'REPORTS.ENGINE.NO_ROWS_TITLE' | translate"
+                    [message]="'REPORTS.ENGINE.NO_ROWS_HINT' | translate"
+                  />
+                </ng-template>
+                <thead>
+                  <tr>
+                    <th>{{ 'COMMON.DATE' | translate }}</th>
+                    <th>{{ 'COMMON.REFERENCE' | translate }}</th>
+                    <th>{{ 'COMMON.DEPARTMENT' | translate }}</th>
+                    <th>{{ 'COMMON.LOCATION' | translate }}</th>
+                    <th>{{ 'COMMON.CATEGORY' | translate }}</th>
+                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="text-right">{{ 'COMMON.QTY' | translate }}</th>
+                    <th class="text-right">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
+                    <th>{{ 'COMMON.NOTES' | translate }}</th>
+                    <th>{{ 'REPORTS.BREAKAGE.CREATED_BY' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of brkTable.data; track $index) {
+                    <tr>
+                      <td>{{ r['date'] }}</td>
+                      <td class="font-mono text-xs">{{ r['documentNo'] }}</td>
+                      <td>{{ r['department'] }}</td>
+                      <td>{{ r['location'] }}</td>
+                      <td>{{ r['category'] }}</td>
+                      <td>{{ r['itemName'] }}</td>
+                      <td class="text-right font-semibold text-red-700">{{ fmtQty(r['qty']) }}</td>
+                      <td class="text-right font-semibold text-red-700">{{ fmt(r['value']) }}</td>
+                      <td class="text-subtle">{{ r['reason'] ?? '—' }}</td>
+                      <td class="text-subtle">{{ r['createdBy'] ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </nz-table>
+            }
+            @case ('OMC') {
+              <nz-table
+                #omcTable
+                [nzData]="rowsGeneric()"
+                [nzShowPagination]="false"
+                nzSize="small"
+                [nzNoResult]="emptyOmc"
+              >
+                <ng-template #emptyOmc>
+                  <app-empty-state
+                    [title]="'REPORTS.ENGINE.NO_ROWS_TITLE' | translate"
+                    [message]="'REPORTS.ENGINE.NO_ROWS_HINT' | translate"
+                  />
+                </ng-template>
+                <thead>
+                  <tr>
+                    <th>{{ 'COMMON.CATEGORY' | translate }}</th>
+                    <th>{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
+                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="text-right">{{ 'REPORTS.OMC.OPENING' | translate }}</th>
+                    <th class="text-right">{{ 'REPORTS.OMC.IN' | translate }}</th>
+                    <th class="text-right">{{ 'REPORTS.OMC.OUT' | translate }}</th>
+                    <th class="text-right">{{ 'REPORTS.OMC.CLOSING' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of omcTable.data; track $index) {
+                    <tr>
+                      <td>{{ r['category'] }}</td>
+                      <td class="font-mono text-xs">{{ r['itemCode'] }}</td>
+                      <td>{{ r['itemName'] }}</td>
+                      <td class="text-right text-blue-700">{{ fmtQty(r['openingQty']) }}</td>
+                      <td class="text-right font-semibold text-green-700">+{{ fmtQty(omcIn(r)) }}</td>
+                      <td class="text-right font-semibold text-red-600">-{{ fmtQty(omcOut(r)) }}</td>
+                      <td class="text-right font-bold text-indigo-700">{{ fmtQty(r['closingQty']) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </nz-table>
+            }
+            @case ('TRANSFERS') {
+              <nz-table
+                #trfTable
+                [nzData]="rowsGeneric()"
+                [nzShowPagination]="false"
+                nzSize="small"
+                [nzNoResult]="emptyTrf"
+              >
+                <ng-template #emptyTrf>
+                  <app-empty-state
+                    [title]="'REPORTS.ENGINE.NO_ROWS_TITLE' | translate"
+                    [message]="'REPORTS.ENGINE.NO_ROWS_HINT' | translate"
+                  />
+                </ng-template>
+                <thead>
+                  <tr>
+                    <th>{{ 'COMMON.DATE' | translate }}</th>
+                    <th>{{ 'COMMON.REFERENCE' | translate }}</th>
+                    <th>{{ 'COMMON.TYPE' | translate }}</th>
+                    <th>{{ 'REPORTS.TRF.SOURCE' | translate }}</th>
+                    <th>{{ 'REPORTS.TRF.DEST' | translate }}</th>
+                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="text-right">{{ 'COMMON.QTY' | translate }}</th>
+                    <th>{{ 'REPORTS.TRF.REQUESTED_BY' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of trfTable.data; track $index) {
+                    <tr>
+                      <td>{{ r['date'] }}</td>
+                      <td class="font-mono text-xs">{{ r['documentNo'] }}</td>
+                      <td>
+                        <span class="status-pill">{{ r['type'] }}</span>
+                      </td>
+                      <td>{{ r['source'] }}</td>
+                      <td>{{ r['destination'] }}</td>
+                      <td>{{ r['itemName'] }}</td>
+                      <td class="text-right font-semibold">{{ fmtQty(r['qty']) }}</td>
+                      <td class="text-subtle">{{ r['requestedBy'] }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </nz-table>
+            }
+            @case ('AGING') {
+              <nz-table
+                #ageTable
+                [nzData]="rowsGeneric()"
+                [nzShowPagination]="false"
+                nzSize="small"
+                [nzNoResult]="emptyAge"
+              >
+                <ng-template #emptyAge>
+                  <app-empty-state
+                    [title]="'REPORTS.ENGINE.NO_ROWS_TITLE' | translate"
+                    [message]="'REPORTS.ENGINE.NO_ROWS_HINT' | translate"
+                  />
+                </ng-template>
+                <thead>
+                  <tr>
+                    <th>{{ 'COMMON.LOCATION' | translate }}</th>
+                    <th>{{ 'COMMON.CATEGORY' | translate }}</th>
+                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="text-right">{{ 'REPORTS.AGING.ON_HAND' | translate }}</th>
+                    <th>{{ 'REPORTS.AGING.LAST_RECEIPT' | translate }}</th>
+                    <th class="text-right">{{ 'REPORTS.AGING.DAYS_OLD' | translate }}</th>
+                    <th>{{ 'REPORTS.AGING.BUCKET' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of ageTable.data; track $index) {
+                    <tr>
+                      <td>{{ r['location'] }}</td>
+                      <td>{{ r['category'] }}</td>
+                      <td>{{ r['itemName'] }}</td>
+                      <td class="text-right font-semibold">{{ fmtQty(r['qtyOnHand']) }}</td>
+                      <td class="text-subtle">{{ r['lastReceiveDate'] }}</td>
+                      <td class="text-right">{{ r['daysOld'] }}</td>
+                      <td>
+                        <span class="status-pill">{{ r['bucket'] }}</span>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </nz-table>
+            }
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

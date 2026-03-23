@@ -1,0 +1,110 @@
+<div class="period-close space-y-6">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="flex items-center gap-2 text-2xl font-bold text-brand-dark">
+        <lucide-icon [img]="lucideCalendar" class="h-7 w-7 text-indigo-600" [strokeWidth]="2" />
+        {{ 'PERIOD_CLOSE.TITLE' | translate }}
+      </h1>
+      <p class="mt-1 text-sm text-subtle">{{ 'PERIOD_CLOSE.SUBTITLE' | translate }}</p>
+    </div>
+    <button type="button" nz-button nzType="primary" (click)="toggleForm()">
+      <lucide-icon [img]="lucideLock" class="mr-2 inline h-4 w-4" [strokeWidth]="2" />
+      {{ 'PERIOD_CLOSE.ACTION_CLOSE' | translate }}
+    </button>
+  </div>
+
+  @if (showForm()) {
+    <div class="rounded-[6px] border-2 border-indigo-200 bg-surface-elevated p-4">
+      <h3 class="mb-3 text-lg font-semibold text-brand-dark">{{ 'PERIOD_CLOSE.FORM_TITLE' | translate }}</h3>
+      <div class="grid grid-cols-1 items-end gap-4 md:grid-cols-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'PERIOD_CLOSE.YEAR' | translate }} *</label>
+          <nz-select class="w-full" [(ngModel)]="year">
+            @for (y of years; track y) {
+              <nz-option [nzValue]="y" [nzLabel]="'' + y" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'PERIOD_CLOSE.MONTH' | translate }}</label>
+          <nz-select class="w-full" [(ngModel)]="month">
+            <nz-option [nzValue]="''" [nzLabel]="'PERIOD_CLOSE.MONTH_ANNUAL' | translate" />
+            @for (m of monthNums; track m) {
+              <nz-option [nzValue]="m" [nzLabel]="monthLabel(m)" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'COMMON.NOTES' | translate }}</label>
+          <input nz-input type="text" [(ngModel)]="notes" [placeholder]="'COMMON.OPTIONAL_NOTES' | translate" />
+        </div>
+        <div>
+          <button
+            type="button"
+            nz-button
+            nzType="primary"
+            class="flex w-full items-center justify-center gap-2"
+            [disabled]="closing()"
+            (click)="confirmClose()"
+          >
+            @if (closing()) {
+              <lucide-icon [img]="lucideRefresh" class="h-4 w-4 animate-spin" [strokeWidth]="2" />
+            } @else {
+              <lucide-icon [img]="lucideLock" class="h-4 w-4" [strokeWidth]="2" />
+            }
+            {{ closing() ? ('PERIOD_CLOSE.CLOSING' | translate) : ('PERIOD_CLOSE.CONFIRM_CLOSE' | translate) }}
+          </button>
+        </div>
+      </div>
+      <div class="mt-3 rounded-[6px] bg-amber-50 p-2 text-xs text-amber-800">
+        <lucide-icon [img]="lucideAlert" class="mr-1 inline h-3 w-3 text-amber-600" [strokeWidth]="2" />
+        {{ 'PERIOD_CLOSE.SNAPSHOT_HINT' | translate }}
+      </div>
+    </div>
+  }
+
+  <nz-table [nzData]="periods()" [nzLoading]="loading()" [nzShowPagination]="false" nzSize="middle" [nzNoResult]="emptyTpl">
+    <ng-template #emptyTpl>
+      <app-empty-state [title]="'PERIOD_CLOSE.EMPTY_TITLE' | translate" [message]="'PERIOD_CLOSE.EMPTY_HINT' | translate" />
+    </ng-template>
+    <thead>
+      <tr>
+        <th>{{ 'PERIOD_CLOSE.COL_PERIOD' | translate }}</th>
+        <th nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th>{{ 'PERIOD_CLOSE.COL_CLOSED_AT' | translate }}</th>
+        <th>{{ 'COMMON.NOTES' | translate }}</th>
+        <th nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (p of periods(); track p.id) {
+        <tr>
+          <td class="font-medium">{{ periodLabel(p.year, p.month ?? null) }}</td>
+          <td nzAlign="center">
+            @if (p.status === 'CLOSED') {
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium status-active">
+                <lucide-icon [img]="lucideCheck" class="h-3 w-3" [strokeWidth]="2" />
+                {{ 'PERIOD_CLOSE.STATUS_CLOSED' | translate }}
+              </span>
+            } @else {
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium status-pending">
+                <lucide-icon [img]="lucideUnlock" class="h-3 w-3" [strokeWidth]="2" />
+                {{ 'PERIOD_CLOSE.STATUS_OPEN' | translate }}
+              </span>
+            }
+          </td>
+          <td class="text-subtle">{{ p.closedAt ? (p.closedAt | date: 'medium') : '—' }}</td>
+          <td class="max-w-[200px] truncate text-subtle">{{ p.notes || '—' }}</td>
+          <td nzAlign="center">
+            @if (p.status === 'CLOSED') {
+              <button nz-button nzType="link" type="button" (click)="reopen(p)">
+                <lucide-icon [img]="lucideUnlock" class="mr-1 inline h-3 w-3" [strokeWidth]="2" />
+                {{ 'PERIOD_CLOSE.REOPEN' | translate }}
+              </button>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>

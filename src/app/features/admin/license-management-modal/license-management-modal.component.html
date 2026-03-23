@@ -1,0 +1,70 @@
+<nz-modal
+  [nzVisible]="visible()"
+  (nzOnCancel)="close()"
+  [nzTitle]="modalTitle"
+  [nzMaskClosable]="false"
+  [nzFooter]="footerTpl"
+  [nzWidth]="480"
+>
+  <ng-container *nzModalContent>
+    @if (formError) {
+      <nz-alert
+        nzType="error"
+        [nzMessage]="getErrorMessage()"
+        nzShowIcon
+        class="license-management-modal__alert"
+      />
+    }
+
+    <div class="license-management-modal__section">
+      <h4 class="license-management-modal__section-title">
+        <lucide-icon [img]="lucideKeySquare" [size]="14" />
+        {{ 'SUPER_ADMIN.CREATE_SECTION_LICENSE' | translate }}
+      </h4>
+      <div nz-row [nzGutter]="16">
+        <div nz-col [nzSpan]="24">
+          <nz-form-item>
+            <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_LICENSE_START' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input
+                nz-input
+                type="date"
+                [(ngModel)]="licenseStartDate"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col [nzSpan]="24">
+          <nz-form-item>
+            <nz-form-label>{{ 'SUPER_ADMIN.CREATE_LICENSE_END' | translate }}</nz-form-label>
+            <nz-form-control [nzExtra]="licenseEndHint">
+              <input nz-input type="date" [(ngModel)]="licenseEndDate" />
+            </nz-form-control>
+            <ng-template #licenseEndHint>
+              <span class="license-management-modal__hint">{{ 'SUPER_ADMIN.CREATE_LICENSE_END_HINT' | translate }}</span>
+            </ng-template>
+          </nz-form-item>
+        </div>
+        <div nz-col [nzSpan]="24">
+          <nz-form-item>
+            <nz-form-label>{{ 'COMMON.STATUS' | translate }}</nz-form-label>
+            <nz-form-control>
+              <nz-select [(ngModel)]="subStatus" class="license-management-modal__full-width">
+                <nz-option [nzValue]="'ACTIVE'" [nzLabel]="'COMMON.ACTIVE' | translate" />
+                <nz-option [nzValue]="'TRIAL'" [nzLabel]="'SUPER_ADMIN.STATUS_TRIAL' | translate" />
+                <nz-option [nzValue]="'EXPIRED'" [nzLabel]="'SUPER_ADMIN.STATUS_EXPIRED' | translate" />
+                <nz-option [nzValue]="'SUSPENDED'" [nzLabel]="'SUPER_ADMIN.STATUS_SUSPENDED' | translate" />
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+  <ng-template #footerTpl>
+    <button nz-button type="button" (click)="close()">{{ 'COMMON.CANCEL' | translate }}</button>
+    <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="submit()">
+      {{ 'COMMON.SAVE' | translate }}
+    </button>
+  </ng-template>
+</nz-modal>

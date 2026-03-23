@@ -1,0 +1,234 @@
+<div class="admin-users">
+  <div class="admin-users__header">
+    <div>
+      <h1 class="admin-users__title">
+        <lucide-icon [img]="lucideUsers" [size]="24" class="admin-users__title-icon" />
+        {{ 'USERS.TITLE' | translate }}
+      </h1>
+      <p class="admin-users__meta">{{ 'USERS.SUBTITLE' | translate: { count: total() } }}</p>
+    </div>
+    <button nz-button nzType="primary" type="button" (click)="openCreate()">
+      <lucide-icon [img]="lucidePlus" [size]="16" />
+      <span>{{ 'USERS.NEW' | translate }}</span>
+    </button>
+  </div>
+
+  <div class="admin-users__filters">
+    <nz-input-group [nzPrefix]="searchPrefix" class="admin-users__search">
+      <input
+        nz-input
+        [placeholder]="'USERS.SEARCH_PLACEHOLDER' | translate"
+        [ngModel]="searchDraft()"
+        (ngModelChange)="onSearchChange($event)"
+      />
+    </nz-input-group>
+    <ng-template #searchPrefix>
+      <lucide-icon [img]="lucideSearch" [size]="18" />
+    </ng-template>
+
+    <nz-select
+      class="admin-users__role"
+      [ngModel]="roleFilter()"
+      (ngModelChange)="onRoleFilterChange($event)"
+      [nzPlaceHolder]="'USERS.ALL_ROLES' | translate"
+    >
+      <nz-option [nzValue]="''" [nzLabel]="'USERS.ALL_ROLES' | translate" />
+      @for (r of assignableRoles; track r) {
+        <nz-option [nzValue]="r" [nzLabel]="('USERS.ROLES.' + r) | translate" />
+      }
+    </nz-select>
+
+    @if (searchDraft() || roleFilter()) {
+      <button nz-button nzType="default" type="button" (click)="clearFilters()">
+        <lucide-icon [img]="lucideX" [size]="14" />
+        {{ 'COMMON.CLEAR' | translate }}
+      </button>
+    }
+
+    <button
+      nz-button
+      nzType="text"
+      type="button"
+      [attr.aria-label]="'COMMON.REFRESH' | translate"
+      (click)="load()"
+    >
+      <lucide-icon [img]="lucideRefresh" [size]="18" [class.admin-users__spin]="loading()" />
+    </button>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #tbl
+    [nzData]="users()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[10, 20, 50]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'USERS.EMPTY_TITLE' | translate"
+        [message]="'USERS.EMPTY_MSG' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th>{{ 'USERS.COL_USER' | translate }}</th>
+        <th>{{ 'USERS.COL_EMAIL' | translate }}</th>
+        <th>{{ 'USERS.COL_ROLE' | translate }}</th>
+        <th>{{ 'USERS.COL_DEPARTMENT' | translate }}</th>
+        <th>{{ 'USERS.COL_PHONE' | translate }}</th>
+        <th nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th>{{ 'USERS.COL_LAST_LOGIN' | translate }}</th>
+        <th nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (u of tbl.data; track u.id) {
+        <tr>
+          <td>
+            <div class="admin-users__user-cell">
+              <nz-avatar nzShape="circle" [nzText]="initials(u)" class="admin-users__avatar"></nz-avatar>
+              <span class="admin-users__name">{{ u.firstName }} {{ u.lastName }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="admin-users__muted">
+              <lucide-icon [img]="lucideMail" [size]="14" />
+              {{ u.email }}
+            </span>
+          </td>
+          <td>
+            <nz-tag [nzColor]="roleNzColor(u.role)">
+              <span class="admin-users__tag-inner">
+                <lucide-icon [img]="lucideShield" [size]="12" />
+                {{ ('USERS.ROLES.' + u.role) | translate }}
+              </span>
+            </nz-tag>
+          </td>
+          <td>{{ u.department || '—' }}</td>
+          <td>
+            @if (u.phone) {
+              <span class="admin-users__muted">
+                <lucide-icon [img]="lucidePhone" [size]="14" />
+                {{ u.phone }}
+              </span>
+            } @else {
+              —
+            }
+          </td>
+          <td nzAlign="center">
+            <span class="status-badge" [class.status-active]="u.isActive" [class.status-inactive]="!u.isActive">
+              {{ (u.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate }}
+            </span>
+          </td>
+          <td>
+            @if (u.lastLoginAt) {
+              <span class="admin-users__muted">
+                <lucide-icon [img]="lucideCalendar" [size]="14" />
+                {{ u.lastLoginAt | date: 'mediumDate' }}
+              </span>
+            } @else {
+              {{ 'USERS.NEVER' | translate }}
+            }
+          </td>
+          <td nzAlign="center">
+            <button
+              nz-button
+              nzType="text"
+              type="button"
+              [attr.aria-label]="'USERS.EDIT_USER' | translate"
+              (click)="openEdit(u)"
+            >
+              <lucide-icon [img]="lucidePencil" [size]="18" />
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>
+
+<nz-modal
+  [nzVisible]="modalOpen()"
+  (nzOnCancel)="closeModal()"
+  (nzVisibleChange)="onModalVisible($event)"
+  [nzTitle]="(editRow() ? 'USERS.EDIT_TITLE' : 'USERS.NEW_TITLE') | translate"
+  [nzMaskClosable]="false"
+  [nzFooter]="modalFooter"
+  [nzWidth]="480"
+>
+  <ng-container *nzModalContent>
+    @if (formError) {
+      <nz-alert nzType="error" [nzMessage]="formError" nzShowIcon class="admin-users__form-alert" />
+    }
+    <div class="admin-users__form">
+      <div class="admin-users__form-row">
+        <label class="admin-users__label">{{ 'USERS.FORM.FIRST_NAME' | translate }} *</label>
+        <input nz-input [(ngModel)]="formFirstName" name="fn" />
+      </div>
+      <div class="admin-users__form-row">
+        <label class="admin-users__label">{{ 'USERS.FORM.LAST_NAME' | translate }}</label>
+        <input nz-input [(ngModel)]="formLastName" name="ln" />
+      </div>
+      <div class="admin-users__form-row">
+        <label class="admin-users__label">{{ 'USERS.FORM.EMAIL' | translate }} *</label>
+        <input nz-input type="email" [(ngModel)]="formEmail" name="em" [disabled]="!!editRow()" />
+      </div>
+      <div class="admin-users__form-row">
+        <label class="admin-users__label">
+          {{ 'USERS.FORM.PASSWORD' | translate }}
+          @if (!editRow()) {
+            *
+          }
+        </label>
+        <input
+          nz-input
+          type="password"
+          [(ngModel)]="formPassword"
+          name="pw"
+          [attr.placeholder]="editRow() ? ('USERS.FORM.PASSWORD_PLACEHOLDER_EDIT' | translate) : ''"
+        />
+      </div>
+      <div class="admin-users__form-row admin-users__form-row--2">
+        <div>
+          <label class="admin-users__label">{{ 'USERS.FORM.ROLE' | translate }}</label>
+          <nz-select [(ngModel)]="formRole" name="role" class="admin-users__full-width">
+            @for (r of assignableRoles; track r) {
+              <nz-option [nzValue]="r" [nzLabel]="('USERS.ROLES.' + r) | translate" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <label class="admin-users__label">{{ 'USERS.FORM.DEPARTMENT' | translate }}</label>
+          <input nz-input [(ngModel)]="formDepartment" name="dept" />
+        </div>
+      </div>
+      <div class="admin-users__form-row">
+        <label class="admin-users__label">{{ 'USERS.FORM.PHONE' | translate }}</label>
+        <input nz-input [(ngModel)]="formPhone" name="ph" />
+      </div>
+      @if (editRow()) {
+        <label nz-checkbox [(ngModel)]="formActive" name="act">
+          {{ 'USERS.FORM.ACTIVE' | translate }}
+        </label>
+      }
+    </div>
+  </ng-container>
+  <ng-template #modalFooter>
+    <button nz-button type="button" (click)="closeModal()">{{ 'COMMON.CANCEL' | translate }}</button>
+    <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="saveUser()">
+      {{ (editRow() ? 'COMMON.SAVE' : 'USERS.CREATE') | translate }}
+    </button>
+  </ng-template>
+</nz-modal>

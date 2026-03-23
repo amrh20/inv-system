@@ -1,0 +1,200 @@
+@if (loading()) {
+  <p class="brk-d__muted">{{ 'BREAKAGE.DETAIL.LOADING' | translate }}</p>
+} @else if (error()) {
+  <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon />
+} @else if (doc(); as d) {
+  <div class="brk-d">
+    <div class="brk-d__head">
+      <button nz-button nzType="text" type="button" (click)="back()">
+        <lucide-icon [img]="lucideBack" [size]="18" [strokeWidth]="2" />
+      </button>
+      <h1 class="brk-d__title">{{ 'BREAKAGE.DETAIL.TITLE' | translate }} {{ d.documentNo }}</h1>
+      <span class="status-badge" [ngClass]="'status-' + statusClass(d.status)">
+        {{ 'BREAKAGE.STATUS.' + d.status | translate }}
+      </span>
+    </div>
+
+    <div class="brk-d__actions">
+      <div class="brk-d__actions-left">
+        @if (canSubmit()) {
+          <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="submit()">
+            {{ 'BREAKAGE.DETAIL.SUBMIT' | translate }}
+          </button>
+        }
+        @if (canApprove()) {
+          <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openApproval('APPROVE')">
+            <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+            {{ 'BREAKAGE.DETAIL.APPROVE' | translate }}
+          </button>
+          <button nz-button nzDanger type="button" [disabled]="actionBusy()" (click)="openApproval('REJECT')">
+            <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
+            {{ 'BREAKAGE.DETAIL.REJECT' | translate }}
+          </button>
+        }
+      </div>
+      <div class="brk-d__actions-right">
+        <button nz-button nzType="default" type="button" (click)="downloadPdf()">
+          <lucide-icon [img]="lucideDownload" [size]="14" [strokeWidth]="2" />
+          {{ 'BREAKAGE.DETAIL.PDF' | translate }}
+        </button>
+        <button nz-button nzType="default" type="button" (click)="viewEvidence()">
+          {{ 'BREAKAGE.DETAIL.EVIDENCE_JSON' | translate }}
+        </button>
+        @if (canVoid()) {
+          <button nz-button nzDanger nzType="default" type="button" [disabled]="actionBusy()" (click)="voidDoc()">
+            <lucide-icon [img]="lucideTrash" [size]="14" [strokeWidth]="2" />
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="brk-d__grid">
+      <div class="brk-d__main">
+        <div class="brk-d__card brk-d__card--rel">
+          @if (d.status === 'POSTED') {
+            <lucide-icon [img]="lucideShield" [size]="120" class="brk-d__watermark" [strokeWidth]="2" />
+          }
+          <h2 class="brk-d__h2">{{ 'BREAKAGE.DETAIL.INFO' | translate }}</h2>
+          <div class="brk-d__info">
+            <div>
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.CREATED_BY' | translate }}</div>
+              <div>{{ userName(d.createdByUser) }}</div>
+            </div>
+            <div>
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.CREATED_AT' | translate }}</div>
+              <div>{{ d.createdAt | date: 'medium' }}</div>
+            </div>
+            <div>
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.SOURCE_LOC' | translate }}</div>
+              <div>{{ d.lines[0]?.location?.name ?? '—' }}</div>
+            </div>
+            <div>
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.POSTED_AT' | translate }}</div>
+              <div>{{ d.postedAt ? (d.postedAt | date: 'medium') : ('BREAKAGE.DETAIL.NOT_POSTED' | translate) }}</div>
+            </div>
+            <div class="brk-d__full">
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.REASON' | translate }}</div>
+              <div class="brk-d__reason">{{ d.reason }}</div>
+            </div>
+            @if (d.notes) {
+              <div class="brk-d__full">
+                <div class="brk-d__label">{{ 'COMMON.NOTES' | translate }}</div>
+                <div>{{ d.notes }}</div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="brk-d__card">
+          <h2 class="brk-d__h2">{{ 'BREAKAGE.DETAIL.LINES_TITLE' | translate }} ({{ d.lines.length }})</h2>
+          <nz-table [nzData]="d.lines" [nzShowPagination]="false" nzSize="middle">
+            <thead>
+              <tr>
+                <th>{{ 'BREAKAGE.DETAIL.COL_ITEM' | translate }}</th>
+                <th>{{ 'BREAKAGE.DETAIL.COL_BARCODE' | translate }}</th>
+                <th nzAlign="right">{{ 'BREAKAGE.DETAIL.COL_QTY' | translate }}</th>
+                <th>{{ 'BREAKAGE.DETAIL.COL_NOTES' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of d.lines; track line.id) {
+                <tr>
+                  <td>{{ line.item?.name }}</td>
+                  <td class="brk-d__muted">{{ line.item?.barcode ?? '—' }}</td>
+                  <td nzAlign="right" class="text-brand-error">{{ num(line.qtyInBaseUnit) }}</td>
+                  <td>{{ line.notes ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+        </div>
+      </div>
+
+      <div class="brk-d__side">
+        <div class="brk-d__card">
+          <h2 class="brk-d__h2">
+            <lucide-icon [img]="lucideClock" [size]="18" [strokeWidth]="2" />
+            {{ 'BREAKAGE.DETAIL.TIMELINE' | translate }}
+          </h2>
+          @if (!d.approvalRequests?.length) {
+            <p class="brk-d__muted">{{ 'BREAKAGE.DETAIL.NO_WORKFLOW' | translate }}</p>
+          } @else {
+            @for (ap of d.approvalRequests; track ap.id) {
+              @for (step of ap.steps; track step.id) {
+                <div class="brk-d__step">
+                  <div class="brk-d__dot" [class.brk-d__dot--ok]="step.status === 'APPROVED'" [class.brk-d__dot--bad]="step.status === 'REJECTED'"></div>
+                  <div>
+                    <div class="brk-d__step-title">
+                      {{ 'BREAKAGE.DETAIL.STEP' | translate: { n: step.stepNumber, role: step.requiredRole } }}
+                    </div>
+                    <div>{{ step.status }}</div>
+                    @if (step.actedByUser) {
+                      <div class="brk-d__muted small">
+                        {{ userName(step.actedByUser) }} · {{ step.actedAt | date: 'mediumDate' }}
+                      </div>
+                    }
+                    @if (step.comment) {
+                      <div class="brk-d__comment">"{{ step.comment }}"</div>
+                    }
+                  </div>
+                </div>
+              }
+            }
+          }
+        </div>
+
+        <div class="brk-d__card">
+          <div class="brk-d__attach-head">
+            <h2 class="brk-d__h2">
+              <lucide-icon [img]="lucideClip" [size]="18" [strokeWidth]="2" />
+              {{ 'BREAKAGE.DETAIL.ATTACHMENTS' | translate }} ({{ attachments().length }})
+            </h2>
+            @if (d.status !== 'POSTED' && d.status !== 'VOID') {
+              <input
+                #attInput
+                type="file"
+                class="brk-d__file"
+                accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                (change)="onFileUpload($event)"
+                [disabled]="uploadBusy()"
+              />
+              <button nz-button nzType="default" type="button" [disabled]="uploadBusy()" (click)="attInput.click()">
+                {{ 'BREAKAGE.DETAIL.UPLOAD' | translate }}
+              </button>
+            }
+          </div>
+          @if (attachments().length === 0) {
+            <p class="brk-d__muted">{{ 'BREAKAGE.DETAIL.NO_ATTACHMENTS' | translate }}</p>
+          } @else {
+            <ul class="brk-d__attach-list">
+              @for (a of attachments(); track $index) {
+                <li class="brk-d__attach-row">
+                  <lucide-icon [img]="lucideFile" [size]="18" [strokeWidth]="2" />
+                  <div class="brk-d__attach-meta">
+                    <div class="brk-d__attach-name">{{ a.originalName }}</div>
+                    <div class="brk-d__muted small">{{ a.uploadedBy }}</div>
+                  </div>
+                  <a nz-button nzType="link" [href]="attachmentHref(a)" target="_blank" rel="noreferrer">
+                    {{ 'BREAKAGE.DETAIL.VIEW_FILE' | translate }}
+                  </a>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<nz-modal
+  [nzVisible]="approvalOpen()"
+  [nzTitle]="approvalAction() === 'REJECT' ? ('BREAKAGE.DETAIL.REJECT_TITLE' | translate) : ('BREAKAGE.DETAIL.APPROVE_TITLE' | translate)"
+  (nzOnCancel)="approvalOpen.set(false)"
+  (nzOnOk)="confirmApproval()"
+  [nzOkLoading]="actionBusy()"
+>
+  <ng-container *nzModalContent>
+    <textarea nz-input rows="4" [ngModel]="approvalComment()" (ngModelChange)="approvalComment.set($event)" [placeholder]="'BREAKAGE.DETAIL.COMMENT_PH' | translate"></textarea>
+  </ng-container>
+</nz-modal>

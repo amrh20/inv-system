@@ -1,0 +1,173 @@
+@if (loading()) {
+  <p class="transfer-form__center">{{ 'TRANSFER.FORM.LOADING' | translate }}</p>
+} @else {
+  <button nz-button nzType="link" type="button" class="transfer-form__back" (click)="back()">
+    <lucide-icon [img]="lucideBack" [size]="16" [strokeWidth]="2" />
+    {{ 'COMMON.BACK' | translate }}
+  </button>
+
+  <h1 class="transfer-form__title">
+    {{ (editId() ? 'TRANSFER.FORM.EDIT_TITLE' : 'TRANSFER.FORM.NEW_TITLE') | translate }}
+  </h1>
+
+  @if (error()) {
+    <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="transfer-form__alert" />
+  }
+
+  <div class="transfer-form__card">
+    <div class="transfer-form__grid">
+      <div>
+        <label class="transfer-form__label">{{ 'TRANSFER.FORM.SOURCE' | translate }}</label>
+        <nz-select
+          class="transfer-form__control"
+          [nzPlaceHolder]="'TRANSFER.FORM.SOURCE_PH' | translate"
+          [ngModel]="sourceLocationId()"
+          (ngModelChange)="onSourceChange($event)"
+          nzShowSearch
+          nzAllowClear
+        >
+          @for (loc of locations(); track loc.id) {
+            <nz-option [nzValue]="loc.id" [nzLabel]="loc.name" />
+          }
+        </nz-select>
+      </div>
+      <div>
+        <label class="transfer-form__label">{{ 'TRANSFER.FORM.DEST' | translate }}</label>
+        <nz-select
+          class="transfer-form__control"
+          [nzPlaceHolder]="'TRANSFER.FORM.DEST_PH' | translate"
+          [ngModel]="destLocationId()"
+          (ngModelChange)="setDest($event)"
+          nzShowSearch
+          nzAllowClear
+        >
+          @for (loc of destOptions(); track loc.id) {
+            <nz-option [nzValue]="loc.id" [nzLabel]="loc.name" />
+          }
+        </nz-select>
+      </div>
+      <div>
+        <label class="transfer-form__label">{{ 'TRANSFER.FORM.REASON' | translate }}</label>
+        <input
+          nz-input
+          type="text"
+          [placeholder]="'TRANSFER.FORM.REASON_PH' | translate"
+          [ngModel]="reason()"
+          (ngModelChange)="reason.set($event)"
+        />
+      </div>
+      <div>
+        <label class="transfer-form__label">{{ 'COMMON.NOTES' | translate }}</label>
+        <input
+          nz-input
+          type="text"
+          [placeholder]="'TRANSFER.FORM.NOTES_PH' | translate"
+          [ngModel]="notes()"
+          (ngModelChange)="notes.set($event)"
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="transfer-form__card">
+    <div class="transfer-form__lines-head">
+      <h2 class="transfer-form__lines-title">{{ 'TRANSFER.FORM.LINES_TITLE' | translate }}</h2>
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        [disabled]="!sourceLocationId()"
+        (click)="addLine()"
+      >
+        <lucide-icon [img]="lucidePlus" [size]="14" [strokeWidth]="2" />
+        {{ 'TRANSFER.FORM.ADD_LINE' | translate }}
+      </button>
+    </div>
+
+    @if (!sourceLocationId()) {
+      <p class="transfer-form__hint">{{ 'TRANSFER.FORM.PICK_SOURCE_FIRST' | translate }}</p>
+    }
+
+    @if (lines().length === 0) {
+      <p class="transfer-form__empty-lines">{{ 'TRANSFER.FORM.NO_LINES' | translate }}</p>
+    } @else {
+      <nz-table [nzData]="lines()" [nzShowPagination]="false" nzSize="small">
+        <thead>
+          <tr>
+            <th>{{ 'TRANSFER.FORM.COL_ITEM' | translate }}</th>
+            <th>{{ 'TRANSFER.FORM.COL_UOM' | translate }}</th>
+            <th>{{ 'COMMON.QTY' | translate }}</th>
+            <th class="transfer-form__col-remove"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of lines(); track $index) {
+            <tr>
+              <td>
+                <nz-select
+                  class="transfer-form__control transfer-form__select-wide"
+                  [nzPlaceHolder]="'TRANSFER.FORM.ITEM_PH' | translate"
+                  [ngModel]="line.itemId"
+                  (ngModelChange)="onLineItemChange($index, $event)"
+                  [nzDisabled]="!sourceLocationId()"
+                  [nzLoading]="itemsLoading()"
+                  nzShowSearch
+                  nzAllowClear
+                >
+                  @for (it of stockItems(); track it.id) {
+                    <nz-option [nzValue]="it.id" [nzLabel]="it.label" />
+                  }
+                </nz-select>
+              </td>
+              <td>
+                <nz-select
+                  class="transfer-form__control"
+                  [nzPlaceHolder]="'TRANSFER.FORM.UOM_PH' | translate"
+                  [ngModel]="line.uomId"
+                  (ngModelChange)="updateLine($index, { uomId: $event })"
+                  nzShowSearch
+                >
+                  @for (u of units(); track u.id) {
+                    <nz-option [nzValue]="u.id" [nzLabel]="u.abbreviation" />
+                  }
+                </nz-select>
+              </td>
+              <td>
+                <nz-input-number
+                  class="transfer-form__qty"
+                  [nzMin]="0.001"
+                  [nzStep]="0.001"
+                  [nzPrecision]="3"
+                  [ngModel]="line.requestedQty"
+                  (ngModelChange)="updateLine($index, { requestedQty: $event })"
+                />
+              </td>
+              <td>
+                <button
+                  nz-button
+                  nzType="text"
+                  nzDanger
+                  type="button"
+                  [attr.aria-label]="'COMMON.REMOVE_ROW' | translate"
+                  (click)="removeLine($index)"
+                >
+                  <lucide-icon [img]="lucideTrash" [size]="16" [strokeWidth]="2" />
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </nz-table>
+    }
+  </div>
+
+  <div class="transfer-form__footer">
+    <button nz-button nzType="default" type="button" [disabled]="saving()" (click)="save(false)">
+      <lucide-icon [img]="lucideSave" [size]="15" [strokeWidth]="2" />
+      {{ 'TRANSFER.FORM.SAVE_DRAFT' | translate }}
+    </button>
+    <button nz-button nzType="primary" type="button" [disabled]="saving()" (click)="save(true)">
+      {{ 'TRANSFER.FORM.SAVE_SUBMIT' | translate }}
+    </button>
+  </div>
+}

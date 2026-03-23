@@ -1,0 +1,112 @@
+<div class="transfer-list">
+  <div class="transfer-list__header">
+    <div>
+      <h1 class="transfer-list__title">
+        <lucide-icon [img]="lucideArrows" [size]="24" class="text-brand-primary" [strokeWidth]="2" />
+        {{ 'TRANSFER.LIST.TITLE' | translate }}
+      </h1>
+      <p class="transfer-list__subtitle">{{ 'TRANSFER.LIST.SUBTITLE' | translate }}</p>
+    </div>
+    <div class="transfer-list__actions">
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        [title]="'COMMON.REFRESH' | translate"
+        (click)="load()"
+      >
+        <lucide-icon [img]="lucideRefresh" [size]="16" [class.transfer-list__spin]="loading()" [strokeWidth]="2" />
+      </button>
+      <button nz-button nzType="primary" type="button" (click)="goNew()">
+        <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
+        {{ 'TRANSFER.LIST.NEW' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div class="transfer-list__tabs">
+    @for (tab of tabs; track tab) {
+      <button
+        type="button"
+        class="transfer-list__tab"
+        [class.transfer-list__tab--active]="activeTab() === tab"
+        (click)="setTab(tab)"
+      >
+        {{ tabLabel(tab) }}
+      </button>
+    }
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <div class="transfer-list__panel">
+    <div class="transfer-list__panel-head">
+      {{ 'TRANSFER.LIST.FOUND_COUNT' | translate: { count: total() } }}
+    </div>
+
+    <nz-table
+      #trfTable
+      [nzData]="transfers()"
+      [nzLoading]="loading()"
+      nzSize="middle"
+      [nzShowPagination]="false"
+      [nzNoResult]="noResultTpl"
+    >
+      <ng-template #noResultTpl>
+        <div class="transfer-list__empty-wrap">
+          <app-empty-state
+            [title]="'TRANSFER.LIST.EMPTY_TITLE' | translate"
+            [message]="'TRANSFER.LIST.EMPTY_MSG' | translate"
+          />
+          <button nz-button nzType="primary" type="button" (click)="goNew()">
+            {{ 'TRANSFER.LIST.CREATE_FIRST' | translate }}
+          </button>
+        </div>
+      </ng-template>
+      <thead>
+        <tr>
+          <th>{{ 'TRANSFER.LIST.COL_REF' | translate }}</th>
+          <th>{{ 'TRANSFER.LIST.COL_ROUTE' | translate }}</th>
+          <th>{{ 'COMMON.DATE' | translate }}</th>
+          <th>{{ 'TRANSFER.LIST.COL_ITEMS' | translate }}</th>
+          <th>{{ 'COMMON.STATUS' | translate }}</th>
+          <th>{{ 'TRANSFER.LIST.COL_BY' | translate }}</th>
+          <th nzAlign="right" class="transfer-list__col-chevron"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (t of trfTable.data; track t.id) {
+          <tr class="transfer-list__row" (click)="goDetail(t)">
+            <td class="transfer-list__mono text-brand-primary">{{ t.transferNo }}</td>
+            <td>
+              <span>{{ t.sourceLocation?.name ?? '—' }}</span>
+              <span class="transfer-list__arrow">→</span>
+              <span>{{ t.destLocation?.name ?? '—' }}</span>
+            </td>
+            <td>{{ t.transferDate | date: 'mediumDate' }}</td>
+            <td>
+              {{ 'TRANSFER.LIST.ITEM_COUNT' | translate: { count: t._count?.lines ?? 0 } }}
+            </td>
+            <td>
+              <span class="status-badge" [ngClass]="'status-' + statusClass(t.status)">
+                {{ 'TRANSFER.STATUS.' + t.status | translate }}
+              </span>
+            </td>
+            <td class="transfer-list__muted">
+              @if (t.requestedByUser) {
+                {{ t.requestedByUser.firstName }} {{ t.requestedByUser.lastName }}
+              } @else {
+                —
+              }
+            </td>
+            <td nzAlign="right" class="transfer-list__chevron">
+              <lucide-icon [img]="lucideChevron" [size]="16" [strokeWidth]="2" />
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+  </div>
+</div>

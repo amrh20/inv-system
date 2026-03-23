@@ -1,0 +1,258 @@
+<div class="summary-report space-y-5">
+  <div class="filter-card rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+    <div class="grid grid-cols-1 items-end gap-4 xl:grid-cols-5">
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+          <lucide-icon [img]="lucideCalendar" class="mr-1 inline h-3.5 w-3.5" [strokeWidth]="2" />
+          {{ 'REPORTS.FILTERS.FROM_DATE' | translate }}
+        </label>
+        <nz-date-picker
+          class="w-full"
+          [(ngModel)]="startDate"
+          nzFormat="dd/MM/yyyy"
+          [nzInputReadOnly]="true"
+        />
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+          {{ 'REPORTS.FILTERS.TO_DATE' | translate }}
+        </label>
+        <nz-date-picker
+          class="w-full"
+          [(ngModel)]="endDate"
+          nzFormat="dd/MM/yyyy"
+          [nzInputReadOnly]="true"
+        />
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+          <lucide-icon [img]="lucideBuilding" class="mr-1 inline h-3.5 w-3.5" [strokeWidth]="2" />
+          {{ 'REPORTS.FILTERS.DEPARTMENTS' | translate }}
+        </label>
+        <nz-select
+          class="w-full"
+          nzMode="multiple"
+          nzPlaceHolder="{{ 'REPORTS.FILTERS.ALL_DEPARTMENTS' | translate }}"
+          [(ngModel)]="selectedDeptIds"
+          (ngModelChange)="onDepartmentsChange($event)"
+          [nzMaxTagCount]="2"
+        >
+          @for (d of departments(); track d.id) {
+            <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+          }
+        </nz-select>
+      </div>
+      <div>
+        <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
+          {{ 'COMMON.CATEGORY' | translate }}
+        </label>
+        <nz-select
+          class="w-full"
+          [(ngModel)]="categoryId"
+          nzAllowClear
+          nzPlaceHolder="{{ 'REPORTS.FILTERS.ALL_CATEGORIES' | translate }}"
+        >
+          @for (c of categories(); track c.id) {
+            <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+          }
+        </nz-select>
+      </div>
+      <div>
+        <button
+          type="button"
+          nz-button
+          nzType="primary"
+          class="flex h-[38px] w-full items-center justify-center gap-2"
+          [disabled]="loading()"
+          (click)="generate()"
+        >
+          @if (loading()) {
+            <nz-spin nzSimple class="inline" />
+          } @else {
+            <lucide-icon [img]="lucideSearch" class="h-4 w-4" [strokeWidth]="2" />
+          }
+          {{ 'REPORTS.ACTIONS.GENERATE' | translate }}
+        </button>
+      </div>
+    </div>
+
+    @if (selectedDeptIds.length > 0) {
+      <div class="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--ose-border)] pt-3">
+        @for (id of selectedDeptIds; track id) {
+          @if (departments().find((d) => d.id === id); as d) {
+            <span
+              class="inline-flex items-center gap-1 rounded-[6px] border border-brand-primary/20 bg-brand-primary/10 px-2.5 py-1 text-xs text-brand-primary"
+            >
+              {{ d.name }}
+              <button type="button" class="text-brand-primary/60 hover:text-brand-primary" (click)="removeDept(id)">
+                <lucide-icon [img]="lucideX" class="h-3.5 w-3.5" [strokeWidth]="2" />
+              </button>
+            </span>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="flex items-center gap-2 rounded-[6px] border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <lucide-icon [img]="lucideAlert" class="h-4 w-4 shrink-0" [strokeWidth]="2" />
+      {{ error() }}
+    </div>
+  }
+
+  @if (!queried() && !loading()) {
+    <app-empty-state
+      [title]="'REPORTS.SUMMARY.EMPTY_TITLE' | translate"
+      [message]="'REPORTS.SUMMARY.EMPTY_HINT' | translate"
+    />
+  }
+
+  @if (loading()) {
+    <div class="flex justify-center py-20">
+      <nz-spin nzSimple />
+    </div>
+  }
+
+  @if (!loading() && queried() && !error() && reportRows().length === 0) {
+    <app-empty-state
+      [title]="'REPORTS.SUMMARY.NO_DATA_TITLE' | translate"
+      [message]="'REPORTS.SUMMARY.NO_DATA_HINT' | translate"
+    />
+  }
+
+  @if (!loading() && reportRows().length > 0) {
+    <div
+      id="summary-report-print"
+      class="overflow-hidden rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated shadow-sm print:border-none print:shadow-none"
+    >
+      <div class="flex items-center justify-between bg-gray-900 px-6 py-3 text-white print:bg-gray-900">
+        <div>
+          <p class="text-xs font-medium uppercase tracking-widest text-gray-400">OSE Inventory</p>
+          <h3 class="text-base font-bold">
+            {{ 'REPORTS.SUMMARY.TABLE_TITLE' | translate }} — {{ periodLabel() }}
+          </h3>
+        </div>
+        <div class="flex items-center gap-3">
+          @if (!hasPhysical()) {
+            <span class="no-print flex items-center gap-1 rounded bg-amber-500/20 px-2 py-1 text-xs text-amber-200">
+              <lucide-icon [img]="lucideInfo" class="h-3 w-3" [strokeWidth]="2" />
+              {{ 'REPORTS.SUMMARY.NO_PHYSICAL' | translate }}
+            </span>
+          }
+          <button
+            type="button"
+            nz-button
+            nzType="default"
+            class="no-print border-white/20 bg-white/10 text-white hover:bg-white/20"
+            (click)="print()"
+          >
+            <lucide-icon [img]="lucidePrint" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+            {{ 'COMMON.PRINT' | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-left text-xs">
+          <thead>
+            <tr class="text-center text-xs font-bold uppercase text-white">
+              <th
+                rowspan="2"
+                class="border-b-2 border-r-2 border-[var(--ose-border)] bg-white px-4 py-2 text-left text-gray-700"
+              >
+                {{ 'REPORTS.SUMMARY.GROUP_LABEL_COL' | translate }}
+              </th>
+              @for (g of colGroups; track g.id) {
+                <th [attr.colspan]="g.sub.length" class="border-b border-white/40 border-r-2 px-2 py-2 {{ g.headerClass }}">
+                  {{ g.labelKey | translate }}
+                </th>
+              }
+            </tr>
+            <tr class="border-b-2 border-[var(--ose-border)] text-xs font-semibold text-gray-500">
+              @for (g of colGroups; track g.id) {
+                @for (s of g.sub; track s.k; let last = $last) {
+                  <th
+                    class="bg-surface-muted px-3 py-1.5 text-right {{ last ? 'border-r-2 border-[var(--ose-border)]' : 'border-r border-[var(--ose-border)]' }}"
+                  >
+                    {{ s.labelKey | translate }}
+                  </th>
+                }
+              }
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[var(--ose-border)]">
+            @for (row of reportRows(); track $index) {
+              <tr class="border-b border-[var(--ose-border)] transition-colors last:border-0 hover:bg-surface-muted/50">
+                <td class="min-w-56 border-r-2 border-[var(--ose-border)] px-4 py-2 font-medium text-brand-dark">
+                  {{ row.label }}
+                </td>
+                @for (g of colGroups; track g.id) {
+                  @for (s of g.sub; track s.k; let last = $last) {
+                    <td
+                      class="px-3 py-2 text-right tabular-nums {{ cellClass(row[s.k], s.signed) }} {{ last ? 'border-r-2 border-[var(--ose-border)]' : 'border-r border-[var(--ose-border)]' }}"
+                    >
+                      @if (row[s.k] == null) {
+                        —
+                      } @else {
+                        {{ prefix(row[s.k], s.signed) }}{{ fmt(row[s.k], !!s.isVal) }}
+                      }
+                    </td>
+                  }
+                }
+              </tr>
+            }
+          </tbody>
+          @if (totals()) {
+            <tfoot>
+              <tr class="border-t-2 border-gray-700 bg-gray-900 text-xs font-bold text-white">
+                <td class="border-r-2 border-gray-600 px-4 py-2.5">{{ 'REPORTS.SUMMARY.TOTALS' | translate }}</td>
+                @for (g of colGroups; track g.id) {
+                  @for (s of g.sub; track s.k; let last = $last) {
+                    <td
+                      class="px-3 py-2.5 text-right tabular-nums {{ cellClass(totals()![s.k], s.signed) }} {{ last ? 'border-r-2 border-gray-600' : 'border-r border-gray-600' }}"
+                    >
+                      @if (totals()![s.k] == null) {
+                        —
+                      } @else {
+                        {{ prefix(totals()![s.k], s.signed) }}{{ fmt(totals()![s.k], !!s.isVal) }}
+                      }
+                    </td>
+                  }
+                }
+              </tr>
+              <tr class="border-t border-[var(--ose-border)] bg-surface-muted text-sm">
+                <td class="border-r border-[var(--ose-border)] px-4 py-2 font-semibold text-subtle">
+                  {{ 'REPORTS.SUMMARY.VARIANCE_RATIO' | translate }}
+                </td>
+                <td colspan="2" class="border-r border-[var(--ose-border)] px-3 py-2 text-right">
+                  <span
+                    class="text-sm font-bold"
+                    [class.text-red-600]="(totals()!.varianceRatio ?? 0) < 0"
+                    [class.text-emerald-700]="(totals()!.varianceRatio ?? 0) > 0"
+                  >
+                    {{ (totals()!.varianceRatio ?? 0) > 0 ? '+' : '' }}{{ totals()!.varianceRatio ?? 0 }}%
+                  </span>
+                </td>
+                <td colspan="15" class="px-3 py-2 text-xs italic text-subtle">
+                  {{ 'REPORTS.SUMMARY.VARIANCE_RATIO_HINT' | translate }}
+                </td>
+              </tr>
+            </tfoot>
+          }
+        </table>
+      </div>
+
+      <div class="grid grid-cols-2 gap-8 border-t border-[var(--ose-border)] bg-surface-muted px-6 py-8">
+        <div class="text-center">
+          <div class="mx-auto mb-2 w-52 border-b-2 border-gray-400"></div>
+          <p class="text-sm font-semibold text-brand-dark">{{ 'REPORTS.SUMMARY.SIGN_DIRECTOR_FINANCE' | translate }}</p>
+        </div>
+        <div class="text-center">
+          <div class="mx-auto mb-2 w-52 border-b-2 border-gray-400"></div>
+          <p class="text-sm font-semibold text-brand-dark">{{ 'REPORTS.SUMMARY.SIGN_GM' | translate }}</p>
+        </div>
+      </div>
+    </div>
+  }
+</div>

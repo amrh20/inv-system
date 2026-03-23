@@ -1,0 +1,132 @@
+<div class="audit-page">
+  <div class="audit-page__header">
+    <div>
+      <h1 class="audit-page__title">
+        <lucide-icon [img]="lucideShield" [size]="24" class="audit-page__title-icon" />
+        {{ 'AUDIT_LOG.TITLE' | translate }}
+      </h1>
+      <p class="audit-page__meta">{{ 'AUDIT_LOG.SUBTITLE' | translate: { count: total() } }}</p>
+    </div>
+  </div>
+
+  <div class="audit-page__filters">
+    <select
+      class="audit-page__select"
+      [(ngModel)]="entityType"
+      (ngModelChange)="onFilterChange()"
+      name="entityType"
+    >
+      <option value="">{{ 'AUDIT_LOG.ALL_ENTITIES' | translate }}</option>
+      @for (t of entityTypes; track t) {
+        <option [value]="t">{{ entityLabel(t) }}</option>
+      }
+    </select>
+
+    <div class="audit-page__dates">
+      <label class="audit-page__mini">{{ 'AUDIT_LOG.FROM' | translate }}</label>
+      <input class="audit-page__date" type="date" [(ngModel)]="dateFrom" (change)="onFilterChange()" name="df" />
+      <label class="audit-page__mini">{{ 'AUDIT_LOG.TO' | translate }}</label>
+      <input class="audit-page__date" type="date" [(ngModel)]="dateTo" (change)="onFilterChange()" name="dt" />
+    </div>
+
+    @if (entityType || dateFrom || dateTo) {
+      <button nz-button nzType="default" type="button" (click)="clearFilters()">
+        <lucide-icon [img]="lucideX" [size]="14" />
+        {{ 'COMMON.CLEAR' | translate }}
+      </button>
+    }
+
+    <button
+      nz-button
+      nzType="text"
+      type="button"
+      [attr.aria-label]="'COMMON.REFRESH' | translate"
+      (click)="load()"
+    >
+      <lucide-icon [img]="lucideRefresh" [size]="18" [class.audit-page__spin]="loading()" />
+    </button>
+  </div>
+
+  <nz-table
+    #tbl
+    [nzData]="logs()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[15, 30, 60]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'AUDIT_LOG.EMPTY_TITLE' | translate"
+        [message]="'AUDIT_LOG.EMPTY_MSG' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th>{{ 'AUDIT_LOG.COL_TIME' | translate }}</th>
+        <th>{{ 'AUDIT_LOG.COL_ACTION' | translate }}</th>
+        <th>{{ 'AUDIT_LOG.COL_ENTITY' | translate }}</th>
+        <th>{{ 'AUDIT_LOG.COL_USER' | translate }}</th>
+        <th>{{ 'AUDIT_LOG.COL_BEFORE' | translate }}</th>
+        <th>{{ 'AUDIT_LOG.COL_AFTER' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (log of tbl.data; track log.id) {
+        <tr>
+          <td class="audit-page__nowrap">
+            <span class="audit-page__muted">
+              <lucide-icon [img]="lucideClock" [size]="14" />
+              @if (displayTime(log); as d) {
+                {{ d | date: 'medium' }}
+              } @else {
+                —
+              }
+            </span>
+          </td>
+          <td>
+            <nz-tag [nzColor]="actionNzColor(log.action)">{{ log.action }}</nz-tag>
+          </td>
+          <td>
+            <span class="audit-page__entity">{{ log.entityType }}</span>
+            <span class="audit-page__id">{{ log.entityId | slice: 0 : 8 }}…</span>
+          </td>
+          <td class="audit-page__small">
+            @if (log.changedByUser; as u) {
+              {{ u.firstName }} {{ u.lastName }}
+            } @else {
+              {{ log.changedBy ? (log.changedBy | slice: 0 : 8) + '…' : '—' }}
+            }
+          </td>
+          <td class="audit-page__json">
+            @for (line of formatJson(log.beforeValue); track line.key + line.value) {
+              <div>
+                @if (line.key) {
+                  <span class="audit-page__jk">{{ line.key }}:</span>
+                }
+                {{ line.value }}
+              </div>
+            }
+          </td>
+          <td class="audit-page__json">
+            @for (line of formatJson(log.afterValue); track line.key + line.value) {
+              <div>
+                @if (line.key) {
+                  <span class="audit-page__jk">{{ line.key }}:</span>
+                }
+                {{ line.value }}
+              </div>
+            }
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>

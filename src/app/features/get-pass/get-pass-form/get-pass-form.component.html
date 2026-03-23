@@ -1,0 +1,151 @@
+@if (loading()) {
+  <p class="gp-form__center">{{ 'GET_PASS.FORM.LOADING' | translate }}</p>
+} @else {
+  <button nz-button nzType="link" type="button" class="gp-form__back" (click)="back()">
+    <lucide-icon [img]="lucideBack" [size]="16" [strokeWidth]="2" />
+    {{ 'COMMON.BACK' | translate }}
+  </button>
+
+  <h1 class="gp-form__title">
+    {{ (editId() ? 'GET_PASS.FORM.EDIT_TITLE' : 'GET_PASS.FORM.NEW_TITLE') | translate }}
+  </h1>
+
+  @if (error()) {
+    <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="gp-form__alert" />
+  }
+
+  <div class="gp-form__card">
+    <div class="gp-form__grid">
+      <div>
+        <label class="gp-form__label">{{ 'GET_PASS.FORM.TYPE' | translate }}</label>
+        <nz-select class="gp-form__control" [ngModel]="transferType()" (ngModelChange)="transferType.set($event)">
+          <nz-option nzValue="TEMPORARY" [nzLabel]="'GET_PASS.TYPE.TEMPORARY' | translate" />
+          <nz-option nzValue="CATERING" [nzLabel]="'GET_PASS.TYPE.CATERING' | translate" />
+          <nz-option nzValue="PERMANENT" [nzLabel]="'GET_PASS.TYPE.PERMANENT' | translate" />
+        </nz-select>
+      </div>
+      <div>
+        <label class="gp-form__label">{{ 'GET_PASS.FORM.DEPT' | translate }}</label>
+        <nz-select
+          class="gp-form__control"
+          [ngModel]="departmentId()"
+          (ngModelChange)="onDepartmentChange($event)"
+          nzShowSearch
+          [nzPlaceHolder]="'GET_PASS.FORM.DEPT_PH' | translate"
+        >
+          @for (d of departments(); track d.id) {
+            <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+          }
+        </nz-select>
+      </div>
+      <div>
+        <label class="gp-form__label">{{ 'GET_PASS.FORM.ENTITY' | translate }}</label>
+        <input nz-input type="text" [ngModel]="borrowingEntity()" (ngModelChange)="borrowingEntity.set($event)" />
+      </div>
+      @if (transferType() !== 'PERMANENT') {
+        <div>
+          <label class="gp-form__label">{{ 'GET_PASS.FORM.RETURN_DATE' | translate }}</label>
+          <nz-date-picker
+            class="gp-form__control gp-form__picker"
+            [ngModel]="expectedReturnDate()"
+            (ngModelChange)="expectedReturnDate.set($event)"
+            nzFormat="yyyy-MM-dd"
+          />
+        </div>
+      }
+      <div class="gp-form__full">
+        <label class="gp-form__label">{{ 'GET_PASS.FORM.REASON' | translate }}</label>
+        <input nz-input type="text" [ngModel]="reason()" (ngModelChange)="reason.set($event)" />
+      </div>
+      <div class="gp-form__full">
+        <label class="gp-form__label">{{ 'COMMON.NOTES' | translate }}</label>
+        <textarea nz-input rows="2" [ngModel]="notes()" (ngModelChange)="notes.set($event)"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="gp-form__card">
+    <div class="gp-form__lines-head">
+      <h2 class="gp-form__lines-title">{{ 'GET_PASS.FORM.LINES_TITLE' | translate }}</h2>
+      <button nz-button nzType="default" type="button" (click)="addLine()">
+        <lucide-icon [img]="lucidePlus" [size]="14" [strokeWidth]="2" />
+        {{ 'GET_PASS.FORM.ADD_LINE' | translate }}
+      </button>
+    </div>
+
+    <nz-table [nzData]="lines()" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>{{ 'GET_PASS.FORM.COL_LOC' | translate }}</th>
+          <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+          <th>{{ 'COMMON.QTY' | translate }}</th>
+          <th>{{ 'GET_PASS.FORM.COL_CONDITION' | translate }}</th>
+          <th nzAlign="right"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (line of lines(); track $index) {
+          <tr>
+            <td>
+              <nz-select
+                class="gp-form__control"
+                [ngModel]="line.locationId"
+                (ngModelChange)="onLineLocationChange($index, $event)"
+                nzShowSearch
+                [nzPlaceHolder]="'GET_PASS.FORM.LOC_PH' | translate"
+                [nzDisabled]="!departmentId()"
+              >
+                @for (loc of filteredLocations(); track loc.id) {
+                  <nz-option [nzValue]="loc.id" [nzLabel]="loc.name" />
+                }
+              </nz-select>
+            </td>
+            <td>
+              <nz-select
+                class="gp-form__control"
+                [ngModel]="line.itemId"
+                (ngModelChange)="updateLine($index, { itemId: $event })"
+                nzShowSearch
+                [nzPlaceHolder]="'GET_PASS.FORM.ITEM_PH' | translate"
+                [nzDisabled]="!line.locationId"
+              >
+                @for (it of itemsForLocation(line.locationId); track it.id) {
+                  <nz-option [nzValue]="it.id" [nzLabel]="it.label" />
+                }
+              </nz-select>
+            </td>
+            <td>
+              <nz-input-number
+                [ngModel]="line.qty"
+                (ngModelChange)="updateLine($index, { qty: $event })"
+                [nzMin]="0.01"
+                [nzStep]="1"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                type="text"
+                [ngModel]="line.conditionOut"
+                (ngModelChange)="updateLine($index, { conditionOut: $event })"
+              />
+            </td>
+            <td nzAlign="right">
+              <button nz-button nzType="text" nzDanger type="button" (click)="removeLine($index)">
+                <lucide-icon [img]="lucideTrash" [size]="16" [strokeWidth]="2" />
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+  </div>
+
+  <div class="gp-form__footer">
+    <button nz-button type="button" (click)="back()">{{ 'COMMON.CANCEL' | translate }}</button>
+    <button nz-button nzType="primary" type="button" [disabled]="saving()" (click)="save()">
+      <lucide-icon [img]="lucideSave" [size]="14" [strokeWidth]="2" />
+      {{ 'GET_PASS.FORM.SAVE' | translate }}
+    </button>
+  </div>
+}

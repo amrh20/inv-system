@@ -1,0 +1,116 @@
+.ih-page {
+  display: block;
+  padding: 0 0 1.5rem;
+}
+
+.ih-page__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.ih-page__icon-wrap {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-brand, 6px);
+  background: var(--color-brand-surface, #f5f5f5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.ih-page__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-brand-dark, #001529);
+}
+
+.ih-page__subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.ih-page__filters {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+  border: 1px solid var(--border-color-split, #f0f0f0);
+  border-radius: var(--radius-brand, 6px);
+}
+
+.ih-page__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.ih-page__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.ih-page__select,
+.ih-page__date {
+  width: 100%;
+  height: var(--input-height, 38px);
+  border-radius: var(--radius-brand, 6px);
+  border: 1px solid var(--border-color-input, #d9d9d9);
+  padding: 0 11px;
+  font-size: 0.875rem;
+}
+
+.ih-page__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ih-page__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.ih-page__spin {
+  animation: ih-spin 0.8s linear infinite;
+}
+
+@keyframes ih-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ih-page__mono {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.ih-page__ref {
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+}
+
+.ih-page__note {
+  font-size: 0.75rem;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

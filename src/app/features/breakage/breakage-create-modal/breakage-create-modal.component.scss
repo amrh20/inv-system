@@ -1,0 +1,144 @@
+.brk-create__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.brk-create__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.brk-create__field--span2 {
+  grid-column: span 2;
+}
+
+.brk-create__field--full {
+  grid-column: 1 / -1;
+}
+
+.brk-create__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.brk-create__control {
+  width: 100%;
+}
+
+.brk-create__picker {
+  width: 100%;
+}
+
+.brk-create__hint {
+  font-size: 12px;
+  margin-top: 4px;
+
+  &--error {
+    color: var(--brand-error, #cf1322);
+  }
+}
+
+.brk-create__photos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.brk-create__photo-name {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.brk-create__file-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.brk-create__lines-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.brk-create__search {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.brk-create__search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.brk-create__search input {
+  padding-left: 36px !important;
+}
+
+.brk-create__pick {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: var(--radius-brand, 6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  max-height: 240px;
+  overflow: auto;
+}
+
+.brk-create__pick-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #fafafa;
+
+  &:hover {
+    background: #fafafa;
+  }
+}
+
+.brk-create__pick-meta {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.brk-create__empty {
+  padding: 24px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+  border: 1px dashed #d9d9d9;
+  border-radius: var(--radius-brand, 6px);
+  background: #fafafa;
+}
+
+.brk-create__item-name {
+  font-weight: 500;
+}
+
+.brk-create__item-bc {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}

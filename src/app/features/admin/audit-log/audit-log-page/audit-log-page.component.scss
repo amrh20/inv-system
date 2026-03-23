@@ -1,0 +1,119 @@
+.audit-page {
+  display: block;
+  padding: 0 0 1.5rem;
+}
+
+.audit-page__header {
+  margin-bottom: 1.25rem;
+}
+
+.audit-page__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-brand-dark, #001529);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.audit-page__title-icon {
+  color: var(--primary-color);
+}
+
+.audit-page__meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.audit-page__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--color-brand-surface, #f5f5f5);
+  border-radius: var(--radius-brand, 6px);
+}
+
+.audit-page__select {
+  min-width: 180px;
+  height: var(--input-height, 38px);
+  border-radius: var(--radius-brand, 6px);
+  border: 1px solid var(--border-color-input, #d9d9d9);
+  padding: 0 11px;
+  font-size: 0.875rem;
+}
+
+.audit-page__dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.audit-page__mini {
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.audit-page__date {
+  height: var(--input-height, 38px);
+  border-radius: var(--radius-brand, 6px);
+  border: 1px solid var(--border-color-input, #d9d9d9);
+  padding: 0 8px;
+}
+
+.audit-page__spin {
+  animation: audit-spin 0.8s linear infinite;
+}
+
+@keyframes audit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.audit-page__nowrap {
+  white-space: nowrap;
+}
+
+.audit-page__muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.audit-page__entity {
+  font-weight: 500;
+}
+
+.audit-page__id {
+  margin-left: 0.25rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.audit-page__small {
+  font-size: 0.8125rem;
+}
+
+.audit-page__json {
+  font-size: 0.75rem;
+  max-width: 220px;
+  max-height: 5rem;
+  overflow: auto;
+  font-family: ui-monospace, monospace;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+}
+
+.audit-page__jk {
+  color: rgba(0, 0, 0, 0.45);
+}

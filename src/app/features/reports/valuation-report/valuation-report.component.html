@@ -1,0 +1,209 @@
+<div class="valuation-report space-y-6">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="flex items-start gap-3">
+      <div class="flex h-10 w-10 items-center justify-center rounded-[6px] bg-emerald-100">
+        <lucide-icon [img]="lucideCoins" class="h-5 w-5 text-emerald-600" [strokeWidth]="2" />
+      </div>
+      <div>
+        <h2 class="text-xl font-bold text-brand-dark">{{ 'REPORTS.VALUATION.TITLE' | translate }}</h2>
+        <p class="text-sm text-subtle">{{ 'REPORTS.VALUATION.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+    @if (queried && rows().length > 0) {
+      <button type="button" nz-button nzType="primary" class="!bg-brand-success border-0" (click)="exportExcel()">
+        {{ 'COMMON.EXPORT_EXCEL' | translate }}
+      </button>
+    }
+  </div>
+
+  <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-5 shadow-sm">
+    <h3 class="mb-4 text-sm font-semibold text-brand-dark">{{ 'REPORTS.VALUATION.PARAMS' | translate }}</h3>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div>
+        <label class="mb-1 block text-xs font-medium text-subtle">
+          {{ 'REPORTS.VALUATION.AS_OF' | translate }} <span class="text-red-500">*</span>
+        </label>
+        <nz-date-picker class="w-full" [(ngModel)]="asOfDate" nzFormat="dd/MM/yyyy" [nzInputReadOnly]="true" />
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-medium text-subtle">{{ 'COMMON.DEPARTMENT' | translate }}</label>
+        <nz-select
+          class="w-full"
+          [(ngModel)]="selectedDept"
+          (ngModelChange)="onDeptChange()"
+          nzAllowClear
+          nzPlaceHolder="{{ 'REPORTS.FILTERS.ALL_DEPARTMENTS' | translate }}"
+        >
+          @for (d of departments(); track d.id) {
+            <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+          }
+        </nz-select>
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-medium text-subtle">{{ 'REPORTS.VALUATION.LOCATION' | translate }}</label>
+        <nz-select
+          class="w-full"
+          [(ngModel)]="selectedLoc"
+          nzAllowClear
+          nzPlaceHolder="{{ 'REPORTS.VALUATION.ALL_LOCATIONS' | translate }}"
+        >
+          @for (l of filteredLocations(); track l.id) {
+            <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+          }
+        </nz-select>
+      </div>
+      <div>
+        <label class="mb-1 block text-xs font-medium text-subtle">{{ 'COMMON.CATEGORY' | translate }}</label>
+        <nz-select
+          class="w-full"
+          [(ngModel)]="selectedCat"
+          nzAllowClear
+          nzPlaceHolder="{{ 'REPORTS.FILTERS.ALL_CATEGORIES' | translate }}"
+        >
+          @for (c of categories(); track c.id) {
+            <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+          }
+        </nz-select>
+      </div>
+    </div>
+    <div class="mt-4 flex justify-end">
+      <button
+        type="button"
+        nz-button
+        nzType="primary"
+        class="!bg-brand-success border-0"
+        [disabled]="loading"
+        (click)="run()"
+      >
+        @if (loading) {
+          <nz-spin nzSimple class="mr-2 inline" />
+        } @else {
+          <lucide-icon [img]="lucideSearch" class="mr-2 inline h-4 w-4" [strokeWidth]="2" />
+        }
+        {{ 'REPORTS.VALUATION.RUN' | translate }}
+      </button>
+    </div>
+  </div>
+
+  @if (queried && snapshotUsed()) {
+    <div class="flex items-start gap-3 rounded-[6px] border border-blue-200 bg-blue-50 px-4 py-3">
+      <lucide-icon [img]="lucideInfo" class="mt-0.5 h-4 w-4 shrink-0 text-blue-500" [strokeWidth]="2" />
+      <p class="text-sm text-blue-800">
+        {{ 'REPORTS.VALUATION.SNAPSHOT_INFO' | translate }}
+        <span class="font-semibold">
+          {{ snapshotUsed()!.year }}{{ snapshotUsed()!.month != null ? '/' + padMonth(snapshotUsed()!.month) : '' }}
+        </span>
+        ({{ 'REPORTS.VALUATION.CLOSED' | translate }} {{ snapshotUsed()!.closedAt | date: 'mediumDate' }}).
+        {{ 'REPORTS.VALUATION.SNAPSHOT_TAIL' | translate }} {{ toIso(asOfDate) }}.
+      </p>
+    </div>
+  }
+
+  @if (queried && !snapshotUsed() && rows().length > 0) {
+    <div class="flex items-start gap-3 rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3">
+      <lucide-icon [img]="lucideInfo" class="mt-0.5 h-4 w-4 shrink-0 text-amber-500" [strokeWidth]="2" />
+      <p class="text-sm text-amber-900">{{ 'REPORTS.VALUATION.NO_SNAPSHOT' | translate }}</p>
+    </div>
+  }
+
+  @if (error) {
+    <div class="rounded-[6px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</div>
+  }
+
+  @if (queried && rows().length > 0) {
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+        <p class="text-xs uppercase tracking-wide text-subtle">{{ 'REPORTS.VALUATION.CARD_ITEMS' | translate }}</p>
+        <p class="mt-1 text-2xl font-bold text-brand-dark">{{ rows().length }}</p>
+      </div>
+      <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+        <p class="text-xs uppercase tracking-wide text-subtle">{{ 'REPORTS.VALUATION.CARD_QTY' | translate }}</p>
+        <p class="mt-1 text-2xl font-bold text-brand-dark">{{ fmtQty(totalQtyOnHand()) }}</p>
+      </div>
+      <div class="rounded-[6px] bg-brand-success p-4 text-white shadow-sm">
+        <p class="text-xs uppercase tracking-wide text-emerald-100">{{ 'REPORTS.VALUATION.CARD_VALUE' | translate }}</p>
+        <p class="mt-1 text-2xl font-bold">SAR {{ fmt(totalValue()) }}</p>
+        <p class="mt-1 text-xs text-emerald-100">
+          {{ 'REPORTS.VALUATION.AS_OF' | translate }} {{ toIso(asOfDate) }}
+        </p>
+      </div>
+    </div>
+  }
+
+  @if (queried) {
+    <div class="overflow-hidden rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated shadow-sm">
+      @if (rows().length === 0) {
+        <app-empty-state
+          [title]="'REPORTS.VALUATION.EMPTY_TITLE' | translate"
+          [message]="'REPORTS.VALUATION.EMPTY_HINT' | translate"
+        />
+      } @else {
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="border-b border-[var(--ose-border)] bg-surface-muted text-xs font-semibold uppercase tracking-wide text-subtle">
+              <tr>
+                <th class="px-4 py-3 text-left">{{ 'COMMON.DEPARTMENT' | translate }}</th>
+                <th class="px-4 py-3 text-left">{{ 'COMMON.LOCATION' | translate }}</th>
+                <th class="px-4 py-3 text-left">{{ 'COMMON.CATEGORY' | translate }}</th>
+                <th class="px-4 py-3 text-left">{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
+                <th class="px-4 py-3 text-left">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                <th class="px-4 py-3 text-right">{{ 'REPORTS.VALUATION.COL_ON_HAND' | translate }}</th>
+                <th class="px-4 py-3 text-right">{{ 'REPORTS.VALUATION.COL_WAC' | translate }}</th>
+                <th class="px-4 py-3 text-right">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--ose-border)]">
+              @for (entry of groupedEntries(); track entry.key) {
+                <tr class="bg-emerald-50">
+                  <td colspan="7" class="px-4 py-2 text-xs font-bold uppercase tracking-wide text-emerald-900">
+                    {{ entry.key }}
+                  </td>
+                  <td class="px-4 py-2 text-right text-xs font-bold text-emerald-900">
+                    SAR {{ fmt(deptGroupTotal(entry.rows)) }}
+                  </td>
+                </tr>
+                @for (row of entry.rows; track $index) {
+                  <tr class="hover:bg-surface-muted/50">
+                    <td class="px-4 py-2.5 text-xs text-subtle">{{ row['department'] }}</td>
+                    <td class="px-4 py-2.5 text-brand-dark">{{ row['location'] }}</td>
+                    <td class="px-4 py-2.5 text-xs text-subtle">{{ row['category'] }}</td>
+                    <td class="px-4 py-2.5">
+                      @if (row['itemCode']) {
+                        <span class="rounded bg-surface-muted px-1.5 py-0.5 font-mono text-xs">{{ row['itemCode'] }}</span>
+                      } @else {
+                        —
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 font-medium text-brand-dark">{{ row['itemName'] }}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-brand-dark">{{ fmtQty(row['qtyOnHand']) }}</td>
+                    <td class="px-4 py-2.5 text-right font-mono text-subtle">SAR {{ fmt(row['unitCost']) }}</td>
+                    <td class="px-4 py-2.5 text-right font-mono font-semibold text-emerald-700">
+                      SAR {{ fmt(row['totalValue']) }}
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+            <tfoot class="border-t-2 border-[var(--ose-border)] bg-surface-muted">
+              <tr>
+                <td colspan="5" class="px-4 py-3 text-sm font-bold text-brand-dark">
+                  {{ 'REPORTS.VALUATION.GRAND_TOTAL' | translate }}
+                </td>
+                <td class="px-4 py-3 text-right text-sm font-bold font-mono">{{ fmtQty(totalQtyOnHand()) }}</td>
+                <td class="px-4 py-3"></td>
+                <td class="px-4 py-3 text-right text-sm font-bold text-emerald-700 font-mono">SAR {{ fmt(totalValue()) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  @if (!queried && !loading) {
+    <app-empty-state
+      [title]="'REPORTS.VALUATION.INITIAL_TITLE' | translate"
+      [message]="'REPORTS.VALUATION.INITIAL_HINT' | translate"
+    />
+  }
+</div>

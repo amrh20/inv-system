@@ -1,0 +1,108 @@
+.transfer-form__center {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.transfer-form__back {
+  padding-inline: 0;
+  margin-bottom: 8px;
+  height: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.transfer-form__title {
+  margin: 0 0 20px;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.transfer-form__alert {
+  margin-bottom: 16px;
+}
+
+.transfer-form__card {
+  border: 1px solid var(--border-color-split, #f0f0f0);
+  border-radius: var(--radius-brand, 6px);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  background: #fff;
+}
+
+.transfer-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.transfer-form__label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.transfer-form__control {
+  width: 100%;
+}
+
+.transfer-form__select-wide {
+  min-width: 220px;
+}
+
+.transfer-form__lines-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.transfer-form__hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* Let select dropdowns inside the table paint above row boundaries */
+.transfer-form__card .ant-table-tbody > tr > td {
+  overflow: visible;
+  vertical-align: top;
+}
+
+.transfer-form__lines-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.transfer-form__empty-lines {
+  margin: 0;
+  padding: 24px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.transfer-form__qty {
+  width: 120px;
+}
+
+.transfer-form__col-remove {
+  width: 48px;
+}
+
+.transfer-form__footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

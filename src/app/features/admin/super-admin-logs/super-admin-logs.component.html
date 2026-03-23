@@ -1,0 +1,136 @@
+<div class="sa-logs-page">
+  <div class="sa-logs-page__header">
+    <div>
+      <h1 class="sa-logs-page__title">
+        <lucide-icon [img]="lucideScrollText" [size]="24" class="sa-logs-page__title-icon" />
+        {{ 'SUPER_ADMIN.AUDIT_LOG' | translate }}
+      </h1>
+      <p class="sa-logs-page__meta">{{ 'SUPER_ADMIN.AUDIT_LOG_DESC' | translate }}</p>
+    </div>
+    <button
+      nz-button
+      nzType="default"
+      type="button"
+      [disabled]="loading()"
+      (click)="load()"
+    >
+      <lucide-icon [img]="lucideRefreshCw" [size]="14" [class.sa-logs-page__spin]="loading()" />
+      {{ 'COMMON.REFRESH' | translate }}
+    </button>
+  </div>
+
+  <div class="sa-logs-page__filters">
+    <lucide-icon [img]="lucideFilter" [size]="15" class="sa-logs-page__filter-icon" />
+    <span class="sa-logs-page__filter-label">{{ 'SUPER_ADMIN.FILTER_BY' | translate }}:</span>
+    <select
+      class="sa-logs-page__select"
+      [(ngModel)]="actionFilter"
+      (ngModelChange)="onFilterChange()"
+    >
+      <option value="">{{ 'SUPER_ADMIN.ALL_ACTIONS' | translate }}</option>
+      @for (opt of actionOptions; track opt[0]) {
+        <option [value]="opt[0]">{{ opt[1] }}</option>
+      }
+    </select>
+    @if (total() > 0) {
+      <span class="sa-logs-page__filter-count">{{ total() }} {{ 'SUPER_ADMIN.RECORDS' | translate }}</span>
+    }
+  </div>
+
+  <div class="sa-logs-page__table-wrap">
+    <nz-table
+      #tbl
+      [nzData]="logs()"
+      [nzLoading]="loading()"
+      nzSize="middle"
+      [nzShowPagination]="false"
+      [nzNoResult]="noResultTpl"
+    >
+      <ng-template #noResultTpl>
+        <app-empty-state
+          [title]="'SUPER_ADMIN.EMPTY_LOGS' | translate"
+          [message]="'SUPER_ADMIN.EMPTY_LOGS_MSG' | translate"
+        />
+      </ng-template>
+      <thead>
+        <tr>
+          <th>{{ 'SUPER_ADMIN.COL_TIME' | translate }}</th>
+          <th>{{ 'SUPER_ADMIN.COL_ADMIN' | translate }}</th>
+          <th>{{ 'SUPER_ADMIN.COL_ACTION' | translate }}</th>
+          <th>{{ 'SUPER_ADMIN.COL_TARGET' | translate }}</th>
+          <th>{{ 'SUPER_ADMIN.COL_DETAILS' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (log of tbl.data; track log.id) {
+            <tr>
+              <td>
+                <div class="sa-logs-page__time">
+                  <span class="sa-logs-page__time-ago">{{ log.createdAt | date: 'medium' }}</span>
+                </div>
+              </td>
+              <td>
+                @if (log.adminUser; as u) {
+                  <div class="sa-logs-page__admin-cell">
+                    <div class="sa-logs-page__admin-avatar">
+                      {{ (u.firstName?.charAt(0) ?? '?') | uppercase }}
+                    </div>
+                    <div>
+                      <p class="sa-logs-page__admin-name">{{ u.firstName }} {{ u.lastName }}</p>
+                      <p class="sa-logs-page__admin-email">{{ u.email }}</p>
+                    </div>
+                  </div>
+                } @else {
+                  —
+                }
+              </td>
+              <td>
+                <nz-tag [nzColor]="actionNzColor(log.action)">{{ actionLabel(log.action) }}</nz-tag>
+              </td>
+              <td>
+                @if (log.targetTenant; as t) {
+                  <div class="sa-logs-page__target-cell">
+                    <lucide-icon [img]="lucideBuilding2" [size]="12" />
+                    {{ t.name ?? t.slug ?? log.targetTenantId }}
+                  </div>
+                } @else {
+                  {{ targetDisplay(log) }}
+                }
+              </td>
+              <td class="sa-logs-page__details-cell">
+                <span class="sa-logs-page__details-preview">{{ detailsPreview(log) }}</span>
+              </td>
+            </tr>
+        }
+      </tbody>
+    </nz-table>
+
+    @if (totalPages() > 1) {
+      <div class="sa-logs-page__pagination">
+        <span class="sa-logs-page__pagination-info">
+          {{ 'SUPER_ADMIN.PAGE' | translate }} {{ pageIndex() }} {{ 'SUPER_ADMIN.OF' | translate }} {{ totalPages() }}
+        </span>
+        <div class="sa-logs-page__pagination-btns">
+          <button
+            nz-button
+            nzType="default"
+            nzSize="small"
+            [disabled]="pageIndex() <= 1"
+            (click)="onPageChange(pageIndex() - 1)"
+          >
+            <lucide-icon [img]="lucideChevronLeft" [size]="14" />
+          </button>
+          <button
+            nz-button
+            nzType="default"
+            nzSize="small"
+            [disabled]="pageIndex() >= totalPages()"
+            (click)="onPageChange(pageIndex() + 1)"
+          >
+            <lucide-icon [img]="lucideChevronRight" [size]="14" />
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

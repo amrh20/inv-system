@@ -1,0 +1,271 @@
+@if (loading()) {
+  <p class="gp-d__muted">{{ 'GET_PASS.DETAIL.LOADING' | translate }}</p>
+} @else if (error()) {
+  <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon />
+} @else if (data(); as d) {
+  <div class="gp-d">
+    <div class="gp-d__head">
+      <button nz-button nzType="text" type="button" (click)="back()">
+        <lucide-icon [img]="lucideBack" [size]="18" [strokeWidth]="2" />
+      </button>
+      <lucide-icon [img]="lucidePkg" [size]="22" [strokeWidth]="2" class="text-brand-primary" />
+      <h1 class="gp-d__title">{{ d.passNo }}</h1>
+      <span class="status-badge" [ngClass]="'status-' + statusClass(d.status)">
+        {{ 'GET_PASS.STATUS.' + d.status | translate }}
+      </span>
+      <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + d.transferType | translate }}</span>
+    </div>
+
+    <div class="gp-d__actions">
+      <button nz-button nzType="default" type="button" (click)="printPdf()">
+        <lucide-icon [img]="lucidePrint" [size]="14" [strokeWidth]="2" />
+        {{ 'GET_PASS.DETAIL.PRINT' | translate }}
+      </button>
+      @if (canEdit()) {
+        <button nz-button nzType="default" type="button" (click)="edit()">
+          {{ 'GET_PASS.DETAIL.EDIT' | translate }}
+        </button>
+      }
+      @if (canSubmit()) {
+        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="submit()">
+          {{ 'GET_PASS.DETAIL.SUBMIT' | translate }}
+        </button>
+      }
+      @if (canApprove()) {
+        <button nz-button nzDanger type="button" [disabled]="actionBusy()" (click)="openNotes('REJECT')">
+          <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
+          {{ 'GET_PASS.DETAIL.REJECT' | translate }}
+        </button>
+        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openNotes('APPROVE')">
+          <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+          {{ 'GET_PASS.DETAIL.APPROVE' | translate }}
+        </button>
+      }
+      @if (canCheckout()) {
+        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="checkout()">
+          {{ 'GET_PASS.DETAIL.CHECKOUT' | translate }}
+        </button>
+      }
+      @if (canReturn()) {
+        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openReturn()">
+          {{ 'GET_PASS.DETAIL.RETURN' | translate }}
+        </button>
+      }
+      @if (canForceClose()) {
+        <button nz-button nzDanger nzType="default" type="button" [disabled]="actionBusy()" (click)="closePass()">
+          {{ 'GET_PASS.DETAIL.FORCE_CLOSE' | translate }}
+        </button>
+      }
+      @if (canDelete()) {
+        <button nz-button nzDanger type="button" [disabled]="actionBusy()" (click)="deletePass()">
+          {{ 'COMMON.DELETE' | translate }}
+        </button>
+      }
+    </div>
+
+    <div class="gp-d__card">
+      <div class="gp-d__grid">
+        <div>
+          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.DEPT' | translate }}</div>
+          <div>{{ d.department?.name ?? '—' }}</div>
+        </div>
+        <div>
+          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.ENTITY' | translate }}</div>
+          <div>{{ d.borrowingEntity }}</div>
+        </div>
+        <div>
+          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.OWNER' | translate }}</div>
+          <div>
+            @if (d.createdByUser) {
+              {{ d.createdByUser.firstName }} {{ d.createdByUser.lastName }}
+            } @else {
+              —
+            }
+          </div>
+        </div>
+        <div>
+          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.CREATED' | translate }}</div>
+          <div>{{ d.createdAt | date: 'medium' }}</div>
+        </div>
+        @if (d.transferType !== 'PERMANENT' && d.expectedReturnDate) {
+          <div>
+            <div class="gp-d__label">{{ 'GET_PASS.DETAIL.EXPECTED' | translate }}</div>
+            <div>{{ d.expectedReturnDate | date: 'mediumDate' }}</div>
+          </div>
+        }
+      </div>
+      @if (d.reason) {
+        <div class="gp-d__block">
+          <div class="gp-d__label">{{ 'GET_PASS.FORM.REASON' | translate }}</div>
+          <p>{{ d.reason }}</p>
+        </div>
+      }
+      @if (d.notes) {
+        <div class="gp-d__block">
+          <div class="gp-d__label">{{ 'COMMON.NOTES' | translate }}</div>
+          <p class="gp-d__pre">{{ d.notes }}</p>
+        </div>
+      }
+    </div>
+
+    <div class="gp-d__card">
+      <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.PIPELINE' | translate }}</h2>
+      <div class="gp-d__pipeline">
+        <div class="gp-d__pipe" [class.gp-d__pipe--on]="d.status !== 'DRAFT'">
+          {{ 'GET_PASS.DETAIL.P1' | translate }}
+        </div>
+        <div class="gp-d__pipe" [class.gp-d__pipe--on]="!!d.deptApprovedAt">
+          {{ 'GET_PASS.DETAIL.P2' | translate }}
+        </div>
+        <div class="gp-d__pipe" [class.gp-d__pipe--on]="!!d.financeApprovedAt">
+          {{ 'GET_PASS.DETAIL.P3' | translate }}
+        </div>
+        <div class="gp-d__pipe" [class.gp-d__pipe--on]="!!d.securityApprovedAt">
+          {{ 'GET_PASS.DETAIL.P4' | translate }}
+        </div>
+      </div>
+    </div>
+
+    <div class="gp-d__card">
+      <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.LINES' | translate }}</h2>
+      <nz-table [nzData]="d.lines" [nzShowPagination]="false" nzSize="middle">
+        <thead>
+          <tr>
+            <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+            <th>{{ 'GET_PASS.FORM.COL_LOC' | translate }}</th>
+            <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_OUT' | translate }}</th>
+            <th>{{ 'GET_PASS.FORM.COL_CONDITION' | translate }}</th>
+            <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_RET' | translate }}</th>
+            <th>{{ 'COMMON.STATUS' | translate }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of d.lines; track line.id) {
+            <tr>
+              <td>{{ line.item?.name }}</td>
+              <td>{{ line.location?.name }}</td>
+              <td nzAlign="right"><strong>{{ num(line.qty) }}</strong></td>
+              <td>{{ line.conditionOut ?? '—' }}</td>
+              <td nzAlign="right">{{ num(line.qtyReturned) }}</td>
+              <td>{{ 'GET_PASS.LINE_STATUS.' + line.status | translate }}</td>
+            </tr>
+          }
+        </tbody>
+      </nz-table>
+    </div>
+
+    @if (returnHistoryRows().length > 0) {
+      <div class="gp-d__card">
+        <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.RETURN_HIST' | translate }}</h2>
+        <nz-table [nzData]="returnHistoryRows()" [nzShowPagination]="false" nzSize="small">
+          <thead>
+            <tr>
+              <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+              <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_RET' | translate }}</th>
+              <th>{{ 'COMMON.DATE' | translate }}</th>
+              <th>{{ 'GET_PASS.DETAIL.COND_IN' | translate }}</th>
+              <th>{{ 'COMMON.NOTES' | translate }}</th>
+              <th>{{ 'GET_PASS.DETAIL.RECEIVER' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of returnHistoryRows(); track r.id) {
+              <tr>
+                <td>{{ r.itemName }}</td>
+                <td nzAlign="right">{{ r.qty }}</td>
+                <td>{{ r.returnDate | date: 'medium' }}</td>
+                <td>{{ r.conditionIn ?? '—' }}</td>
+                <td>{{ r.notes ?? '—' }}</td>
+                <td>{{ r.receiver ?? '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      </div>
+    }
+  </div>
+}
+
+<nz-modal
+  [nzVisible]="notesOpen()"
+  [nzTitle]="(notesAction() === 'REJECT' ? 'GET_PASS.DETAIL.NOTES_REJECT_TITLE' : 'GET_PASS.DETAIL.NOTES_APPROVE_TITLE') | translate"
+  (nzOnCancel)="notesOpen.set(false)"
+  (nzOnOk)="confirmNotes()"
+  [nzOkLoading]="actionBusy()"
+>
+  <ng-container *nzModalContent>
+    <textarea nz-input rows="4" [ngModel]="actionNotes()" (ngModelChange)="actionNotes.set($event)"></textarea>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="returnOpen()"
+  [nzTitle]="'GET_PASS.DETAIL.RETURN_TITLE' | translate"
+  [nzWidth]="880"
+  (nzOnCancel)="returnOpen.set(false)"
+  (nzOnOk)="submitReturn()"
+  [nzOkLoading]="actionBusy()"
+>
+  <ng-container *nzModalContent>
+    <p class="gp-d__muted">{{ 'GET_PASS.DETAIL.RETURN_HINT' | translate }}</p>
+    <nz-table [nzData]="returnLines()" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.MAX' | translate }}</th>
+          <th>{{ 'GET_PASS.DETAIL.RETURN_QTY' | translate }}</th>
+          <th>{{ 'GET_PASS.DETAIL.FLAGS' | translate }}</th>
+          <th>{{ 'GET_PASS.DETAIL.COND_IN' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of returnLines(); track row.lineId; let idx = $index) {
+          <tr>
+            <td>{{ row.itemName }}</td>
+            <td nzAlign="right">{{ row.maxReturn }}</td>
+            <td>
+              <nz-input-number
+                [ngModel]="row.qtyReturned"
+                (ngModelChange)="updateReturnDraft(idx, { qtyReturned: $event ?? 0 })"
+                [nzMin]="0"
+                [nzMax]="row.maxReturn"
+              />
+            </td>
+            <td>
+              <label class="gp-d__chk">
+                <input
+                  type="checkbox"
+                  [ngModel]="row.isLost"
+                  (ngModelChange)="updateReturnDraft(idx, { isLost: $event })"
+                />
+                {{ 'GET_PASS.DETAIL.LOST' | translate }}
+              </label>
+              <label class="gp-d__chk">
+                <input
+                  type="checkbox"
+                  [ngModel]="row.isDamaged"
+                  (ngModelChange)="updateReturnDraft(idx, { isDamaged: $event })"
+                />
+                {{ 'GET_PASS.DETAIL.DAMAGED' | translate }}
+              </label>
+            </td>
+            <td>
+              <input
+                nz-input
+                [ngModel]="row.conditionIn"
+                (ngModelChange)="updateReturnDraft(idx, { conditionIn: $event })"
+              />
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+    <label class="gp-d__label">{{ 'GET_PASS.DETAIL.RETURN_NOTES' | translate }}</label>
+    <textarea
+      nz-input
+      rows="2"
+      [ngModel]="returnGlobalNotes()"
+      (ngModelChange)="returnGlobalNotes.set($event)"
+    ></textarea>
+  </ng-container>
+</nz-modal>

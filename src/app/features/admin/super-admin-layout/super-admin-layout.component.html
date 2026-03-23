@@ -1,0 +1,68 @@
+<div class="super-admin-layout">
+  <aside class="super-admin-layout__sider">
+    <div class="super-admin-layout__brand">
+      <div class="super-admin-layout__brand-icon">
+        <lucide-icon [img]="lucideShield" [size]="20" />
+      </div>
+      <div>
+        <p class="super-admin-layout__brand-title">iNV Central</p>
+        <p class="super-admin-layout__brand-subtitle">{{ 'SUPER_ADMIN.SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+
+    <nav class="super-admin-layout__nav">
+      <p class="super-admin-layout__nav-heading">{{ 'SUPER_ADMIN.PLATFORM_CONTROLS' | translate }}</p>
+      @for (item of navItems; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="super-admin-layout__nav-link--active"
+          [routerLinkActiveOptions]="{ exact: item.path === '/admin/tenants' }"
+          class="super-admin-layout__nav-link"
+        >
+          <lucide-icon [img]="item.icon" [size]="18" class="super-admin-layout__nav-icon" />
+          <div class="super-admin-layout__nav-text">
+            <span class="super-admin-layout__nav-label">{{ item.labelKey | translate }}</span>
+            <span class="super-admin-layout__nav-desc">{{ item.descKey | translate }}</span>
+          </div>
+          <lucide-icon [img]="lucideChevronRight" [size]="14" class="super-admin-layout__nav-chevron" />
+        </a>
+      }
+    </nav>
+
+    <div class="super-admin-layout__footer">
+      @if (currentUser(); as u) {
+        <div class="super-admin-layout__user">
+          <div class="super-admin-layout__user-avatar">
+            {{ (u.firstName?.charAt(0) ?? 'S') | uppercase }}
+          </div>
+          <div class="super-admin-layout__user-info">
+            <p class="super-admin-layout__user-name">{{ u.firstName }} {{ u.lastName }}</p>
+            <p class="super-admin-layout__user-email">{{ u.email }}</p>
+          </div>
+          <button
+            type="button"
+            class="super-admin-layout__logout-btn"
+            (click)="logout()"
+            [attr.aria-label]="'COMMON.LOGOUT' | translate"
+          >
+            <lucide-icon [img]="lucideLogOut" [size]="15" />
+          </button>
+        </div>
+      }
+    </div>
+  </aside>
+
+  <main class="super-admin-layout__main">
+    <header class="super-admin-layout__header">
+      <div class="super-admin-layout__header-left">
+        <lucide-icon [img]="lucideLayoutDashboard" [size]="16" />
+        <span>{{ 'SUPER_ADMIN.SYSTEM_ADMIN' | translate }}</span>
+      </div>
+      <span class="super-admin-layout__badge">SUPER_ADMIN</span>
+    </header>
+
+    <div class="super-admin-layout__content">
+      <router-outlet />
+    </div>
+  </main>
+</div>

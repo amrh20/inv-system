@@ -1,0 +1,99 @@
+<div class="grn-list">
+  <div class="grn-list__header">
+    <div>
+      <h1 class="grn-list__title">
+        <lucide-icon [img]="lucideFileText" [size]="24" class="text-brand-primary" />
+        {{ 'GRN.LIST.TITLE' | translate }}
+      </h1>
+      <p class="grn-list__meta">
+        {{ total() }} {{ 'GRN.LIST.RECORDS_HINT' | translate }}
+      </p>
+    </div>
+    <div class="grn-list__actions">
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        [title]="'COMMON.REFRESH' | translate"
+        (click)="load()"
+      >
+        <lucide-icon [img]="lucideRefresh" [size]="16" [class.grn-list__spin]="loading()" />
+      </button>
+      <button nz-button nzType="primary" type="button" (click)="openCreate()">
+        <lucide-icon [img]="lucidePlus" [size]="15" />
+        {{ 'GRN.LIST.NEW' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div class="grn-list__tabs">
+    @for (tab of tabs; track tab) {
+      <button
+        type="button"
+        class="grn-list__tab"
+        [class.grn-list__tab--active]="activeTab() === tab"
+        (click)="setTab(tab)"
+      >
+        {{ tabLabel(tab) }}
+      </button>
+    }
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #grnTable
+    [nzData]="grns()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="false"
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'GRN.LIST.EMPTY_TITLE' | translate"
+        [message]="'GRN.LIST.EMPTY_MSG' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th>{{ 'GRN.LIST.COL_GRN' | translate }}</th>
+        <th>{{ 'GRN.LIST.COL_SUPPLIER' | translate }}</th>
+        <th>{{ 'GRN.LIST.COL_WAREHOUSE' | translate }}</th>
+        <th>{{ 'COMMON.DATE' | translate }}</th>
+        <th nzAlign="center">{{ 'GRN.LIST.COL_LINES' | translate }}</th>
+        <th>{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzAlign="right">{{ 'GRN.LIST.COL_ACTION' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (grn of grnTable.data; track grn.id) {
+        <tr class="grn-list__row" (click)="goToDetail(grn)">
+          <td class="grn-list__mono text-brand-primary">{{ grn.grnNumber }}</td>
+          <td>{{ grn.vendor?.name ?? '—' }}</td>
+          <td>{{ grn.location?.name ?? '—' }}</td>
+          <td>{{ grn.receivingDate | date: 'mediumDate' }}</td>
+          <td nzAlign="center">{{ grn._count?.lines ?? 0 }}</td>
+          <td>
+            <span class="status-badge" [ngClass]="'status-' + statusClass(grn.status)">
+              {{ 'GRN.STATUS.' + grn.status | translate }}
+            </span>
+          </td>
+          <td nzAlign="right" class="grn-list__link">{{ 'GRN.LIST.VIEW' | translate }}</td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+
+  <div class="grn-list__footer">
+    {{ 'GRN.LIST.TOTAL' | translate: { count: total() } }}
+  </div>
+</div>
+
+<app-grn-create-modal
+  [open]="createOpen()"
+  (closed)="onCreateClosed()"
+  (created)="onCreated()"
+/>

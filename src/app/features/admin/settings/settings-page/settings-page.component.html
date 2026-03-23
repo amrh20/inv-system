@@ -1,0 +1,206 @@
+<div class="settings-page">
+  <div class="settings-page__header">
+    <h1 class="settings-page__title">
+      <lucide-icon [img]="lucideSettings" [size]="24" class="settings-page__title-icon" />
+      {{ 'SETTINGS.TITLE' | translate }}
+    </h1>
+    <p class="settings-page__subtitle">{{ 'SETTINGS.SUBTITLE' | translate }}</p>
+  </div>
+
+  <section class="settings-page__card">
+    <h2 class="settings-page__h2">
+      <lucide-icon [img]="lucideUser" [size]="20" />
+      {{ 'SETTINGS.PROFILE_TITLE' | translate }}
+    </h2>
+
+    <div class="settings-page__grid">
+      <div>
+        <label class="settings-page__label">{{ 'USERS.FORM.FIRST_NAME' | translate }}</label>
+        <input nz-input [(ngModel)]="profileFirstName" name="pfn" />
+      </div>
+      <div>
+        <label class="settings-page__label">{{ 'USERS.FORM.LAST_NAME' | translate }}</label>
+        <input nz-input [(ngModel)]="profileLastName" name="pln" />
+      </div>
+      <div>
+        <label class="settings-page__label">{{ 'USERS.FORM.PHONE' | translate }}</label>
+        <input nz-input [(ngModel)]="profilePhone" name="pph" />
+      </div>
+      <div>
+        <label class="settings-page__label">{{ 'USERS.FORM.DEPARTMENT' | translate }}</label>
+        <input nz-input [(ngModel)]="profileDepartment" name="pdept" />
+      </div>
+    </div>
+
+    <div class="settings-page__readonly">
+      <span class="settings-page__muted">{{ 'SETTINGS.EMAIL' | translate }}:</span>
+      <span>{{ userEmail() }}</span>
+      <span class="settings-page__hint">({{ 'SETTINGS.EMAIL_READONLY' | translate }})</span>
+    </div>
+    <div class="settings-page__readonly">
+      <span class="settings-page__muted">{{ 'USERS.FORM.ROLE' | translate }}:</span>
+      <span class="status-badge status-processing">{{ ('USERS.ROLES.' + (role() || '')) | translate }}</span>
+    </div>
+
+    @if (profileError()) {
+      <nz-alert nzType="error" [nzMessage]="profileError()" nzShowIcon />
+    }
+    @if (profileSuccess()) {
+      <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_PROFILE_SAVED' | translate" nzShowIcon />
+    }
+
+    <div class="settings-page__footer">
+      <button nz-button nzType="primary" type="button" [nzLoading]="profileSaving()" (click)="saveProfile()">
+        <lucide-icon [img]="lucideSave" [size]="16" />
+        {{ 'SETTINGS.SAVE_PROFILE' | translate }}
+      </button>
+    </div>
+  </section>
+
+  <section class="settings-page__card">
+    <h2 class="settings-page__h2">{{ 'SETTINGS.PASSWORD_TITLE' | translate }}</h2>
+    <div class="settings-page__stack">
+      <div>
+        <label class="settings-page__label">{{ 'SETTINGS.NEW_PASSWORD' | translate }}</label>
+        <input nz-input type="password" [(ngModel)]="passwordNew" name="npw" />
+      </div>
+      <div>
+        <label class="settings-page__label">{{ 'SETTINGS.CONFIRM_PASSWORD' | translate }}</label>
+        <input nz-input type="password" [(ngModel)]="passwordConfirm" name="cpw" />
+      </div>
+    </div>
+    @if (passwordError()) {
+      <nz-alert nzType="error" [nzMessage]="passwordError()" nzShowIcon />
+    }
+    @if (passwordSuccess()) {
+      <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_PASSWORD_SAVED' | translate" nzShowIcon />
+    }
+    <div class="settings-page__footer">
+      <button nz-button nzType="primary" type="button" [nzLoading]="passwordSaving()" (click)="savePassword()">
+        {{ 'SETTINGS.CHANGE_PASSWORD' | translate }}
+      </button>
+    </div>
+  </section>
+
+  @if (isAdmin()) {
+    <section class="settings-page__card">
+      <h2 class="settings-page__h2">
+        <lucide-icon [img]="lucidePackage" [size]="20" />
+        {{ 'SETTINGS.INVENTORY_TITLE' | translate }}
+        @if (isSuperAdmin()) {
+          <span class="settings-page__badge">{{ 'SETTINGS.SUPER_ADMIN_BADGE' | translate }}</span>
+        }
+      </h2>
+
+      @if (obLoading()) {
+        <div class="settings-page__loading">
+          <lucide-icon [img]="lucideLoader" [size]="18" class="settings-page__spin" />
+          {{ 'SETTINGS.OB_LOADING' | translate }}
+        </div>
+      } @else {
+        <div class="settings-page__ob-row">
+          <div>
+            <div class="settings-page__ob-label">{{ 'SETTINGS.OB_IMPORT_LABEL' | translate }}</div>
+            <p class="settings-page__ob-desc">
+              {{
+                (obStatus()?.value === 'LOCKED' ? 'SETTINGS.OB_LOCKED_DESC' : 'SETTINGS.OB_OPEN_DESC')
+                  | translate
+              }}
+            </p>
+          </div>
+          <span
+            class="status-badge"
+            [class.status-error]="obStatus()?.value === 'LOCKED'"
+            [class.status-posted]="obStatus()?.value !== 'LOCKED'"
+          >
+            @if (obStatus()?.value === 'LOCKED') {
+              <lucide-icon [img]="lucideLock" [size]="14" />
+              {{ 'SETTINGS.OB_LOCKED' | translate }}
+            } @else {
+              <lucide-icon [img]="lucideUnlock" [size]="14" />
+              {{ 'SETTINGS.OB_OPEN' | translate }}
+            }
+          </span>
+        </div>
+
+        @if (obStatus()?.reason) {
+          <p class="settings-page__ob-reason">
+            <strong>{{ 'SETTINGS.OB_REASON' | translate }}:</strong>
+            {{ obStatus()?.reason }}
+          </p>
+        }
+
+        @if (isSuperAdmin()) {
+          <div class="settings-page__stack">
+            <label class="settings-page__label">{{
+              (obStatus()?.value === 'LOCKED' ? 'SETTINGS.OB_REASON_UNLOCK' : 'SETTINGS.OB_REASON_LOCK')
+                | translate
+            }}</label>
+            <textarea
+              nz-input
+              rows="3"
+              [(ngModel)]="obReason"
+              name="obr"
+              [placeholder]="
+                (obStatus()?.value === 'LOCKED' ? 'SETTINGS.OB_PLACEHOLDER_UNLOCK' : 'SETTINGS.OB_PLACEHOLDER_LOCK')
+                  | translate
+              "
+            ></textarea>
+          </div>
+          @if (obError()) {
+            <nz-alert nzType="error" [nzMessage]="obError()" nzShowIcon />
+          }
+          @if (obSuccess()) {
+            <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_OB_SAVED' | translate" nzShowIcon />
+          }
+          <div class="settings-page__footer">
+            <button
+              nz-button
+              nzType="primary"
+              nzDanger
+              type="button"
+              [nzLoading]="obSaving()"
+              (click)="toggleOb()"
+              [class.settings-page__btn-unlock]="obStatus()?.value === 'LOCKED'"
+            >
+              @if (obStatus()?.value === 'LOCKED') {
+                <lucide-icon [img]="lucideUnlock" [size]="16" />
+                {{ 'SETTINGS.OB_UNLOCK_BTN' | translate }}
+              } @else {
+                <lucide-icon [img]="lucideLock" [size]="16" />
+                {{ 'SETTINGS.OB_LOCK_BTN' | translate }}
+              }
+            </button>
+          </div>
+        } @else {
+          <nz-alert nzType="info" [nzMessage]="'SETTINGS.OB_ADMIN_ONLY' | translate" nzShowIcon />
+        }
+      }
+    </section>
+  }
+
+  <section class="settings-page__card">
+    <h2 class="settings-page__h2">
+      <lucide-icon [img]="lucideBuilding" [size]="20" />
+      {{ 'SETTINGS.SYSTEM_TITLE' | translate }}
+    </h2>
+    <div class="settings-page__sys">
+      <div>
+        <span class="settings-page__muted">{{ 'SETTINGS.TENANT' | translate }}</span>
+        <span>{{ tenantLabel() }}</span>
+      </div>
+      <div>
+        <span class="settings-page__muted">{{ 'SETTINGS.USER_ID' | translate }}</span>
+        <span class="settings-page__mono">{{ userIdShort() }}</span>
+      </div>
+      <div>
+        <span class="settings-page__muted">{{ 'SETTINGS.VERSION' | translate }}</span>
+        <span>{{ 'SETTINGS.VERSION_VALUE' | translate }}</span>
+      </div>
+      <div>
+        <span class="settings-page__muted">{{ 'SETTINGS.ENVIRONMENT' | translate }}</span>
+        <span>{{ envLabel() | translate }}</span>
+      </div>
+    </div>
+  </section>
+</div>

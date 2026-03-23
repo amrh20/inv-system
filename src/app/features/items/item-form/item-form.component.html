@@ -203,11 +203,25 @@
 
         <nz-tab [nzTitle]="tabUnits">
           <ng-template #tabUnits>
-            <span class="tab-label">
+            <span
+              class="tab-label"
+              [class.tab-label--error]="form.get('itemUnits')?.hasError('baseUnitInvalid')"
+            >
               <lucide-icon [img]="lucideRuler" [size]="14" />
               {{ 'COMMON.UNITS' | translate }}
+              @if (form.get('itemUnits')?.hasError('baseUnitInvalid')) {
+                <span class="tab-error-dot" [attr.title]="'ITEM_FORM.ERROR_BASE_UNIT_REQUIRED' | translate"></span>
+              }
             </span>
           </ng-template>
+          @if (form.get('itemUnits')?.hasError('baseUnitInvalid')) {
+            <nz-alert
+              nzType="error"
+              nzShowIcon
+              class="units-tab-alert"
+              [nzMessage]="'ITEM_FORM.ERROR_BASE_UNIT_REQUIRED' | translate"
+            />
+          }
           <p class="units-hint">
             {{ 'ITEM_FORM.UNITS_HINT' | translate }}
           </p>
@@ -257,7 +271,7 @@
     nz-button
     nzType="primary"
     type="button"
-    [disabled]="saving() || loadingLookups()"
+    [disabled]="saving() || loadingLookups() || form.invalid"
     (click)="save()"
   >
     @if (saving()) {

@@ -60,3 +60,27 @@ export type TransferStatus =
   | 'RECEIVED'
   | 'CLOSED'
   | 'REJECTED';
+
+/** Prisma `GetPassType` */
+export type GetPassType = 'TEMPORARY' | 'CATERING' | 'PERMANENT';
+
+/** Prisma `GetPassStatus` */
+export type GetPassStatus =
+  | 'DRAFT'
+  | 'PENDING_DEPT'
+  | 'PENDING_FINANCE'
+  | 'PENDING_SECURITY'
+  | 'APPROVED'
+  | 'OUT'
+  | 'PARTIALLY_RETURNED'
+  | 'RETURNED'
+  | 'CLOSED'
+  | 'REJECTED';
+
+/** Prisma `GetPassLineStatus` */
+export type GetPassLineStatus =
+  | 'PENDING'
+  | 'OUT'
+  | 'PARTIALLY_RETURNED'
+  | 'RETURNED'
+  | 'LOST';

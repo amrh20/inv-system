@@ -9,14 +9,16 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
+  AbstractControl,
   FormArray,
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
+  ValidationErrors,
   Validators,
 } from '@angular/forms';
 import { forkJoin, lastValueFrom, of } from 'rxjs';
-import { catchError, first, switchMap, tap } from 'rxjs/operators';
+import { catchError, first, startWith, switchMap, tap } from 'rxjs/operators';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -26,6 +28,7 @@ import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
@@ -47,6 +50,23 @@ import type {
   UnitOption,
 } from '../models/item.model';
 
+/** Exactly one row must have unitType BASE with a non-empty unitId. */
+function itemUnitsBaseUnitValidator(control: AbstractControl): ValidationErrors | null {
+  const arr = control as FormArray<FormGroup>;
+  if (!arr?.controls?.length) {
+    return { baseUnitInvalid: true };
+  }
+  const baseRows = arr.controls.filter((g) => g.get('unitType')?.value === 'BASE');
+  if (baseRows.length !== 1) {
+    return { baseUnitInvalid: true };
+  }
+  const unitId = baseRows[0].get('unitId')?.value;
+  if (unitId == null || String(unitId).trim() === '') {
+    return { baseUnitInvalid: true };
+  }
+  return null;
+}
+
 @Component({
   selector: 'app-item-form',
   standalone: true,
@@ -62,6 +82,7 @@ import type {
     NzCheckboxModule,
     NzGridModule,
     NzSpinModule,
+    NzAlertModule,
     LucideAngularModule,
     TranslatePipe,
   ],
@@ -119,7 +140,7 @@ export class ItemFormComponent {
     reorderPoint: [null as number | null, [Validators.min(0)]],
     reorderQty: [null as number | null, [Validators.min(0)]],
     isActive: [true],
-    itemUnits: this.fb.array<FormGroup>([]),
+    itemUnits: this.fb.array<FormGroup>([], { validators: [itemUnitsBaseUnitValidator] }),
   });
 
   constructor() {
@@ -154,6 +175,12 @@ export class ItemFormComponent {
       .subscribe(() => {
         this.form.get('defaultStoreId')?.setValue('', { emitEvent: false });
       });
+
+    this.form.valueChanges
+      .pipe(startWith(null), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.itemUnits.updateValueAndValidity({ emitEvent: false });
+      });
   }
 
   get itemUnits(): FormArray<FormGroup> {
@@ -170,10 +197,14 @@ export class ItemFormComponent {
   }
 
   addUnitRow(): void {
+    const hasBase = this.itemUnits.controls.some(
+      (g) => g.get('unitType')?.value === 'BASE',
+    );
+    const defaultType: ItemUnitRow['unitType'] = hasBase ? 'PURCHASE' : 'BASE';
     this.itemUnits.push(
       this.fb.group({
         unitId: ['', Validators.required],
-        unitType: ['BASE' as ItemUnitRow['unitType']],
+        unitType: [defaultType],
         conversionRate: [1, [Validators.required, Validators.min(0.000001)]],
       }),
     );
@@ -231,8 +262,12 @@ export class ItemFormComponent {
     }));
 
     const baseCount = itemUnits.filter((u) => u.unitType === 'BASE').length;
-    if (baseCount > 1) {
-      this.submitError.set(this.t('ITEM_FORM.ERROR_ONLY_ONE_BASE_UNIT'));
+    if (baseCount !== 1) {
+      this.submitError.set(
+        baseCount === 0
+          ? this.t('ITEM_FORM.ERROR_BASE_UNIT_REQUIRED')
+          : this.t('ITEM_FORM.ERROR_ONLY_ONE_BASE_UNIT'),
+      );
       return;
     }
     for (const u of itemUnits) {
@@ -320,7 +355,10 @@ export class ItemFormComponent {
     this.fetchLookups$()
       .pipe(first())
       .subscribe({
-        next: () => this.loadingLookups.set(false),
+        next: () => {
+          this.loadingLookups.set(false);
+          this.addDefaultBaseUnitRowForCreate();
+        },
         error: () => this.loadingLookups.set(false),
       });
   }
@@ -383,6 +421,10 @@ export class ItemFormComponent {
                 }),
               );
             }
+            if (!units.length) {
+              this.addUnitRow();
+            }
+            this.itemUnits.updateValueAndValidity({ emitEvent: false });
           });
       });
   }
@@ -391,6 +433,18 @@ export class ItemFormComponent {
     while (this.itemUnits.length) {
       this.itemUnits.removeAt(0);
     }
+  }
+
+  /** After lookups load for new item, ensure one BASE row exists. */
+  private addDefaultBaseUnitRowForCreate(): void {
+    if (this.item()) {
+      return;
+    }
+    if (this.itemUnits.length > 0) {
+      return;
+    }
+    this.addUnitRow();
+    this.itemUnits.updateValueAndValidity({ emitEvent: false });
   }
 
   private fetchLookups$() {

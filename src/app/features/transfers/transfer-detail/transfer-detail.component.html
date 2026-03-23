@@ -1,0 +1,200 @@
+@if (loading()) {
+  <p class="transfer-detail__center">{{ 'TRANSFER.DETAIL.LOADING' | translate }}</p>
+} @else if (error() || !trf()) {
+  <p class="transfer-detail__center transfer-detail__err">{{ error() || ('TRANSFER.DETAIL.NOT_FOUND' | translate) }}</p>
+} @else {
+  @let t = trf()!;
+
+  <button nz-button nzType="link" type="button" class="transfer-detail__back" (click)="back()">
+    <lucide-icon [img]="lucideBack" [size]="16" [strokeWidth]="2" />
+    {{ 'TRANSFER.DETAIL.BACK' | translate }}
+  </button>
+
+  <div class="transfer-detail__head">
+    <div>
+      <h1 class="transfer-detail__title">
+        <lucide-icon [img]="lucideArrows" [size]="24" class="text-brand-primary" [strokeWidth]="2" />
+        {{ t.transferNo }}
+      </h1>
+      <p class="transfer-detail__meta">
+        {{ t.sourceLocation?.name ?? '—' }} → {{ t.destLocation?.name ?? '—' }}
+        · {{ t.transferDate | date: 'mediumDate' }}
+      </p>
+    </div>
+    <span class="status-badge" [ngClass]="'status-' + statusClass(t.status)">
+      {{ 'TRANSFER.STATUS.' + t.status | translate }}
+    </span>
+  </div>
+
+  @if (actionError()) {
+    <nz-alert nzType="error" [nzMessage]="actionError()" nzShowIcon class="transfer-detail__alert" />
+  }
+
+  @if (t.status === 'REJECTED' && t.rejectionReason) {
+    <nz-alert
+      nzType="error"
+      [nzMessage]="'TRANSFER.DETAIL.REJECTION' | translate: { reason: t.rejectionReason }"
+      nzShowIcon
+      class="transfer-detail__alert"
+    />
+  }
+
+  <div class="transfer-detail__actions">
+    @if (t.status === 'DRAFT') {
+      <button nz-button nzType="default" type="button" (click)="edit()" [disabled]="acting()">
+        {{ 'TRANSFER.DETAIL.EDIT' | translate }}
+      </button>
+      <button nz-button nzType="default" nzDanger type="button" (click)="deleteDraft()" [disabled]="acting()">
+        {{ 'COMMON.DELETE' | translate }}
+      </button>
+      <button nz-button nzType="primary" type="button" (click)="submit()" [disabled]="acting()">
+        {{ 'TRANSFER.DETAIL.SUBMIT' | translate }}
+      </button>
+    }
+    @if (t.status === 'SUBMITTED' && isManager()) {
+      <button nz-button nzType="primary" type="button" (click)="approve()" [disabled]="acting()">
+        <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+        {{ 'TRANSFER.DETAIL.APPROVE' | translate }}
+      </button>
+      <button nz-button nzType="default" nzDanger type="button" (click)="openReject()" [disabled]="acting()">
+        <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
+        {{ 'TRANSFER.DETAIL.REJECT' | translate }}
+      </button>
+    }
+    @if (t.status === 'APPROVED' && isStorekeeper()) {
+      <button nz-button nzType="primary" type="button" (click)="dispatch()" [disabled]="acting()">
+        <lucide-icon [img]="lucideTruck" [size]="14" [strokeWidth]="2" />
+        {{ 'TRANSFER.DETAIL.DISPATCH' | translate }}
+      </button>
+    }
+    @if (t.status === 'IN_TRANSIT' && isStorekeeper()) {
+      <button nz-button nzType="primary" type="button" (click)="receive()" [disabled]="acting()">
+        <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+        {{ 'TRANSFER.DETAIL.RECEIVE' | translate }}
+      </button>
+    }
+  </div>
+
+  @if (showReject()) {
+    <div class="transfer-detail__reject-box">
+      <p class="transfer-detail__reject-label">{{ 'TRANSFER.DETAIL.REJECT_REASON_LABEL' | translate }}</p>
+      <input
+        nz-input
+        type="text"
+        [placeholder]="'TRANSFER.DETAIL.REJECT_REASON_PH' | translate"
+        [ngModel]="rejectReason()"
+        (ngModelChange)="rejectReason.set($event)"
+      />
+      <div class="transfer-detail__reject-actions">
+        <button nz-button nzType="primary" nzDanger type="button" (click)="confirmReject()">
+          {{ 'TRANSFER.DETAIL.REJECT_CONFIRM' | translate }}
+        </button>
+        <button nz-button nzType="default" type="button" (click)="cancelReject()">
+          {{ 'COMMON.CANCEL' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="transfer-detail__cards">
+    <div class="transfer-detail__card">
+      <p class="transfer-detail__card-label">{{ 'TRANSFER.DETAIL.FROM' | translate }}</p>
+      <p class="transfer-detail__card-value">{{ t.sourceLocation?.name ?? '—' }}</p>
+    </div>
+    <div class="transfer-detail__card">
+      <p class="transfer-detail__card-label">{{ 'TRANSFER.DETAIL.TO' | translate }}</p>
+      <p class="transfer-detail__card-value">{{ t.destLocation?.name ?? '—' }}</p>
+    </div>
+    <div class="transfer-detail__card">
+      <p class="transfer-detail__card-label">{{ 'TRANSFER.DETAIL.REQUESTED_BY' | translate }}</p>
+      <p class="transfer-detail__card-value">
+        @if (t.requestedByUser) {
+          {{ t.requestedByUser.firstName }} {{ t.requestedByUser.lastName }}
+        } @else {
+          —
+        }
+      </p>
+    </div>
+  </div>
+
+  <div class="transfer-detail__lines-card">
+    <div class="transfer-detail__lines-head">{{ 'TRANSFER.DETAIL.LINES_TITLE' | translate }}</div>
+    <nz-table [nzData]="t.lines ?? []" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>{{ 'TRANSFER.DETAIL.COL_ITEM' | translate }}</th>
+          <th>{{ 'TRANSFER.DETAIL.COL_UOM' | translate }}</th>
+          <th nzAlign="right">{{ 'TRANSFER.DETAIL.COL_REQ' | translate }}</th>
+          <th nzAlign="right">{{ 'TRANSFER.DETAIL.COL_RCVD' | translate }}</th>
+          <th nzAlign="right">{{ 'TRANSFER.DETAIL.COL_UNIT_COST' | translate }}</th>
+          <th nzAlign="right">{{ 'TRANSFER.DETAIL.COL_TOTAL' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (l of t.lines; track l.id) {
+          <tr>
+            <td>{{ l.item?.name ?? '—' }}</td>
+            <td>{{ l.uom?.abbreviation ?? '—' }}</td>
+            <td nzAlign="right">{{ num(l.requestedQty) }}</td>
+            <td nzAlign="right">
+              @if (l.receivedQty != null) {
+                <span class="transfer-detail__received-qty">{{ num(l.receivedQty) }}</span>
+              } @else {
+                <span class="transfer-detail__dash">—</span>
+              }
+            </td>
+            <td nzAlign="right" class="transfer-detail__muted">
+              @if (num(l.unitCost) > 0) {
+                {{ 'COMMON.CURRENCY_SAR' | translate }} {{ num(l.unitCost) | number: '1.2-2' }}
+              } @else {
+                —
+              }
+            </td>
+            <td nzAlign="right" class="transfer-detail__strong">
+              @if (num(l.totalValue) > 0) {
+                {{ 'COMMON.CURRENCY_SAR' | translate }} {{ num(l.totalValue) | number: '1.2-2' }}
+              } @else {
+                —
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+  </div>
+
+  <div class="transfer-detail__timeline">
+    <p class="transfer-detail__timeline-title">{{ 'TRANSFER.DETAIL.TIMELINE' | translate }}</p>
+    <div class="transfer-detail__timeline-body">
+      <p>{{ 'TRANSFER.DETAIL.CREATED' | translate }}: {{ t.createdAt | date: 'medium' }}</p>
+      @if (t.approvedAt) {
+        <p class="transfer-detail__tl-approved">
+          {{ 'TRANSFER.DETAIL.APPROVED_AT' | translate }}: {{ t.approvedAt | date: 'medium' }}
+          @if (t.approvedByUser) {
+            {{ 'TRANSFER.DETAIL.BY' | translate }} {{ t.approvedByUser.firstName }}
+            {{ t.approvedByUser.lastName }}
+          }
+        </p>
+      }
+      @if (t.dispatchedAt) {
+        <p class="transfer-detail__tl-dispatch">
+          {{ 'TRANSFER.DETAIL.DISPATCHED_AT' | translate }}: {{ t.dispatchedAt | date: 'medium' }}
+        </p>
+      }
+      @if (t.receivedAt) {
+        <p class="transfer-detail__tl-received">
+          {{ 'TRANSFER.DETAIL.RECEIVED_AT' | translate }}: {{ t.receivedAt | date: 'medium' }}
+          @if (t.receivedByUser) {
+            {{ 'TRANSFER.DETAIL.BY' | translate }} {{ t.receivedByUser.firstName }}
+            {{ t.receivedByUser.lastName }}
+          }
+        </p>
+      }
+      @if (t.closedAt) {
+        <p class="transfer-detail__tl-closed">
+          {{ 'TRANSFER.DETAIL.CLOSED_AT' | translate }}: {{ t.closedAt | date: 'medium' }}
+        </p>
+      }
+    </div>
+  </div>
+}

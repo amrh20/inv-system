@@ -1,0 +1,116 @@
+<div class="ih-page">
+  <div class="ih-page__header">
+    <div class="ih-page__icon-wrap">
+      <lucide-icon [img]="lucideHistory" [size]="20" />
+    </div>
+    <div>
+      <h1 class="ih-page__title">{{ 'INVENTORY_HISTORY.TITLE' | translate }}</h1>
+      <p class="ih-page__subtitle">{{ 'INVENTORY_HISTORY.DESCRIPTION' | translate }}</p>
+    </div>
+  </div>
+
+  <div class="ih-page__filters">
+    <div class="ih-page__grid">
+      <div>
+        <label class="ih-page__label">{{ 'INVENTORY_HISTORY.FILTER_ENTITY' | translate }}</label>
+        <select class="ih-page__select" [(ngModel)]="entityType" name="et">
+          <option value="">{{ 'AUDIT_LOG.ALL_ENTITIES' | translate }}</option>
+          @for (c of entityCodes; track c) {
+            <option [value]="c">{{ entityLabel(c) }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="ih-page__label">{{ 'INVENTORY_HISTORY.FILTER_ACTION' | translate }}</label>
+        <select class="ih-page__select" [(ngModel)]="action" name="ac">
+          <option value="">{{ 'INVENTORY_HISTORY.ALL_ACTIONS' | translate }}</option>
+          @for (a of actionCodes; track a) {
+            <option [value]="a">{{ actionLabel(a) }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="ih-page__label">{{ 'AUDIT_LOG.FROM' | translate }}</label>
+        <input class="ih-page__date" type="date" [(ngModel)]="dateFrom" name="df" />
+      </div>
+      <div>
+        <label class="ih-page__label">{{ 'AUDIT_LOG.TO' | translate }}</label>
+        <input class="ih-page__date" type="date" [(ngModel)]="dateTo" name="dt" />
+      </div>
+    </div>
+    <div class="ih-page__actions">
+      <button nz-button nzType="default" type="button" (click)="clearFilters()">
+        {{ 'COMMON.CLEAR' | translate }}
+      </button>
+      <button nz-button nzType="primary" type="button" [nzLoading]="loading()" (click)="search()">
+        <lucide-icon [img]="lucideSearch" [size]="16" />
+        {{ 'INVENTORY_HISTORY.SEARCH' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div class="ih-page__summary">
+    <span>{{ 'INVENTORY_HISTORY.TOTAL_EVENTS' | translate: { count: total() } }}</span>
+    <button nz-button nzType="text" type="button" (click)="load()">
+      <lucide-icon [img]="lucideRefresh" [size]="14" [class.ih-page__spin]="loading()" />
+      {{ 'COMMON.REFRESH' | translate }}
+    </button>
+  </div>
+
+  <nz-table
+    #tbl
+    [nzData]="logs()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
+    [nzPageSizeOptions]="[25, 50, 100]"
+    (nzPageIndexChange)="onPageIndexChange($event)"
+    (nzPageSizeChange)="onPageSizeChange($event)"
+    nzShowSizeChanger
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'INVENTORY_HISTORY.EMPTY_TITLE' | translate"
+        [message]="'INVENTORY_HISTORY.EMPTY_MSG' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th>{{ 'INVENTORY_HISTORY.COL_DATETIME' | translate }}</th>
+        <th>{{ 'AUDIT_LOG.COL_ACTION' | translate }}</th>
+        <th>{{ 'INVENTORY_HISTORY.COL_ENTITY' | translate }}</th>
+        <th>{{ 'INVENTORY_HISTORY.COL_REF' | translate }}</th>
+        <th>{{ 'AUDIT_LOG.COL_USER' | translate }}</th>
+        <th>{{ 'INVENTORY_HISTORY.COL_NOTE' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (log of tbl.data; track log.id) {
+        <tr>
+          <td class="ih-page__mono">
+            @if (displayTime(log); as d) {
+              {{ d | date: 'medium' }}
+            } @else {
+              —
+            }
+          </td>
+          <td>
+            <nz-tag [nzColor]="actionNzColor(log.action)">
+              {{ formatActionLabel(log.action) }}
+            </nz-tag>
+          </td>
+          <td>{{ displayEntity(log) }}</td>
+          <td>
+            <span class="ih-page__ref">{{ log.entityId | slice: 0 : 8 }}…</span>
+          </td>
+          <td>{{ userName(log) }}</td>
+          <td class="ih-page__note">{{ log.note || '—' }}</td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+</div>

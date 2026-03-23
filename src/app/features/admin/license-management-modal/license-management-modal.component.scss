@@ -1,0 +1,30 @@
+.license-management-modal {
+  &__alert {
+    margin-bottom: 16px;
+  }
+
+  &__section {
+    margin-bottom: 0;
+  }
+
+  &__section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #64748b);
+    margin: 0 0 12px 0;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--text-muted, #94a3b8);
+  }
+
+  &__full-width {
+    width: 100%;
+  }
+}

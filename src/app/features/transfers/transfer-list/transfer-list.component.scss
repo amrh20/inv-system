@@ -1,0 +1,129 @@
+.transfer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.transfer-list__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.transfer-list__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.transfer-list__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.transfer-list__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.transfer-list__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color-split, #f0f0f0);
+  overflow-x: auto;
+}
+
+.transfer-list__tab {
+  border: 1px solid var(--border-color-split, #f0f0f0);
+  background: #fff;
+  border-radius: 9999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &--active {
+    background: var(--primary-color, #1e40af);
+    border-color: var(--primary-color, #1e40af);
+    color: #fff;
+  }
+
+  &:hover:not(&--active) {
+    background: rgba(0, 0, 0, 0.02);
+    color: rgba(0, 0, 0, 0.75);
+  }
+}
+
+.transfer-list__panel {
+  background: #fff;
+  border: 1px solid var(--border-color-split, #f0f0f0);
+  border-radius: var(--radius-brand, 6px);
+  overflow: hidden;
+}
+
+.transfer-list__panel-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color-split, #f0f0f0);
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.transfer-list__row {
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.02);
+  }
+}
+
+.transfer-list__mono {
+  font-family: ui-monospace, monospace;
+  font-weight: 500;
+}
+
+.transfer-list__arrow {
+  margin: 0 6px;
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.transfer-list__muted {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.transfer-list__chevron {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+.transfer-list__col-chevron {
+  width: 40px;
+}
+
+.transfer-list__empty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0 32px;
+}
+
+.transfer-list__spin {
+  animation: transfer-list-spin 0.8s linear infinite;
+}
+
+@keyframes transfer-list-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

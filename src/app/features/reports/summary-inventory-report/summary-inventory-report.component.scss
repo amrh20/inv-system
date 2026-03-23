@@ -1,0 +1,12 @@
+:host {
+  display: block;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .summary-report table {
+    font-size: 9px;
+  }
+}

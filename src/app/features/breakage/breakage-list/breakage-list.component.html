@@ -1,0 +1,133 @@
+<div class="brk-list">
+  <div class="brk-list__header">
+    <div>
+      <h1 class="brk-list__title">
+        <lucide-icon [img]="lucideAlert" [size]="24" class="text-brand-error" />
+        {{ 'BREAKAGE.LIST.TITLE' | translate }}
+      </h1>
+      <p class="brk-list__meta">{{ total() }} {{ 'BREAKAGE.LIST.RECORDS_HINT' | translate }}</p>
+    </div>
+    <div class="brk-list__actions">
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        [title]="'COMMON.REFRESH' | translate"
+        (click)="load()"
+      >
+        <lucide-icon [img]="lucideRefresh" [size]="16" [class.brk-list__spin]="loading()" />
+      </button>
+      <button nz-button nzType="primary" type="button" (click)="openCreate()">
+        <lucide-icon [img]="lucidePlus" [size]="15" />
+        {{ 'BREAKAGE.LIST.NEW' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <div class="brk-list__filters">
+    <div class="brk-list__search-wrap">
+      <lucide-icon [img]="lucideSearch" [size]="18" class="brk-list__search-icon" />
+      <input
+        type="text"
+        nz-input
+        class="brk-list__search-input"
+        [ngModel]="search()"
+        (ngModelChange)="onSearchInput($event)"
+        [placeholder]="'BREAKAGE.LIST.SEARCH_PH' | translate"
+      />
+    </div>
+  </div>
+
+  <div class="brk-list__tabs">
+    @for (tab of tabs; track tab) {
+      <button
+        type="button"
+        class="brk-list__tab"
+        [class.brk-list__tab--active]="activeTab() === tab"
+        (click)="setTab(tab)"
+      >
+        {{ tabLabel(tab) }}
+      </button>
+    }
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    #docTable
+    [nzData]="documents()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="false"
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'BREAKAGE.LIST.EMPTY_TITLE' | translate"
+        [message]="'BREAKAGE.LIST.EMPTY_MSG' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th>{{ 'BREAKAGE.LIST.COL_DOC' | translate }}</th>
+        <th>{{ 'COMMON.DATE' | translate }}</th>
+        <th>{{ 'COMMON.STATUS' | translate }}</th>
+        <th>{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
+        <th>{{ 'BREAKAGE.LIST.COL_REASON' | translate }}</th>
+        <th nzAlign="center">{{ 'BREAKAGE.LIST.COL_ITEMS' | translate }}</th>
+        <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (doc of docTable.data; track doc.id) {
+        <tr class="brk-list__row">
+          <td class="brk-list__mono text-brand-primary">{{ doc.documentNo }}</td>
+          <td>{{ doc.createdAt | date: 'mediumDate' }}</td>
+          <td>
+            <span class="status-badge" [ngClass]="'status-' + statusClass(doc.status)">
+              {{ 'BREAKAGE.STATUS.' + doc.status | translate }}
+            </span>
+          </td>
+          <td>
+            @if (doc.createdByUser) {
+              {{ doc.createdByUser.firstName }} {{ doc.createdByUser.lastName }}
+            } @else {
+              —
+            }
+          </td>
+          <td class="brk-list__truncate">{{ doc.reason ?? '—' }}</td>
+          <td nzAlign="center">{{ doc._count?.lines ?? 0 }}</td>
+          <td nzAlign="right">
+            <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
+              <lucide-icon [img]="lucideEye" [size]="16" />
+            </button>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+
+  <div class="brk-list__footer">
+    <button nz-button nzType="default" type="button" [disabled]="page() === 0" (click)="prevPage()">
+      {{ 'COMMON.BACK' | translate }}
+    </button>
+    <span>{{ 'BREAKAGE.LIST.PAGE' | translate: { current: page() + 1, total: total() } }}</span>
+    <button
+      nz-button
+      nzType="default"
+      type="button"
+      [disabled]="(page() + 1) * pageSize >= total()"
+      (click)="nextPage()"
+    >
+      {{ 'COMMON.NEXT' | translate }}
+    </button>
+  </div>
+</div>
+
+<app-breakage-create-modal
+  [open]="createOpen()"
+  (closed)="onCreateClosed()"
+  (created)="onCreated($event)"
+/>

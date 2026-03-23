@@ -1,0 +1,124 @@
+.admin-users {
+  display: block;
+  padding: 0 0 1.5rem;
+}
+
+.admin-users__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.admin-users__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-brand-dark, #001529);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-users__title-icon {
+  color: var(--primary-color);
+}
+
+.admin-users__meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.875rem;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.admin-users__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--color-brand-surface, #f5f5f5);
+  border-radius: var(--radius-brand, 6px);
+}
+
+.admin-users__search {
+  flex: 1;
+  min-width: 200px;
+  max-width: 360px;
+}
+
+.admin-users__role {
+  min-width: 160px;
+}
+
+.admin-users__spin {
+  animation: admin-users-spin 0.8s linear infinite;
+}
+
+@keyframes admin-users-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.admin-users__user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-users__avatar {
+  background: var(--primary-color) !important;
+}
+
+.admin-users__name {
+  font-weight: 500;
+}
+
+.admin-users__muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.admin-users__tag-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.admin-users__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-users__form-alert {
+  margin-bottom: 0.5rem;
+}
+
+.admin-users__form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-users__form-row--2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.admin-users__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.admin-users__full-width {
+  width: 100%;
+}

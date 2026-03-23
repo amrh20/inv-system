@@ -1,0 +1,127 @@
+.brk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.brk-list__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.brk-list__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.brk-list__meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.brk-list__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.brk-list__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.brk-list__search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+  max-width: 420px;
+}
+
+.brk-list__search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+.brk-list__search-input {
+  padding-left: 36px !important;
+}
+
+.brk-list__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color-split, #f0f0f0);
+  overflow-x: auto;
+}
+
+.brk-list__tab {
+  border: 0;
+  background: transparent;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.45);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+
+  &--active {
+    color: var(--primary-color, #1e40af);
+    border-bottom-color: var(--primary-color, #1e40af);
+  }
+
+  &:hover:not(&--active) {
+    color: rgba(0, 0, 0, 0.65);
+  }
+}
+
+.brk-list__row:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.brk-list__mono {
+  font-family: ui-monospace, monospace;
+  font-weight: 500;
+}
+
+.brk-list__truncate {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brk-list__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color-split, #f0f0f0);
+}
+
+.brk-list__spin {
+  animation: brk-spin 0.8s linear infinite;
+}
+
+@keyframes brk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

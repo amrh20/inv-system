@@ -101,27 +101,39 @@
 
     <div class="sider-footer" [class.sider-footer--collapsed]="!sidebarExpanded()">
       @if (sidebarExpanded()) {
-        <div class="sider-footer__avatar">{{ avatarLetter() }}</div>
-        <div class="sider-footer__meta">
-          <div class="sider-footer__name">{{ displayName() }}</div>
-          <div class="sider-footer__tenant">{{ tenantLabel() }}</div>
+        <div class="sider-footer__user">
+          <div class="sider-footer__avatar">{{ avatarLetter() }}</div>
+          <div class="sider-footer__meta">
+            <div class="sider-footer__name">{{ displayName() }}</div>
+            <div class="sider-footer__tenant">{{ auth.currentUser()?.email ?? tenantLabel() }}</div>
+          </div>
+          <div class="sider-footer__actions">
+            <button
+              type="button"
+              class="sider-footer__theme"
+              (click)="toggleTheme()"
+              [attr.aria-label]="
+                isDarkMode()
+                  ? ('LAYOUT.SWITCH_TO_LIGHT_MODE' | translate)
+                  : ('LAYOUT.SWITCH_TO_DARK_MODE' | translate)
+              "
+            >
+              @if (isDarkMode()) {
+                <lucide-icon [img]="lucideSun" [size]="14" class="sider-footer__sun" />
+              } @else {
+                <lucide-icon [img]="lucideMoon" [size]="14" class="sider-footer__moon" />
+              }
+            </button>
+            <button
+              type="button"
+              class="sider-footer__logout"
+              (click)="logout()"
+              [attr.aria-label]="'COMMON.LOGOUT' | translate"
+            >
+              <lucide-icon [img]="lucideLogOut" [size]="15" />
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          class="sider-footer__theme"
-          (click)="toggleTheme()"
-          [attr.aria-label]="
-            isDarkMode()
-              ? ('LAYOUT.SWITCH_TO_LIGHT_MODE' | translate)
-              : ('LAYOUT.SWITCH_TO_DARK_MODE' | translate)
-          "
-        >
-          @if (isDarkMode()) {
-            <lucide-icon [img]="lucideSun" [size]="14" class="sider-footer__sun" />
-          } @else {
-            <lucide-icon [img]="lucideMoon" [size]="14" class="sider-footer__moon" />
-          }
-        </button>
       }
       <button type="button" class="sider-trigger-btn" (click)="toggleSidebar()" [attr.aria-label]="'LAYOUT.TOGGLE_SIDEBAR' | translate">
         @if (sidebarExpanded()) {

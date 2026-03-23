@@ -2,6 +2,20 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  position: relative;
+}
+
+.tab-label--error {
+  padding-inline-end: 2px;
+}
+
+.tab-error-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand-error, #ff4d4f);
+  flex-shrink: 0;
 }
 
 .form-body {
@@ -62,6 +76,10 @@
 
 .browse-btn {
   margin-top: 12px;
+}
+
+.units-tab-alert {
+  margin-bottom: 12px;
 }
 
 .units-hint {

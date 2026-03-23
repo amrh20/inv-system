@@ -1,0 +1,260 @@
+<div class="stock-report space-y-4">
+  <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--ose-border)] pb-3">
+    <div>
+      <h1 class="flex items-center gap-2 text-2xl font-bold text-brand-dark">
+        <lucide-icon [img]="lucideChart" class="h-7 w-7 text-brand-primary" [strokeWidth]="2" />
+        {{ 'STOCK_REPORT.TITLE' | translate }}
+      </h1>
+      <p class="mt-0.5 text-sm text-subtle">{{ 'STOCK_REPORT.SUBTITLE' | translate }}</p>
+    </div>
+    <div class="flex rounded-[6px] bg-surface-muted p-1">
+      <button
+        type="button"
+        class="rounded-[6px] px-4 py-2 text-sm font-medium transition-colors"
+        [class.bg-surface-elevated]="activeTab() === 'generate'"
+        [class.shadow]="activeTab() === 'generate'"
+        [class.text-brand-dark]="activeTab() === 'generate'"
+        [class.text-subtle]="activeTab() !== 'generate'"
+        (click)="setTab('generate')"
+      >
+        {{ 'STOCK_REPORT.TAB_GENERATE' | translate }}
+      </button>
+      <button
+        type="button"
+        class="rounded-[6px] px-4 py-2 text-sm font-medium transition-colors"
+        [class.bg-surface-elevated]="activeTab() === 'saved'"
+        [class.shadow]="activeTab() === 'saved'"
+        [class.text-brand-dark]="activeTab() === 'saved'"
+        [class.text-subtle]="activeTab() !== 'saved'"
+        (click)="setTab('saved')"
+      >
+        {{ 'STOCK_REPORT.TAB_SAVED' | translate }}
+      </button>
+    </div>
+  </div>
+
+  @if (activeTab() === 'generate') {
+    <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+      <div class="grid grid-cols-1 items-end gap-4 md:grid-cols-5">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'COMMON.DEPARTMENT' | translate }} *</label>
+          <nz-select
+            class="w-full"
+            [(ngModel)]="departmentId"
+            (ngModelChange)="onDeptChange()"
+            nzPlaceHolder="{{ 'STOCK_REPORT.PH_DEPARTMENT' | translate }}"
+          >
+            @for (d of departments(); track d.id) {
+              <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'COMMON.CATEGORY' | translate }}</label>
+          <nz-select
+            class="w-full"
+            [(ngModel)]="categoryId"
+            (ngModelChange)="report.set(null)"
+            nzAllowClear
+            nzPlaceHolder="{{ 'REPORTS.FILTERS.ALL_CATEGORIES' | translate }}"
+          >
+            @for (c of filteredCategories(); track c.id) {
+              <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'STOCK_REPORT.YEAR' | translate }}</label>
+          <nz-select class="w-full" [(ngModel)]="year" (ngModelChange)="report.set(null)">
+            @for (y of years; track y) {
+              <nz-option [nzValue]="y" [nzLabel]="'' + y" />
+            }
+          </nz-select>
+        </div>
+        <div>
+          <button
+            type="button"
+            nz-button
+            nzType="primary"
+            class="flex h-[38px] w-full items-center justify-center gap-2"
+            [disabled]="!departmentId || loading()"
+            (click)="generate()"
+          >
+            @if (loading()) {
+              <lucide-icon [img]="lucideRefresh" class="h-4 w-4 animate-spin" [strokeWidth]="2" />
+            } @else {
+              <lucide-icon [img]="lucideSearch" class="h-4 w-4" [strokeWidth]="2" />
+            }
+            {{ 'REPORTS.ACTIONS.GENERATE' | translate }}
+          </button>
+        </div>
+        <div>
+          <button
+            type="button"
+            nz-button
+            class="h-[38px] w-full"
+            [nzType]="blindCount() ? 'primary' : 'default'"
+            (click)="blindCount.update((v) => !v)"
+          >
+            {{ (blindCount() ? 'STOCK_REPORT.BLIND_ON' : 'STOCK_REPORT.BLIND') | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    @if (report()) {
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          nz-button
+          nzType="primary"
+          class="!bg-brand-success border-0"
+          [disabled]="saving()"
+          (click)="saveDraft()"
+        >
+          @if (saving()) {
+            <lucide-icon [img]="lucideRefresh" class="mr-1 inline h-4 w-4 animate-spin" [strokeWidth]="2" />
+          } @else {
+            <lucide-icon [img]="lucideSave" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+          }
+          {{ 'STOCK_REPORT.SAVE_DRAFT' | translate }}
+        </button>
+        <button type="button" nz-button (click)="exportExcel()">
+          <lucide-icon [img]="lucideDownload" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+          {{ 'STOCK_REPORT.EXPORT' | translate }}
+        </button>
+        <label class="inline-flex cursor-pointer items-center gap-2 rounded-[6px] border border-[var(--ose-border)] px-3 py-1.5 text-sm">
+          <lucide-icon [img]="lucideUpload" class="h-4 w-4" [strokeWidth]="2" />
+          {{ 'STOCK_REPORT.UPLOAD' | translate }}
+          <input type="file" accept=".xlsx,.xls" class="hidden" [disabled]="uploading()" (change)="onUploadFile($event)" />
+        </label>
+      </div>
+
+      @if (blindCount()) {
+        <div class="rounded-[6px] border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+          {{ 'STOCK_REPORT.BLIND_HINT' | translate }}
+        </div>
+      }
+
+      <div class="overflow-hidden rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated shadow-sm">
+        <div class="max-h-[calc(100vh-240px)] overflow-auto">
+          <table class="min-w-[900px] border-collapse text-left text-sm">
+            <thead>
+              <tr class="border-b border-[var(--ose-border)] bg-surface-muted text-xs font-semibold uppercase text-subtle">
+                <th class="sticky left-0 z-[2] bg-surface-muted px-2 py-2">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                <th class="px-2 py-2">{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
+                <th class="px-2 py-2 text-right">{{ 'COMMON.UNIT_PRICE' | translate }}</th>
+                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_OPEN' | translate }}</th>
+                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_GRN' | translate }}</th>
+                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_BRK' | translate }}</th>
+                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_PASS' | translate }}</th>
+                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_THEOR' | translate }}</th>
+                @for (loc of report()!.locations; track loc.id) {
+                  <th class="px-2 py-2 text-center">{{ loc.name }}</th>
+                }
+                @for (loc of report()!.locations; track loc.id) {
+                  <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_COUNT' | translate }} {{ loc.name }}</th>
+                  <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_VAR' | translate }}</th>
+                }
+                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_FVAR_Q' | translate }}</th>
+                <th class="px-2 py-2 text-right">{{ 'STOCK_REPORT.COL_FVAR_V' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--ose-border)]">
+              @for (item of report()!.items; track item.itemId; let idx = $index) {
+                <tr [class.bg-surface-muted]="idx % 2 === 1">
+                  <td class="sticky left-0 z-[1] max-w-[260px] bg-inherit px-2 py-2 font-medium">
+                    <div class="truncate">{{ item.name }}</div>
+                    @if (item.barcode) {
+                      <div class="truncate font-mono text-xs text-subtle">{{ item.barcode }}</div>
+                    }
+                  </td>
+                  <td class="px-2 py-2 font-mono text-xs text-subtle">{{ item.code || '—' }}</td>
+                  <td class="px-2 py-2 text-right font-mono">{{ showBook(item.unitPrice) }}</td>
+                  <td class="px-2 py-2 text-center font-mono">{{ showBook(item.openStock) }}</td>
+                  <td class="px-2 py-2 text-center font-mono">{{ showBook(item.grnQty) }}</td>
+                  <td class="px-2 py-2 text-center font-mono text-red-700">{{ showBook(item.breakages) }}</td>
+                  <td class="px-2 py-2 text-center font-mono">{{ showBook(item.totalOutOnPass) }}</td>
+                  <td class="px-2 py-2 text-center font-mono font-semibold">{{ showBook(item.theorQty) }}</td>
+                  @for (loc of report()!.locations; track loc.id) {
+                    <td class="px-2 py-2 text-center font-mono">{{ showBook(item.locationQtys?.[loc.id]) }}</td>
+                  }
+                  @for (loc of report()!.locations; track loc.id) {
+                    <td class="px-2 py-2 text-center">
+                      <input
+                        nz-input
+                        type="number"
+                        class="min-w-[72px] text-center"
+                        [ngModel]="getCount(item.itemId, loc.id)"
+                        (ngModelChange)="setCount(item.itemId, loc.id, $event)"
+                      />
+                    </td>
+                    <td
+                      class="px-2 py-2 text-center font-mono font-semibold"
+                      [class.text-green-700]="(varQty(item.itemId, loc.id, item) ?? 0) > 0"
+                      [class.text-red-700]="(varQty(item.itemId, loc.id, item) ?? 0) < 0"
+                    >
+                      @if (varQty(item.itemId, loc.id, item) === null) {
+                        —
+                      } @else {
+                        {{ varQty(item.itemId, loc.id, item)! }}
+                      }
+                    </td>
+                  }
+                  <td class="px-2 py-2 text-center font-mono font-semibold">{{ showBook(item.varianceQty) }}</td>
+                  <td class="px-2 py-2 text-right font-mono">{{ showBook(item.varianceValue) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-muted p-4">
+        <label class="mb-2 block text-sm font-bold text-brand-dark">{{ 'STOCK_REPORT.MGMT_NOTES' | translate }}</label>
+        <textarea
+          nz-input
+          rows="3"
+          [(ngModel)]="managementNotes"
+          [placeholder]="'STOCK_REPORT.MGMT_NOTES_PH' | translate"
+        ></textarea>
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'saved') {
+    <nz-table [nzData]="savedRows()" [nzLoading]="savedLoading()" [nzShowPagination]="false" nzSize="middle" [nzNoResult]="savedEmpty">
+      <ng-template #savedEmpty>
+        <app-empty-state [title]="'STOCK_REPORT.SAVED_EMPTY' | translate" [message]="'STOCK_REPORT.SAVED_EMPTY_HINT' | translate" />
+      </ng-template>
+      <thead>
+        <tr>
+          <th>{{ 'STOCK_REPORT.COL_REPORT_NO' | translate }}</th>
+          <th>{{ 'COMMON.DATE' | translate }}</th>
+          <th>{{ 'COMMON.LOCATION' | translate }}</th>
+          <th class="text-right">{{ 'STOCK_REPORT.COL_VAR_VALUE' | translate }}</th>
+          <th class="text-center">{{ 'COMMON.STATUS' | translate }}</th>
+          <th class="text-right">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of savedRows(); track r.id) {
+          <tr>
+            <td class="font-medium text-brand-primary">{{ r.reportNo }}</td>
+            <td>{{ r.createdAt | date: 'mediumDate' }}</td>
+            <td>{{ r.location?.name ?? '—' }}</td>
+            <td class="text-right font-mono">{{ fmt(r.totalValue) }}</td>
+            <td class="text-center">
+              <span class="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-brand-dark">{{
+                r.status
+              }}</span>
+            </td>
+            <td class="text-right">
+              <a nz-button nzType="link" [routerLink]="['/stock-report', r.id]">{{ 'COMMON.VIEW_DETAILS' | translate }}</a>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+  }
+</div>

@@ -1,0 +1,194 @@
+<nz-modal
+  [nzVisible]="visible()"
+  (nzOnCancel)="close()"
+  [nzTitle]="modalTitle"
+  [nzMaskClosable]="false"
+  [nzFooter]="footerTpl"
+  [nzWidth]="640"
+>
+  <ng-container *nzModalContent>
+    @if (formError) {
+      <nz-alert
+        nzType="error"
+        [nzMessage]="getErrorMessage()"
+        nzShowIcon
+        class="tenant-form-modal__alert"
+      />
+    }
+
+    <div class="tenant-form-modal__section">
+      <h4 class="tenant-form-modal__section-title">
+        <lucide-icon [img]="lucideBuilding2" [size]="14" />
+        {{ 'SUPER_ADMIN.CREATE_SECTION_HOTEL' | translate }}
+      </h4>
+      <div nz-row [nzGutter]="16">
+        <div nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_HOTEL_NAME' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input
+                nz-input
+                [(ngModel)]="name"
+                (ngModelChange)="onNameChange()"
+                [placeholder]="'SUPER_ADMIN.CREATE_HOTEL_NAME_PLACEHOLDER' | translate"
+              />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label [nzRequired]="!isEditMode()">{{ 'SUPER_ADMIN.CREATE_SLUG' | translate }}</nz-form-label>
+            <nz-form-control [nzExtra]="isEditMode() ? undefined : slugHintRef">
+              <input
+                nz-input
+                [(ngModel)]="slug"
+                [placeholder]="'SUPER_ADMIN.CREATE_SLUG_PLACEHOLDER' | translate"
+                class="!font-mono"
+                [readonly]="isEditMode()"
+              />
+            </nz-form-control>
+            <ng-template #slugHintRef>
+              <span class="tenant-form-modal__hint">{{ 'SUPER_ADMIN.CREATE_SLUG_HINT' | translate }}</span>
+            </ng-template>
+          </nz-form-item>
+        </div>
+      </div>
+    </div>
+
+    <div class="tenant-form-modal__section">
+      <h4 class="tenant-form-modal__section-title">
+        <lucide-icon [img]="lucideKeySquare" [size]="14" />
+        {{ 'SUPER_ADMIN.CREATE_SECTION_LICENSE' | translate }}
+      </h4>
+      <div nz-row [nzGutter]="16">
+        <div nz-col [nzSpan]="8">
+          <nz-form-item>
+            <nz-form-label>{{ 'SUPER_ADMIN.CREATE_PLAN' | translate }}</nz-form-label>
+            <nz-form-control>
+              <nz-select
+                [(ngModel)]="planType"
+                (ngModelChange)="onPlanChange($event)"
+                class="tenant-form-modal__full-width"
+              >
+                <nz-option [nzValue]="'BASIC'" [nzLabel]="'SUPER_ADMIN.PLAN_BASIC' | translate" />
+                <nz-option [nzValue]="'PRO'" [nzLabel]="'SUPER_ADMIN.PLAN_PRO' | translate" />
+                <nz-option [nzValue]="'ENTERPRISE'" [nzLabel]="'SUPER_ADMIN.PLAN_ENTERPRISE' | translate" />
+                <nz-option [nzValue]="'CUSTOM'" [nzLabel]="'SUPER_ADMIN.PLAN_CUSTOM' | translate" />
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col [nzSpan]="8">
+          <nz-form-item>
+            <nz-form-label>{{ 'COMMON.STATUS' | translate }}</nz-form-label>
+            <nz-form-control>
+              <nz-select [(ngModel)]="subStatus" class="tenant-form-modal__full-width">
+                <nz-option [nzValue]="'TRIAL'" [nzLabel]="'SUPER_ADMIN.STATUS_TRIAL' | translate" />
+                <nz-option [nzValue]="'ACTIVE'" [nzLabel]="'COMMON.ACTIVE' | translate" />
+                <nz-option [nzValue]="'EXPIRED'" [nzLabel]="'SUPER_ADMIN.STATUS_EXPIRED' | translate" />
+                <nz-option [nzValue]="'SUSPENDED'" [nzLabel]="'SUPER_ADMIN.STATUS_SUSPENDED' | translate" />
+              </nz-select>
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col [nzSpan]="8">
+          <nz-form-item>
+            <nz-form-label>{{ 'SUPER_ADMIN.CREATE_MAX_USERS' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input nz-input type="number" min="1" [(ngModel)]="maxUsers" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label>{{ 'SUPER_ADMIN.CREATE_LICENSE_START' | translate }}</nz-form-label>
+            <nz-form-control>
+              <input nz-input type="date" [(ngModel)]="licenseStartDate" />
+            </nz-form-control>
+          </nz-form-item>
+        </div>
+        <div nz-col [nzSpan]="12">
+          <nz-form-item>
+            <nz-form-label>{{ 'SUPER_ADMIN.CREATE_LICENSE_END' | translate }}</nz-form-label>
+            <nz-form-control [nzExtra]="licenseEndHint">
+              <input nz-input type="date" [(ngModel)]="licenseEndDate" />
+            </nz-form-control>
+            <ng-template #licenseEndHint>
+              <span class="tenant-form-modal__hint">{{ 'SUPER_ADMIN.CREATE_LICENSE_END_HINT' | translate }}</span>
+            </ng-template>
+          </nz-form-item>
+        </div>
+      </div>
+    </div>
+
+    @if (!isEditMode()) {
+      <div class="tenant-form-modal__section tenant-form-modal__section--admin">
+        <h4 class="tenant-form-modal__section-title">
+          <lucide-icon [img]="lucideUser" [size]="14" />
+          {{ 'SUPER_ADMIN.CREATE_SECTION_ADMIN' | translate }}
+        </h4>
+        <p class="tenant-form-modal__admin-desc">{{ 'SUPER_ADMIN.CREATE_ADMIN_DESC' | translate }}</p>
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_ADMIN_FIRST_NAME' | translate }}</nz-form-label>
+              <nz-form-control>
+                <input nz-input [(ngModel)]="adminFirstName" [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_FIRST_PLACEHOLDER' | translate" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_ADMIN_LAST_NAME' | translate }}</nz-form-label>
+              <nz-form-control>
+                <input nz-input [(ngModel)]="adminLastName" [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_LAST_PLACEHOLDER' | translate" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="24">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_ADMIN_EMAIL' | translate }}</nz-form-label>
+              <nz-form-control>
+                <input nz-input type="email" [(ngModel)]="adminEmail" [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_EMAIL_PLACEHOLDER' | translate" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="24">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_ADMIN_PASSWORD' | translate }}</nz-form-label>
+              <nz-form-control [nzExtra]="passwordHint">
+                <div class="tenant-form-modal__password-wrap">
+                  <input
+                    nz-input
+                    [type]="showPassword() ? 'text' : 'password'"
+                    [(ngModel)]="adminPassword"
+                    [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_PASSWORD_PLACEHOLDER' | translate"
+                    class="tenant-form-modal__password-input"
+                  />
+                  <button
+                    nz-button
+                    nzType="text"
+                    type="button"
+                    class="tenant-form-modal__password-toggle"
+                    (click)="togglePasswordVisibility()"
+                  >
+                    <lucide-icon [img]="showPassword() ? lucideEyeOff : lucideEye" [size]="16" />
+                  </button>
+                </div>
+              </nz-form-control>
+              <ng-template #passwordHint>
+                <span class="tenant-form-modal__hint">{{ 'SUPER_ADMIN.CREATE_ADMIN_PASSWORD_HINT' | translate }}</span>
+              </ng-template>
+            </nz-form-item>
+          </div>
+        </div>
+      </div>
+    }
+  </ng-container>
+  <ng-template #footerTpl>
+    <button nz-button type="button" (click)="close()">{{ 'COMMON.CANCEL' | translate }}</button>
+    <button nz-button nzType="primary" type="button" [nzLoading]="saving()" (click)="submit()">
+      {{ submitLabel }}
+    </button>
+  </ng-template>
+</nz-modal>

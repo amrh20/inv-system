@@ -19,6 +19,7 @@
 /* --- Design Tokens (CSS Variables) --- */
 :root {
   --primary-color: #1e40af;
+  --brand-primary: #6366f1;
   --radius-brand: 6px;
   --input-height: 38px;
   --font-main: 'Cairo', system-ui, -apple-system, sans-serif;
@@ -204,6 +205,10 @@ textarea.ant-input {
   width: 250px !important;
 }
 .ant-modal {
-  width: 500px;
+  width: 800px;
   margin: 0 auto;
+}
+.ant-picker {
+  height: 38px;
+    border-radius: 6px;
 }
