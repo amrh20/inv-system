@@ -9,14 +9,16 @@ import { NzBreadCrumbModule } from 'ng-zorro-antd/breadcrumb';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { LucideAngularModule } from 'lucide-angular';
-import { ChevronDown, Languages, LogOut, Menu, Moon, Search, Sun, X } from 'lucide-angular';
+import { Check, ChevronDown, Languages, LogOut, Menu, Moon, Search, Sun, X } from 'lucide-angular';
 import { AuthService } from '../../services/auth.service';
 import { NavigationService, type NavEntry } from '../../services/navigation.service';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { LanguageService } from '../../services/language.service';
+import type { UserMembership } from '../../models';
 
 @Component({
   selector: 'app-main-layout',
@@ -30,6 +32,7 @@ import { LanguageService } from '../../services/language.service';
     NzDropDownModule,
     NzButtonModule,
     NzInputModule,
+    NzSpinModule,
     NzTooltipModule,
     LucideAngularModule,
     FormsModule,
@@ -49,12 +52,14 @@ export class MainLayoutComponent {
   readonly isDarkMode = signal(this.readThemeFromStorage());
   readonly breadcrumbs = signal<{ label: string; link?: string }[]>([]);
   readonly searchQuery = signal('');
+  readonly switchingTenant = signal(false);
 
   readonly lucideMenu = Menu;
   readonly lucideClose = X;
   readonly lucideMoon = Moon;
   readonly lucideSun = Sun;
   readonly lucideChevronDown = ChevronDown;
+  readonly lucideCheck = Check;
   readonly lucideLogOut = LogOut;
   readonly lucideSearch = Search;
   readonly lucideLanguages = Languages;
@@ -173,6 +178,58 @@ export class MainLayoutComponent {
   tenantLabel(): string {
     const u = this.auth.currentUser();
     return u?.tenant?.slug?.toUpperCase() ?? 'SYSTEM';
+  }
+
+  isSuperAdmin(): boolean {
+    return this.auth.currentUser()?.role === 'SUPER_ADMIN';
+  }
+
+  currentTenantName(): string {
+    const tenant = this.auth.currentTenant();
+    const user = this.auth.currentUser();
+    if (this.isSuperAdmin()) {
+      return 'System';
+    }
+    return tenant?.name ?? tenant?.slug ?? user?.tenant?.name ?? user?.tenant?.slug ?? 'Hotel';
+  }
+
+  tenantSwitcherItems(): UserMembership[] {
+    const user = this.auth.currentUser();
+    return (user?.memberships ?? []).filter(
+      (membership) => !!membership.tenantId && !!membership.tenantSlug,
+    );
+  }
+
+  showTenantSwitcher(): boolean {
+    return !this.isSuperAdmin() && this.tenantSwitcherItems().length > 0;
+  }
+
+  onSwitchTenant(tenantSlug: string): void {
+    if (!tenantSlug || this.switchingTenant() || this.isTenantSlugActive(tenantSlug)) {
+      return;
+    }
+    this.switchingTenant.set(true);
+    this.auth.switchTenant(tenantSlug).subscribe({
+      next: () => {
+        this.switchingTenant.set(false);
+        window.location.href = '/dashboard';
+      },
+      error: () => {
+        this.switchingTenant.set(false);
+      },
+    });
+  }
+
+  isActiveTenant(membership: UserMembership): boolean {
+    const currentTenant = this.auth.currentTenant();
+    if (currentTenant?.slug && membership.tenantSlug === currentTenant.slug) {
+      return true;
+    }
+    return !!currentTenant?.id && membership.tenantId === currentTenant.id;
+  }
+
+  private isTenantSlugActive(tenantSlug: string): boolean {
+    return this.auth.currentTenant()?.slug === tenantSlug;
   }
 
   private readThemeFromStorage(): boolean {

@@ -17,7 +17,7 @@ export class DefaultRedirectComponent {
 
   constructor() {
     const role = this.auth.currentUser()?.role;
-    const target = role === 'SUPER_ADMIN' ? '/admin' : '/dashboard';
+    const target = role === 'SUPER_ADMIN' ? '/admin/tenants' : '/dashboard';
     this.router.navigateByUrl(target, { replaceUrl: true });
   }
 }

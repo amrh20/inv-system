@@ -5,9 +5,11 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Building2, Eye, EyeOff, KeySquare, User } from 'lucide-angular';
@@ -33,8 +35,10 @@ const PLAN_LIMITS: Record<string, number | null> = {
     NzFormModule,
     NzGridModule,
     NzInputModule,
+    NzDatePickerModule,
     NzModalModule,
     NzSelectModule,
+    NzSwitchModule,
     TranslatePipe,
     LucideAngularModule,
   ],
@@ -59,15 +63,24 @@ export class TenantFormModalComponent {
   readonly lucideEyeOff = EyeOff;
 
   readonly saving = signal(false);
+  readonly loadingParentTenants = signal(false);
   readonly showPassword = signal(false);
+  readonly allTenants = signal<TenantRow[]>([]);
+  readonly parentTenantOptions = computed(() => {
+    const currentId = this.editId;
+    return this.allTenants().filter((item) => item.id !== currentId);
+  });
 
   name = '';
   slug = '';
   planType: PlanType = 'BASIC';
   subStatus = 'TRIAL';
   maxUsers = 5;
-  licenseStartDate = new Date().toISOString().split('T')[0];
-  licenseEndDate = '';
+  licenseStartDate: Date | null = new Date();
+  licenseEndDate: Date | null = null;
+  parentId: string | null = null;
+  hasBranches = false;
+  maxBranches = 0;
   adminFirstName = '';
   adminLastName = '';
   adminEmail = '';
@@ -79,6 +92,7 @@ export class TenantFormModalComponent {
   constructor() {
     effect(() => {
       if (this.visible()) {
+        this.loadParentTenantOptions();
         const t = this.tenant();
         if (t) {
           this.patchForEdit(t);
@@ -111,6 +125,20 @@ export class TenantFormModalComponent {
       : this.translate.instant('SUPER_ADMIN.CREATE_SUBMIT');
   }
 
+  get isDateRangeInvalid(): boolean {
+    if (!this.licenseStartDate || !this.licenseEndDate) {
+      return false;
+    }
+    return this.startOfDay(this.licenseEndDate).getTime() < this.startOfDay(this.licenseStartDate).getTime();
+  }
+
+  readonly disableEndDate = (current: Date): boolean => {
+    if (!this.licenseStartDate) {
+      return false;
+    }
+    return this.startOfDay(current).getTime() < this.startOfDay(this.licenseStartDate).getTime();
+  };
+
   private resetForm(): void {
     this.editId = null;
     this.name = '';
@@ -118,8 +146,11 @@ export class TenantFormModalComponent {
     this.planType = 'BASIC';
     this.subStatus = 'TRIAL';
     this.maxUsers = 5;
-    this.licenseStartDate = new Date().toISOString().split('T')[0];
-    this.licenseEndDate = '';
+    this.licenseStartDate = new Date();
+    this.licenseEndDate = null;
+    this.parentId = null;
+    this.hasBranches = false;
+    this.maxBranches = 0;
     this.adminFirstName = '';
     this.adminLastName = '';
     this.adminEmail = '';
@@ -134,12 +165,11 @@ export class TenantFormModalComponent {
     this.planType = (t.planType as PlanType) ?? 'BASIC';
     this.subStatus = t.subStatus ?? 'TRIAL';
     this.maxUsers = t.maxUsers ?? 5;
-    this.licenseStartDate = t.licenseStartDate
-      ? new Date(t.licenseStartDate).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0];
-    this.licenseEndDate = t.licenseEndDate
-      ? new Date(t.licenseEndDate).toISOString().split('T')[0]
-      : '';
+    this.licenseStartDate = t.licenseStartDate ? new Date(t.licenseStartDate) : new Date();
+    this.licenseEndDate = t.licenseEndDate ? new Date(t.licenseEndDate) : null;
+    this.parentId = t.parentId ?? null;
+    this.hasBranches = !!t.hasBranches;
+    this.maxBranches = t.maxBranches ?? 0;
     this.adminFirstName = '';
     this.adminLastName = '';
     this.adminEmail = '';
@@ -161,6 +191,39 @@ export class TenantFormModalComponent {
     if (limit != null) this.maxUsers = limit;
   }
 
+  onParentChange(parentId: string | null): void {
+    this.parentId = parentId;
+    if (this.parentId) {
+      this.hasBranches = false;
+      this.maxBranches = 0;
+    }
+  }
+
+  onHasBranchesChange(enabled: boolean): void {
+    this.hasBranches = enabled && !this.parentId;
+    if (!this.hasBranches) {
+      this.maxBranches = 0;
+    }
+  }
+
+  onLicenseStartDateChange(date: Date | null): void {
+    this.licenseStartDate = date;
+  }
+
+  private loadParentTenantOptions(): void {
+    this.loadingParentTenants.set(true);
+    this.api.list({ page: 1, limit: 1000 }).subscribe({
+      next: (res) => {
+        this.allTenants.set(res.data ?? []);
+        this.loadingParentTenants.set(false);
+      },
+      error: () => {
+        this.allTenants.set([]);
+        this.loadingParentTenants.set(false);
+      },
+    });
+  }
+
   togglePasswordVisibility(): void {
     this.showPassword.update((v) => !v);
   }
@@ -171,6 +234,10 @@ export class TenantFormModalComponent {
 
   submit(): void {
     this.formError = '';
+    if (this.isDateRangeInvalid) {
+      this.formError = 'SUPER_ADMIN.CREATE_LICENSE_DATE_RANGE_INVALID';
+      return;
+    }
     if (this.isEditMode()) {
       this.submitEdit();
     } else {
@@ -188,8 +255,11 @@ export class TenantFormModalComponent {
       planType: this.planType,
       subStatus: this.subStatus,
       maxUsers: this.maxUsers,
-      licenseStartDate: this.licenseStartDate || undefined,
-      licenseEndDate: this.licenseEndDate || null,
+      licenseStartDate: this.toApiDate(this.licenseStartDate),
+      licenseEndDate: this.toApiDate(this.licenseEndDate) ?? null,
+      parentId: this.parentId || null,
+      hasBranches: !!this.hasBranches,
+      maxBranches: this.maxBranches || 0,
     };
     this.saving.set(true);
     this.api.updateTenant(this.editId, payload).subscribe({
@@ -220,8 +290,11 @@ export class TenantFormModalComponent {
       planType: this.planType,
       subStatus: this.subStatus as 'TRIAL' | 'ACTIVE',
       maxUsers: this.maxUsers,
-      licenseStartDate: this.licenseStartDate || undefined,
-      licenseEndDate: this.licenseEndDate || undefined,
+      licenseStartDate: this.toApiDate(this.licenseStartDate),
+      licenseEndDate: this.toApiDate(this.licenseEndDate) ?? null,
+      parentId: this.parentId || null,
+      hasBranches: !!this.hasBranches,
+      maxBranches: this.maxBranches || 0,
       adminEmail: this.adminEmail.trim(),
       adminPassword: this.adminPassword,
       adminFirstName: this.adminFirstName?.trim() || 'Admin',
@@ -239,5 +312,19 @@ export class TenantFormModalComponent {
         this.saving.set(false);
       },
     });
+  }
+
+  private startOfDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  private toApiDate(date: Date | null): string | undefined {
+    if (!date) {
+      return undefined;
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

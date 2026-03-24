@@ -16,6 +16,7 @@ import {
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { en_US, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { registerLocaleData } from '@angular/common';
 import en from '@angular/common/locales/en';
@@ -31,8 +32,10 @@ export const appConfig: ApplicationConfig = {
     {
       provide: TRANSLATE_HTTP_LOADER_CONFIG,
       useValue: {
-        prefix: './i18n/',
+        prefix: '/i18n/',
         suffix: '.json',
+        // Bypass auth (and any other) HTTP interceptors so i18n JSON always loads.
+        useHttpBackend: true,
       },
     },
     importProvidersFrom(
@@ -44,5 +47,6 @@ export const appConfig: ApplicationConfig = {
         },
       }),
     ),
+    importProvidersFrom(NzModalModule),
   ],
 };

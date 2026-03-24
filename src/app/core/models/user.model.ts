@@ -17,6 +17,14 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   tenant?: Tenant | null;
+  memberships?: UserMembership[];
+}
+
+export interface UserMembership {
+  tenantId: string | null;
+  tenantSlug: string;
+  tenantName: string;
+  role: UserRole;
 }
 
 /**

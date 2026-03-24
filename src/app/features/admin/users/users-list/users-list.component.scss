@@ -32,6 +32,24 @@
   color: rgba(0, 0, 0, 0.45);
 }
 
+.admin-users__usage-tag {
+  margin-inline-start: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.admin-users__create-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+}
+
+.admin-users__limit-note {
+  font-size: 0.75rem;
+  color: var(--color-brand-error, #ff4d4f);
+}
+
 .admin-users__filters {
   display: flex;
   flex-wrap: wrap;
@@ -119,6 +137,29 @@
   color: rgba(0, 0, 0, 0.85);
 }
 
+.admin-users__label--with-tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-users__import-badge {
+  margin: 0;
+  border-radius: 6px;
+}
+
+.admin-users__import-hint {
+  margin: 0 0 0.25rem;
+  border-radius: 6px;
+}
+
 .admin-users__full-width {
   width: 100%;
+}
+
+.admin-users__department-empty {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.45);
 }

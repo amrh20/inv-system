@@ -8,6 +8,7 @@ export const ASSIGNABLE_USER_ROLES: readonly UserRole[] = [
   'COST_CONTROL',
   'FINANCE_MANAGER',
   'AUDITOR',
+  'SECURITY',
 ];
 
 export interface UserListRow {
@@ -16,6 +17,7 @@ export interface UserListRow {
   firstName: string;
   lastName: string;
   role: UserRole;
+  departmentId?: string | null;
   department: string | null;
   phone: string | null;
   isActive: boolean;
@@ -28,10 +30,24 @@ export interface UserCreatePayload {
   email: string;
   password?: string;
   role: UserRole;
-  department?: string;
+  departmentId?: string;
   phone?: string;
   isActive?: boolean;
 }
+
+/** Existing user returned by `GET /users/search-existing` for cross-tenant import. */
+export interface ExistingUserSearchHit {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
+}
+
+/** Value bound to create-mode email `nz-select` (existing hit vs new email). */
+export type EmailPickOption =
+  | { source: 'existing'; email: string; user: ExistingUserSearchHit }
+  | { source: 'new'; email: string };
 
 export interface AuditLogRow {
   id: string;

@@ -1,9 +1,16 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { debounceTime, first } from 'rxjs/operators';
+import { EMPTY, Subject } from 'rxjs';
+import {
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  first,
+  switchMap,
+  tap,
+} from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -15,13 +22,23 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Calendar, Mail, Pencil, Phone, Plus, RefreshCw, Search, Shield, Users, X } from 'lucide-angular';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import type { UserRole } from '../../../../core/models/enums';
-import { ASSIGNABLE_USER_ROLES, type UserCreatePayload, type UserListRow } from '../../models/admin.models';
+import { AuthService } from '../../../../core/services/auth.service';
+import {
+  ASSIGNABLE_USER_ROLES,
+  type EmailPickOption,
+  type ExistingUserSearchHit,
+  type UserCreatePayload,
+  type UserListRow,
+} from '../../models/admin.models';
 import { UsersAdminService } from '../../services/users-admin.service';
+import { DepartmentsService } from '../../../master-data/services/departments.service';
+import type { DepartmentRow } from '../../../master-data/models/department.model';
 
 @Component({
   selector: 'app-users-list',
@@ -39,6 +56,7 @@ import { UsersAdminService } from '../../services/users-admin.service';
     NzSpinModule,
     NzTableModule,
     NzTagModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
@@ -48,8 +66,10 @@ import { UsersAdminService } from '../../services/users-admin.service';
 })
 export class UsersListComponent implements OnInit {
   private readonly api = inject(UsersAdminService);
+  private readonly departmentsApi = inject(DepartmentsService);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly lucideUsers = Users;
@@ -67,27 +87,72 @@ export class UsersListComponent implements OnInit {
 
   readonly users = signal<UserListRow[]>([]);
   readonly total = signal(0);
+  readonly maxUsers = signal<number | null>(null);
+  readonly activeCount = signal(0);
   readonly loading = signal(false);
   readonly listError = signal('');
+  readonly usagePercent = computed(() => {
+    const max = this.maxUsers();
+    if (!max || max <= 0) {
+      return 0;
+    }
+    return Math.min(100, (this.activeCount() / max) * 100);
+  });
+  readonly usageTagColor = computed(() => {
+    if (this.isLimitReached()) {
+      return 'red';
+    }
+    if (this.usagePercent() >= 80) {
+      return 'orange';
+    }
+    return 'green';
+  });
+  readonly createLimitReached = computed(
+    () => !this.isSuperAdmin() && this.maxUsers() != null && this.activeCount() >= (this.maxUsers() ?? 0),
+  );
 
   readonly searchDraft = signal('');
   private readonly searchTerm = signal('');
   private readonly search$ = new Subject<string>();
+  private readonly createEmailSearch$ = new Subject<string>();
 
   readonly roleFilter = signal<UserRole | ''>('');
   readonly pageIndex = signal(1);
   readonly pageSize = signal(20);
+  readonly departments = signal<DepartmentRow[]>([]);
 
   readonly modalOpen = signal(false);
   readonly saving = signal(false);
   readonly editRow = signal<UserListRow | null>(null);
+
+  /** Create modal: selected email option (existing user import vs new email). */
+  emailPick: EmailPickOption | null = null;
+  readonly isImporting = signal(false);
+  readonly emailSelectOptions = signal<EmailPickOption[]>([]);
+  readonly emailSearchLoading = signal(false);
+
+  /** Server-side search: do not filter options client-side. */
+  readonly emailSelectShowAllOptions = (): boolean => true;
+
+  readonly compareEmailPick = (
+    a: EmailPickOption | null | undefined,
+    b: EmailPickOption | null | undefined,
+  ): boolean => {
+    if (a == null && b == null) {
+      return true;
+    }
+    if (a == null || b == null) {
+      return false;
+    }
+    return a.source === b.source && a.email.toLowerCase() === b.email.toLowerCase();
+  };
 
   formFirstName = '';
   formLastName = '';
   formEmail = '';
   formPassword = '';
   formRole: UserRole = 'STOREKEEPER';
-  formDepartment = '';
+  formDepartmentId = '';
   formPhone = '';
   formActive = true;
   formError = '';
@@ -100,6 +165,26 @@ export class UsersListComponent implements OnInit {
         this.pageIndex.set(1);
         this.load();
       });
+    this.createEmailSearch$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((raw) => {
+          const q = (raw ?? '').trim();
+          if (q.length < 3) {
+            this.emailSelectOptions.set([]);
+            return EMPTY;
+          }
+          this.emailSearchLoading.set(true);
+          return this.api.searchExistingByEmail(q).pipe(
+            finalize(() => this.emailSearchLoading.set(false)),
+            tap((hits) => this.buildCreateEmailOptions(hits, q)),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+    this.loadDepartments();
     this.load();
   }
 
@@ -134,6 +219,8 @@ export class UsersListComponent implements OnInit {
         next: (res) => {
           this.users.set(res.users);
           this.total.set(res.total);
+          this.maxUsers.set(res.maxUsers);
+          this.activeCount.set(res.totalActiveUsers);
           this.loading.set(false);
         },
         error: (err: { error?: { message?: string } }) => {
@@ -144,6 +231,9 @@ export class UsersListComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (this.createLimitReached()) {
+      return;
+    }
     this.editRow.set(null);
     this.resetForm();
     this.formError = '';
@@ -152,12 +242,15 @@ export class UsersListComponent implements OnInit {
 
   openEdit(row: UserListRow): void {
     this.editRow.set(row);
+    this.emailPick = null;
+    this.isImporting.set(false);
+    this.emailSelectOptions.set([]);
     this.formFirstName = row.firstName ?? '';
     this.formLastName = row.lastName ?? '';
     this.formEmail = row.email;
     this.formPassword = '';
     this.formRole = row.role;
-    this.formDepartment = row.department ?? '';
+    this.formDepartmentId = this.resolveDepartmentId(row);
     this.formPhone = row.phone ?? '';
     this.formActive = row.isActive !== false;
     this.formError = '';
@@ -182,9 +275,76 @@ export class UsersListComponent implements OnInit {
     this.formEmail = '';
     this.formPassword = '';
     this.formRole = 'STOREKEEPER';
-    this.formDepartment = '';
+    this.formDepartmentId = '';
     this.formPhone = '';
     this.formActive = true;
+    this.emailPick = null;
+    this.isImporting.set(false);
+    this.emailSelectOptions.set([]);
+  }
+
+  onCreateEmailSearch(value: string): void {
+    this.createEmailSearch$.next(value ?? '');
+  }
+
+  onCreateEmailPickChange(opt: EmailPickOption | null): void {
+    this.emailPick = opt;
+    if (!opt) {
+      this.formEmail = '';
+      this.formFirstName = '';
+      this.formLastName = '';
+      this.formPhone = '';
+      this.formPassword = '';
+      this.isImporting.set(false);
+      return;
+    }
+    this.formEmail = opt.email.trim();
+    if (opt.source === 'existing') {
+      this.isImporting.set(true);
+      this.formFirstName = opt.user.firstName ?? '';
+      this.formLastName = opt.user.lastName ?? '';
+      this.formPhone = opt.user.phone ?? '';
+      this.formPassword = '';
+    } else {
+      this.isImporting.set(false);
+      this.formFirstName = '';
+      this.formLastName = '';
+      this.formPhone = '';
+    }
+  }
+
+  emailPickTrack(_index: number, opt: EmailPickOption): string {
+    return `${opt.source}:${opt.email.toLowerCase()}`;
+  }
+
+  emailOptionLabel(opt: EmailPickOption): string {
+    if (opt.source === 'existing') {
+      const u = opt.user;
+      const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
+      return name ? `${u.email} (${name})` : u.email;
+    }
+    return this.translate.instant('USERS.FORM.NEW_USER_EMAIL_OPTION', { email: opt.email });
+  }
+
+  private buildCreateEmailOptions(hits: ExistingUserSearchHit[], query: string): void {
+    const options: EmailPickOption[] = hits.map((user) => ({
+      source: 'existing' as const,
+      email: user.email,
+      user,
+    }));
+    const q = query.trim();
+    const qLower = q.toLowerCase();
+    const hasExact = hits.some((h) => h.email.toLowerCase() === qLower);
+    if (this.looksLikeCompleteEmail(q) && !hasExact) {
+      options.push({ source: 'new', email: q });
+    }
+    this.emailSelectOptions.set(options);
+  }
+
+  /** Allows choosing a brand-new email that did not appear in search hits. */
+  private looksLikeCompleteEmail(value: string): boolean {
+    const v = value.trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
   saveUser(): void {
@@ -193,8 +353,12 @@ export class UsersListComponent implements OnInit {
       this.formError = this.t('USERS.ERRORS.NAME_EMAIL');
       return;
     }
-    if (!isEdit && !this.formPassword) {
+    if (!isEdit && !this.isImporting() && !this.formPassword) {
       this.formError = this.t('USERS.ERRORS.PASSWORD_REQUIRED');
+      return;
+    }
+    if (this.formRole === 'DEPT_MANAGER' && !this.formDepartmentId) {
+      this.formError = this.t('USERS.ERRORS.DEPARTMENT_REQUIRED');
       return;
     }
     this.formError = '';
@@ -203,10 +367,14 @@ export class UsersListComponent implements OnInit {
       lastName: this.formLastName.trim(),
       email: this.formEmail.trim(),
       role: this.formRole,
-      department: this.formDepartment.trim() || undefined,
+      departmentId: this.formDepartmentId || undefined,
       phone: this.formPhone.trim() || undefined,
     };
-    if (this.formPassword) {
+    if (isEdit) {
+      if (this.formPassword) {
+        payload.password = this.formPassword;
+      }
+    } else if (!this.isImporting() && this.formPassword) {
       payload.password = this.formPassword;
     }
     if (isEdit) {
@@ -270,5 +438,39 @@ export class UsersListComponent implements OnInit {
     const a = (row.firstName?.[0] ?? '').toUpperCase();
     const b = (row.lastName?.[0] ?? '').toUpperCase();
     return (a + b).slice(0, 2) || '?';
+  }
+
+  isSuperAdmin(): boolean {
+    return this.auth.currentUser()?.role === 'SUPER_ADMIN';
+  }
+
+  isLimitReached(): boolean {
+    const max = this.maxUsers();
+    if (max == null) {
+      return false;
+    }
+    return this.activeCount() >= max;
+  }
+
+  private loadDepartments(): void {
+    this.departmentsApi
+      .list({ take: 200, isActive: true })
+      .pipe(first())
+      .subscribe({
+        next: (res) => this.departments.set(res.departments ?? []),
+        error: () => this.departments.set([]),
+      });
+  }
+
+  private resolveDepartmentId(row: UserListRow): string {
+    if (row.departmentId) {
+      return row.departmentId;
+    }
+    const departmentName = row.department?.trim().toLowerCase();
+    if (!departmentName) {
+      return '';
+    }
+    const match = this.departments().find((department) => department.name.trim().toLowerCase() === departmentName);
+    return match?.id ?? '';
   }
 }

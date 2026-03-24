@@ -199,7 +199,7 @@ function filterSections(role: UserRole | undefined): NavSection[] {
       items: [
         {
           kind: 'link',
-          path: '/admin',
+          path: '/admin/tenants',
           label: 'NAV.SUPER_ADMIN',
           icon: Shield,
           roles: ['SUPER_ADMIN'],
@@ -235,7 +235,7 @@ export class NavigationService {
         }
       }
     }
-    if (path === '/admin') {
+    if (path === '/admin' || path.startsWith('/admin/')) {
       return 'NAV.SUPER_ADMIN';
     }
     return null;

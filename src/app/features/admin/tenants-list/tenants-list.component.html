@@ -85,6 +85,7 @@
           <th>{{ 'SUPER_ADMIN.COL_HOTEL' | translate }}</th>
           <th>{{ 'SUPER_ADMIN.COL_PLAN' | translate }}</th>
           <th>{{ 'COMMON.STATUS' | translate }}</th>
+          <th>{{ 'COMMON.BRANCHES' | translate }}</th>
           <th>{{ 'SUPER_ADMIN.COL_USERS' | translate }}</th>
           <th>{{ 'SUPER_ADMIN.COL_LICENSE' | translate }}</th>
           <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
@@ -92,82 +93,216 @@
       </thead>
       <tbody>
         @for (t of tbl.data; track t.id) {
-            <tr>
-              <td>
-                <div class="tenants-page__hotel-cell">
-                  <div class="tenants-page__hotel-avatar">
-                    {{ t.name?.charAt(0) | uppercase }}
-                  </div>
-                  <div>
-                    <p class="tenants-page__hotel-name">{{ t.name }}</p>
-                    <code class="tenants-page__hotel-slug">{{ t.slug }}</code>
-                  </div>
+          <tr>
+            <td>
+              <div class="tenants-page__hotel-cell">
+                @if (hasExpandableBranches(t)) {
+                  <button
+                    nz-button
+                    nzType="text"
+                    type="button"
+                    class="tenants-page__expand-btn"
+                    [class.tenants-page__expand-btn--open]="isExpanded(t.id)"
+                    (click)="toggleExpand(t.id)"
+                  >
+                    <lucide-icon [img]="isExpanded(t.id) ? lucideMinus : lucidePlus" [size]="14" />
+                  </button>
+                } @else {
+                  <span class="tenants-page__expand-spacer"></span>
+                }
+                <div class="tenants-page__hotel-avatar">
+                  {{ t.name?.charAt(0) | uppercase }}
                 </div>
-              </td>
-              <td>
-                <nz-tag>{{ t.planType }}</nz-tag>
-              </td>
-              <td>
-                <nz-tag [nzColor]="statusNzColor(t.subStatus)">{{ t.subStatus }}</nz-tag>
-              </td>
-              <td>
-                <div class="tenants-page__users-cell">
-                  <lucide-icon [img]="lucideUsers" [size]="14" />
-                  <span>{{ userCount(t) }} / {{ t.maxUsers }}</span>
-                  <nz-progress
-                    [nzPercent]="userPercent(t)"
-                    nzSize="small"
-                    [nzShowInfo]="false"
-                  />
-                </div>
-              </td>
-              <td class="tenants-page__license-cell">
-                <div class="tenants-page__license-row">
-                  <span class="tenants-page__license-label">From:</span>
-                  <span>{{ formatDate(t.licenseStartDate) }}</span>
-                </div>
-                <div class="tenants-page__license-row">
-                  <span class="tenants-page__license-label">Until:</span>
-                  <span>{{ licenseEndDisplay(t) }}</span>
-                </div>
-              </td>
-              <td nzAlign="right">
-                <button
-                  nz-button
-                  nzType="text"
-                  nz-dropdown
-                  [nzDropdownMenu]="actionMenu"
-                  nzTrigger="click"
-                  nzPlacement="bottomRight"
-                >
-                  <lucide-icon [img]="lucideMoreVertical" [size]="15" />
-                </button>
-                <nz-dropdown-menu #actionMenu="nzDropdownMenu">
-                  <ul nz-menu>
-                    <li nz-menu-item (click)="openEdit(t)">
-                      <lucide-icon [img]="lucidePencil" [size]="14" />
-                      <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
-                    </li>
-                    <li nz-menu-item (click)="openLicense(t)">
-                      <lucide-icon [img]="lucideKeySquare" [size]="14" />
-                      <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
-                    </li>
-                    @if (t.subStatus === 'SUSPENDED' || !t.isActive) {
-                      <li nz-menu-item (click)="onActivate(t)">
-                        {{ 'SUPER_ADMIN.ACTION_ACTIVATE' | translate }}
-                      </li>
-                    } @else {
-                      <li nz-menu-item nzDanger (click)="onSuspend(t)">
-                        {{ 'SUPER_ADMIN.ACTION_SUSPEND' | translate }}
-                      </li>
+                <div>
+                  <p class="tenants-page__hotel-name">
+                    {{ t.name }}
+                    @if (t.hasBranches) {
+                      <nz-tag nzColor="blue">{{ 'SUPER_ADMIN.PROVIDER_LABEL' | translate }}</nz-tag>
                     }
-                    <li nz-menu-item nzDanger (click)="onForceLogout(t)">
-                      {{ 'SUPER_ADMIN.ACTION_FORCE_LOGOUT' | translate }}
+                  </p>
+                  <code class="tenants-page__hotel-slug">{{ t.slug }}</code>
+                  @if (t.parentName) {
+                    <div class="text-xs text-gray-500 mt-1">
+                      <lucide-icon [img]="lucideShare2" [size]="12" />
+                      {{ 'SUPER_ADMIN.TENANT_BRANCH_OF' | translate }}: {{ t.parentName }}
+                    </div>
+                  }
+                </div>
+              </div>
+            </td>
+            <td>
+              <nz-tag>{{ t.planType }}</nz-tag>
+            </td>
+            <td>
+              <nz-tag [nzColor]="statusNzColor(t.subStatus)">{{ t.subStatus }}</nz-tag>
+            </td>
+            <td>
+              <nz-tag>{{ t.branches?.length }}</nz-tag>
+            </td>
+            <td>
+              <div class="tenants-page__users-cell">
+                <lucide-icon [img]="lucideUsers" [size]="14" />
+                <span>{{ userCount(t) }} / {{ t.maxUsers }}</span>
+                <nz-progress
+                  [nzPercent]="userPercent(t)"
+                  nzSize="small"
+                  [nzShowInfo]="false"
+                />
+              </div>
+            </td>
+            <td class="tenants-page__license-cell">
+              <div class="tenants-page__license-row">
+                <span class="tenants-page__license-label">From:</span>
+                <span>{{ formatDate(t.licenseStartDate) }}</span>
+              </div>
+              <div class="tenants-page__license-row">
+                <span class="tenants-page__license-label">Until:</span>
+                <span>{{ licenseEndDisplay(t) }}</span>
+              </div>
+            </td>
+            <td nzAlign="right">
+              <button
+                nz-button
+                nzType="text"
+                nz-dropdown
+                [nzDropdownMenu]="actionMenu"
+                nzTrigger="click"
+                nzPlacement="bottomRight"
+              >
+                <lucide-icon [img]="lucideMoreVertical" [size]="15" />
+              </button>
+              <nz-dropdown-menu #actionMenu="nzDropdownMenu">
+                <ul nz-menu>
+                  <li nz-menu-item (click)="openEdit(t)">
+                    <lucide-icon [img]="lucidePencil" [size]="14" />
+                    <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
+                  </li>
+                  <li nz-menu-item (click)="openLicense(t)">
+                    <lucide-icon [img]="lucideKeySquare" [size]="14" />
+                    <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
+                  </li>
+                  @if (t.subStatus === 'SUSPENDED' || !t.isActive) {
+                    <li nz-menu-item (click)="onActivate(t)">
+                      {{ 'SUPER_ADMIN.ACTION_ACTIVATE' | translate }}
                     </li>
-                  </ul>
-                </nz-dropdown-menu>
-              </td>
-            </tr>
+                  } @else {
+                    <li nz-menu-item nzDanger (click)="onSuspend(t)">
+                      {{ 'SUPER_ADMIN.ACTION_SUSPEND' | translate }}
+                    </li>
+                  }
+                  <li nz-menu-item nzDanger (click)="onForceLogout(t)">
+                    {{ 'SUPER_ADMIN.ACTION_FORCE_LOGOUT' | translate }}
+                  </li>
+                </ul>
+              </nz-dropdown-menu>
+            </td>
+          </tr>
+          <tr [nzExpand]="isExpanded(t.id)">
+            <td [attr.colspan]="6">
+              <div class="tenants-page__branches-wrap">
+                <nz-table
+                  class="tenants-page__branch-table"
+                  [nzData]="t.branches ?? []"
+                  nzSize="middle"
+                  [nzShowPagination]="false"
+                  [nzFrontPagination]="false"
+                >
+                  <tbody>
+                    @for (branch of t.branches ?? []; track branch.id) {
+                      <tr class="tenants-page__branch-table-row">
+                        <td>
+                          <div class="tenants-page__hotel-cell">
+                            <span class="tenants-page__expand-spacer"></span>
+                            <div class="tenants-page__hotel-avatar">
+                              {{ branch.name?.charAt(0) | uppercase }}
+                            </div>
+                            <div>
+                              <p class="tenants-page__hotel-name">
+                                {{ branch.name }}
+                                @if (branch.hasBranches) {
+                                  <nz-tag nzColor="blue">{{ 'SUPER_ADMIN.PROVIDER_LABEL' | translate }}</nz-tag>
+                                }
+                              </p>
+                              <code class="tenants-page__hotel-slug">{{ branch.slug }}</code>
+                              @if (branch.parentName) {
+                                <div class="text-xs text-gray-500 mt-1">
+                                  <lucide-icon [img]="lucideShare2" [size]="12" />
+                                  {{ 'SUPER_ADMIN.TENANT_BRANCH_OF' | translate }}: {{ branch.parentName }}
+                                </div>
+                              }
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <nz-tag>{{ branch.planType }}</nz-tag>
+                        </td>
+                        <td>
+                          <nz-tag [nzColor]="statusNzColor(branch.subStatus)">{{ branch.subStatus }}</nz-tag>
+                        </td>
+                        <td>
+                          <div class="tenants-page__users-cell">
+                            <lucide-icon [img]="lucideUsers" [size]="14" />
+                            <span>{{ userCount(branch) }} / {{ branch.maxUsers }}</span>
+                            <nz-progress
+                              [nzPercent]="userPercent(branch)"
+                              nzSize="small"
+                              [nzShowInfo]="false"
+                            />
+                          </div>
+                        </td>
+                        <td class="tenants-page__license-cell">
+                          <div class="tenants-page__license-row">
+                            <span class="tenants-page__license-label">From:</span>
+                            <span>{{ formatDate(branch.licenseStartDate) }}</span>
+                          </div>
+                          <div class="tenants-page__license-row">
+                            <span class="tenants-page__license-label">Until:</span>
+                            <span>{{ licenseEndDisplay(branch) }}</span>
+                          </div>
+                        </td>
+                        <td nzAlign="right">
+                          <button
+                            nz-button
+                            nzType="text"
+                            nz-dropdown
+                            [nzDropdownMenu]="childActionMenu"
+                            nzTrigger="click"
+                            nzPlacement="bottomRight"
+                          >
+                            <lucide-icon [img]="lucideMoreVertical" [size]="15" />
+                          </button>
+                          <nz-dropdown-menu #childActionMenu="nzDropdownMenu">
+                            <ul nz-menu>
+                              <li nz-menu-item (click)="openEdit(branch)">
+                                <lucide-icon [img]="lucidePencil" [size]="14" />
+                                <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
+                              </li>
+                              <li nz-menu-item (click)="openLicense(branch)">
+                                <lucide-icon [img]="lucideKeySquare" [size]="14" />
+                                <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
+                              </li>
+                              @if (branch.subStatus === 'SUSPENDED' || !branch.isActive) {
+                                <li nz-menu-item (click)="onActivate(branch)">
+                                  {{ 'SUPER_ADMIN.ACTION_ACTIVATE' | translate }}
+                                </li>
+                              } @else {
+                                <li nz-menu-item nzDanger (click)="onSuspend(branch)">
+                                  {{ 'SUPER_ADMIN.ACTION_SUSPEND' | translate }}
+                                </li>
+                              }
+                              <li nz-menu-item nzDanger (click)="onForceLogout(branch)">
+                                {{ 'SUPER_ADMIN.ACTION_FORCE_LOGOUT' | translate }}
+                              </li>
+                            </ul>
+                          </nz-dropdown-menu>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </nz-table>
+              </div>
+            </td>
+          </tr>
         }
       </tbody>
     </nz-table>

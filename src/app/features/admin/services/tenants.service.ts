@@ -11,8 +11,11 @@ export interface TenantCreatePayload {
   planType?: string;
   subStatus?: string;
   maxUsers?: number;
+  parentId?: string | null;
+  hasBranches?: boolean;
+  maxBranches?: number;
   licenseStartDate?: string;
-  licenseEndDate?: string;
+  licenseEndDate?: string | null;
   adminEmail: string;
   adminPassword: string;
   adminFirstName?: string;
@@ -25,6 +28,9 @@ export interface TenantUpdatePayload {
   planType?: string;
   subStatus?: string;
   maxUsers?: number;
+  parentId?: string | null;
+  hasBranches?: boolean;
+  maxBranches?: number;
   licenseStartDate?: string;
   licenseEndDate?: string | null;
 }
@@ -95,7 +101,7 @@ export class TenantsService {
 
   updateTenant(id: string, data: TenantUpdatePayload): Observable<TenantRow> {
     return this.http
-      .patch<ApiResponse<TenantRow>>(`${this.base}/${id}`, data)
+      .put<ApiResponse<TenantRow>>(`${this.base}/${id}`, data)
       .pipe(map((res) => res.data));
   }
 

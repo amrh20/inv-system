@@ -69,47 +69,9 @@
         </nz-dropdown-menu>
       </div>
 
-      <!-- Auth Type Segmented -->
-      <div class="auth-type-segmented">
-        <button
-          type="button"
-          class="segmented-option"
-          [class.segmented-option--active]="authType() === 'hotel'"
-          (click)="setAuthType('hotel')"
-        >
-          {{ 'LOGIN.TYPE_HOTEL' | translate }}
-        </button>
-        <button
-          type="button"
-          class="segmented-option"
-          [class.segmented-option--active]="authType() === 'admin'"
-          (click)="setAuthType('admin')"
-        >
-          {{ 'LOGIN.TYPE_ADMIN' | translate }}
-        </button>
-      </div>
-
       <form nz-form [formGroup]="form" (ngSubmit)="onSubmit()" nzLayout="vertical" class="login-form">
         @if (error()) {
           <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="error-alert" />
-        }
-
-        @if (authType() === 'hotel') {
-          <nz-form-item>
-            <nz-form-label nzRequired>{{ 'LOGIN.HOTEL_ID' | translate }}</nz-form-label>
-            <nz-form-control>
-              <div class="input-with-icon">
-                <lucide-icon [img]="lucideHotel" [size]="18" class="input-icon" />
-                <input
-                  nz-input
-                  id="tenantSlug"
-                  formControlName="tenantSlug"
-                  [placeholder]="'LOGIN.HOTEL_ID_PLACEHOLDER' | translate"
-                  autocomplete="organization"
-                />
-              </div>
-            </nz-form-control>
-          </nz-form-item>
         }
 
         <nz-form-item>
@@ -178,14 +140,8 @@
         @if (showDemoPanel()) {
           <div class="demo-credentials">
             <div class="demo-list">
-              @if (authType() === 'admin') {
-                <p>{{ 'LOGIN.EMAIL' | translate }}: <code>superadmin@ose.cloud</code></p>
-                <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>SuperAdmin@2026</code></p>
-              } @else {
-                <p>{{ 'LOGIN.HOTEL_ID' | translate }}: <code>grand-horizon</code></p>
-                <p>{{ 'LOGIN.EMAIL' | translate }}: <code>admin@grandhorizon.com</code></p>
-                <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>Admin@123</code></p>
-              }
+              <p>{{ 'LOGIN.EMAIL' | translate }}: <code>superadmin@ose.cloud</code></p>
+              <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>SuperAdmin@2026</code></p>
             </div>
             <button type="button" nz-button nzType="default" (click)="fillDemo()" class="demo-apply-btn">
               {{ 'LOGIN.FILL_DEMO' | translate }}

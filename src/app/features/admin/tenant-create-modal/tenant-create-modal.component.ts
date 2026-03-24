@@ -144,7 +144,7 @@ export class TenantCreateModalComponent {
       subStatus: this.subStatus as 'TRIAL' | 'ACTIVE',
       maxUsers: this.maxUsers,
       licenseStartDate: this.licenseStartDate || undefined,
-      licenseEndDate: this.licenseEndDate || undefined,
+      licenseEndDate: this.licenseEndDate || null,
       adminEmail: this.adminEmail.trim(),
       adminPassword: this.adminPassword,
       adminFirstName: this.adminFirstName?.trim() || 'Admin',

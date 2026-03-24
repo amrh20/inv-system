@@ -16,11 +16,13 @@ import {
   ChevronLeft,
   ChevronRight,
   KeySquare,
+  Minus,
   MoreVertical,
   Pencil,
   Plus,
   RefreshCw,
   Search,
+  Share2,
   Users,
 } from 'lucide-angular';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
@@ -70,6 +72,8 @@ export class TenantsListComponent implements OnInit {
   readonly lucidePlus = Plus;
   readonly lucideMoreVertical = MoreVertical;
   readonly lucideUsers = Users;
+  readonly lucideShare2 = Share2;
+  readonly lucideMinus = Minus;
   readonly lucideChevronLeft = ChevronLeft;
   readonly lucideChevronRight = ChevronRight;
   readonly lucidePencil = Pencil;
@@ -78,6 +82,7 @@ export class TenantsListComponent implements OnInit {
   readonly tenants = signal<TenantRow[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);
+  readonly expandSet = new Set<string>();
 
   search = '';
   statusFilter = '';
@@ -93,6 +98,7 @@ export class TenantsListComponent implements OnInit {
 
   load(): void {
     this.loading.set(true);
+    this.expandSet.clear();
     this.api
       .list({
         page: this.pageIndex(),
@@ -103,7 +109,7 @@ export class TenantsListComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          this.tenants.set(res.data);
+          this.tenants.set((res.data ?? []).map((tenant) => this.normalizeTenant(tenant)));
           this.total.set(res.total);
           this.loading.set(false);
         },
@@ -112,6 +118,35 @@ export class TenantsListComponent implements OnInit {
           this.loading.set(false);
         },
       });
+  }
+
+  private normalizeTenant(tenant: TenantRow): TenantRow {
+    return {
+      ...tenant,
+      parentName: tenant.parentName ?? null,
+      hasBranches: tenant.hasBranches ?? false,
+      branches: (tenant.branches ?? []).map((branch) => this.normalizeTenant(branch)),
+    };
+  }
+
+  hasExpandableBranches(tenant: TenantRow): boolean {
+    return (tenant.branches?.length ?? 0) > 0;
+  }
+
+  isExpanded(id: string): boolean {
+    return this.expandSet.has(id);
+  }
+
+  onExpandChange(id: string, checked: boolean): void {
+    if (checked) {
+      this.expandSet.add(id);
+    } else {
+      this.expandSet.delete(id);
+    }
+  }
+
+  toggleExpand(id: string): void {
+    this.onExpandChange(id, !this.isExpanded(id));
   }
 
   onFilterChange(): void {

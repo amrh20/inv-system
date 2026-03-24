@@ -199,7 +199,7 @@ export class GetPassDetailComponent implements OnInit {
     const admin = this.isAdmin();
     if (d.status === 'PENDING_DEPT') return admin || u.role === 'DEPT_MANAGER';
     if (d.status === 'PENDING_FINANCE') return admin || u.role === 'FINANCE_MANAGER';
-    if (d.status === 'PENDING_SECURITY') return admin || u.role === 'SECURITY_MANAGER';
+    if (d.status === 'PENDING_SECURITY') return admin || u.role === 'SECURITY';
     return false;
   }
 
@@ -207,7 +207,7 @@ export class GetPassDetailComponent implements OnInit {
     const d = this.data();
     const u = this.auth.currentUser();
     if (!d || !u) return false;
-    return d.status === 'APPROVED' && (this.isAdmin() || u.role === 'SECURITY_MANAGER');
+    return d.status === 'APPROVED' && (this.isAdmin() || u.role === 'SECURITY');
   }
 
   canReturn(): boolean {
@@ -216,7 +216,7 @@ export class GetPassDetailComponent implements OnInit {
     if (!d || !u) return false;
     if (d.transferType === 'PERMANENT') return false;
     if (!['OUT', 'PARTIALLY_RETURNED'].includes(d.status)) return false;
-    return this.isAdmin() || u.role === 'SECURITY_MANAGER';
+    return this.isAdmin() || u.role === 'SECURITY';
   }
 
   canForceClose(): boolean {

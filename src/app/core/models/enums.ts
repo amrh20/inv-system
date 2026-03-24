@@ -10,7 +10,7 @@ export type UserRole =
   | 'COST_CONTROL'
   | 'FINANCE_MANAGER'
   | 'AUDITOR'
-  | 'SECURITY_MANAGER';
+  | 'SECURITY';
 
 export type PlanType = 'BASIC' | 'PRO' | 'ENTERPRISE' | 'CUSTOM';
 

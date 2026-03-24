@@ -8,7 +8,8 @@
     "TOGGLE_SIDEBAR": "إظهار/إخفاء القائمة الجانبية",
     "LIGHT_MODE": "الوضع الفاتح",
     "DARK_MODE": "الوضع الداكن",
-    "CHANGE_LANGUAGE": "تغيير اللغة"
+    "CHANGE_LANGUAGE": "تغيير اللغة",
+    "GO_TO_ADMIN_PANEL": "الانتقال إلى لوحة الإدارة"
   },
   "NAV": {
     "SECTIONS": {
@@ -47,6 +48,8 @@
     "SUPER_ADMIN": "المشرف الأعلى"
   },
   "COMMON": {
+    "OK": "موافق",
+    "BRANCHES": "الفروع",
     "USER": "مستخدم",
     "SEARCH": "بحث...",
     "SEARCH_BY_NAME_OR_BARCODE": "ابحث بالاسم أو الباركود...",
@@ -128,6 +131,7 @@
     "ENGLISH": "English",
     "ARABIC": "العربية",
     "ROLES": {
+      "STOREKEEPER":"أمين مخزن",
       "ADMIN": "مدير",
       "SUPER_ADMIN": "المشرف الأعلى",
       "MANAGER": "مدير",
@@ -167,6 +171,13 @@
     "DEMO_CREDENTIALS": "بيانات تجريبية",
     "FILL_DEMO": "تعبئة البيانات التجريبية",
     "ERROR_INVALID_CREDENTIALS": "فشل تسجيل الدخول. يرجى مراجعة البيانات.",
+    "ACCOUNT_INACTIVE_TITLE": "تم تعطيل الحساب",
+    "ACCOUNT_INACTIVE_CONTENT": "تم تعطيل حسابك بواسطة المسؤول. يرجى التواصل مع مديرك للمساعدة.",
+    "ERROR_SELECT_TENANT_RETRY": "يرجى تسجيل الدخول مرة أخرى ثم اختيار الفندق.",
+    "SELECT_TENANT_TITLE": "اختر الفندق",
+    "SELECT_TENANT_SUBTITLE": "حسابك مرتبط بأكثر من فندق. اختر فندقًا للمتابعة.",
+    "TENANT_ROLE": "الدور",
+    "BACK_TO_CREDENTIALS": "الرجوع لبيانات الدخول",
     "STATS": {
       "UPTIME": "توفر النظام",
       "DASHBOARD_LOAD": "زمن تحميل اللوحة",
@@ -1272,12 +1283,17 @@
   "USERS": {
     "TITLE": "إدارة المستخدمين",
     "SUBTITLE": "{{count}} مستخدم",
+    "PLAN_USAGE": "استهلاك الخطة: {{activeCount}} / {{maxUsers}}",
+    "LIMIT_REACHED": "تم الوصول إلى الحد",
+    "LIMIT_TOOLTIP": "تم الوصول إلى حد المستخدمين. يرجى التواصل مع الدعم لترقية الخطة.",
     "NEW": "مستخدم جديد",
     "CREATE": "إنشاء",
     "SEARCH_PLACEHOLDER": "بحث بالاسم أو البريد…",
     "ALL_ROLES": "كل الأدوار",
     "EMPTY_TITLE": "لا يوجد مستخدمون",
     "EMPTY_MSG": "أنشئ مستخدماً للبدء.",
+    "EMPTY_LIMIT_TITLE": "لا توجد سعة إضافية للمستخدمين",
+    "EMPTY_LIMIT_MSG": "تم بلوغ حد المستخدمين في خطتك. تواصل مع الدعم لترقية الخطة.",
     "COL_USER": "المستخدم",
     "COL_EMAIL": "البريد",
     "COL_ROLE": "الدور",
@@ -1296,8 +1312,15 @@
       "PASSWORD_PLACEHOLDER_EDIT": "اتركه فارغاً للإبقاء",
       "ROLE": "الدور",
       "DEPARTMENT": "القسم",
+      "DEPARTMENT_PLACEHOLDER": "اختر القسم",
+      "NO_DEPARTMENTS": "لا توجد أقسام",
+      "CREATE_DEPARTMENTS_FIRST": "أنشئ الأقسام أولاً من البيانات الأساسية > الأقسام.",
       "PHONE": "الهاتف",
-      "ACTIVE": "نشط"
+      "ACTIVE": "نشط",
+      "EMAIL_SEARCH_PLACEHOLDER": "اكتب 3 أحرف على الأقل للبحث عن مستخدم موجود…",
+      "NEW_USER_EMAIL_OPTION": "مستخدم جديد: {{email}}",
+      "IMPORT_EXISTING_HINT": "موجود في فنادقك الأخرى — تم تعبئة الحقول. لا حاجة لكلمة مرور؛ يحتفظ المستخدم بكلمة المرور الحالية.",
+      "IMPORT_BADGE": "مستخدم موجود"
     },
     "ROLES": {
       "ADMIN": "مسؤول",
@@ -1307,8 +1330,7 @@
       "FINANCE_MANAGER": "المالية",
       "AUDITOR": "مدقق",
       "SUPER_ADMIN": "مسؤول عام",
-      "SECURITY_MANAGER": "الأمن"
-    },
+      "SECURITY_MANAGER": "الأمن"    },
     "MSG": {
       "CREATED": "تم إنشاء المستخدم.",
       "UPDATED": "تم تحديث المستخدم."
@@ -1317,7 +1339,8 @@
       "LOAD": "فشل تحميل المستخدمين.",
       "SAVE": "فشل حفظ المستخدم.",
       "NAME_EMAIL": "الاسم الأول والبريد مطلوبان.",
-      "PASSWORD_REQUIRED": "كلمة المرور مطلوبة للمستخدمين الجدد."
+      "PASSWORD_REQUIRED": "كلمة المرور مطلوبة للمستخدمين الجدد.",
+      "DEPARTMENT_REQUIRED": "القسم مطلوب لدور مدير القسم."
     }
   },
   "AUDIT_LOG": {
@@ -1457,6 +1480,8 @@
     "STATUS_EXPIRED": "منتهي",
     "STATUS_SUSPENDED": "معلق",
     "COL_HOTEL": "الفندق / المستأجر",
+    "TENANT_BRANCH_OF": "فرع من",
+    "PROVIDER_LABEL": "مزود",
     "COL_PLAN": "الخطة",
     "COL_USERS": "المستخدمون",
     "COL_LICENSE": "فترة الترخيص",
@@ -1495,6 +1520,11 @@
     "CREATE_SLUG_PLACEHOLDER": "grand-palace-hotel",
     "CREATE_SLUG_HINT": "معرف فريد — يُنشأ تلقائياً من الاسم ولا يمكن تغييره لاحقاً",
     "CREATE_PLAN": "الخطة",
+    "CREATE_PARENT_TENANT": "المستأجر الأب",
+    "CREATE_PARENT_TENANT_PLACEHOLDER": "اختر المستأجر الأب (اختياري)",
+    "CREATE_ALLOW_BRANCHES": "السماح بالفروع",
+    "CREATE_MAX_BRANCHES": "الحد الأقصى للفروع",
+    "CREATE_MAX_BRANCHES_PLACEHOLDER": "0",
     "PLAN_BASIC": "أساسي (5 مستخدمين)",
     "PLAN_PRO": "احترافي (25 مستخدماً)",
     "PLAN_ENTERPRISE": "مؤسسات (غير محدود)",
@@ -1503,6 +1533,7 @@
     "CREATE_LICENSE_START": "بداية الترخيص",
     "CREATE_LICENSE_END": "نهاية الترخيص",
     "CREATE_LICENSE_END_HINT": "اتركه فارغاً للترخيص الدائم",
+    "CREATE_LICENSE_DATE_RANGE_INVALID": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية",
     "CREATE_ADMIN_DESC": "سيحصل هذا المستخدم على صلاحيات ADMIN للنظام الجديد.",
     "CREATE_ADMIN_FIRST_NAME": "الاسم الأول",
     "CREATE_ADMIN_FIRST_PLACEHOLDER": "أحمد",

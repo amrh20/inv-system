@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap, catchError, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { User, ApiResponse, AuthResponse, LoginCredentials } from '../models';
+import type { User, ApiResponse, AuthResponse, LoginApiEnvelope, LoginCredentials } from '../models';
 
 const AUTH_STORAGE_KEY = 'ose-auth';
 
@@ -11,7 +11,14 @@ interface AuthState {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
+  currentTenant: CurrentTenant | null;
   isAuthenticated: boolean;
+}
+
+export interface CurrentTenant {
+  id: string | null;
+  slug: string | null;
+  name: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,9 +30,11 @@ export class AuthService {
   private readonly _currentUser = signal<User | null>(null);
   private readonly _accessToken = signal<string | null>(null);
   private readonly _refreshToken = signal<string | null>(null);
+  private readonly _currentTenant = signal<CurrentTenant | null>(null);
   private readonly _isAuthenticated = signal(false);
 
   readonly currentUser = this._currentUser.asReadonly();
+  readonly currentTenant = this._currentTenant.asReadonly();
   readonly isAuthenticated = this._isAuthenticated.asReadonly();
 
   constructor() {
@@ -33,20 +42,67 @@ export class AuthService {
   }
 
   login(credentials: LoginCredentials) {
-    const body = {
+    const body: Record<string, string> = {
       email: credentials.email,
       password: credentials.password,
-      tenantSlug: credentials.tenantSlug ?? '',
     };
+    if (credentials.tenantSlug) {
+      body['tenantSlug'] = credentials.tenantSlug;
+    }
+    if (credentials.selectedTenantId) {
+      body['tenantId'] = credentials.selectedTenantId;
+    }
+    if (credentials.selectedRole) {
+      body['selectedRole'] = credentials.selectedRole;
+    }
     return this.http
-      .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/auth/login`, body)
+      .post<LoginApiEnvelope>(`${this.apiUrl}/auth/login`, body)
       .pipe(
         tap((res) => {
-          if (res.success && res.data) {
+          const rawUser = res.data?.user;
+          const accessToken = res.data?.accessToken;
+          const refreshToken = res.data?.refreshToken;
+          if (res.success && rawUser && accessToken && refreshToken) {
+            const user = {
+              ...rawUser,
+              tenantId: rawUser.tenantId ?? credentials.selectedTenantId ?? null,
+              role: rawUser.role ?? credentials.selectedRole,
+              memberships: rawUser.memberships ?? credentials.memberships ?? [],
+            };
             this.setAuth({
-              user: res.data.user,
-              accessToken: res.data.accessToken,
-              refreshToken: res.data.refreshToken,
+              user,
+              accessToken,
+              refreshToken,
+              currentTenant: this.resolveCurrentTenant(user, credentials.tenantSlug),
+            });
+          }
+        })
+      );
+  }
+
+  switchTenant(tenantSlug: string) {
+    const body = { tenantSlug };
+    return this.http
+      .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/auth/switch-tenant`, body)
+      .pipe(
+        tap((res) => {
+          const rawUser = res.data?.user;
+          const accessToken = res.data?.accessToken;
+          const refreshToken = res.data?.refreshToken;
+          if (res.success && rawUser && accessToken && refreshToken) {
+            const previousMemberships = this._currentUser()?.memberships ?? [];
+            const user = {
+              ...rawUser,
+              memberships:
+                rawUser.memberships && rawUser.memberships.length
+                  ? rawUser.memberships
+                  : previousMemberships,
+            };
+            this.setAuth({
+              user,
+              accessToken,
+              refreshToken,
+              currentTenant: this.resolveCurrentTenant(user, tenantSlug),
             });
           }
         })
@@ -94,6 +150,7 @@ export class AuthService {
       tap((res) => {
         if (res.success && res.data) {
           this._currentUser.set(res.data);
+          this._currentTenant.set(this.resolveCurrentTenant(res.data));
           this.persistToStorage();
         }
       })
@@ -109,10 +166,16 @@ export class AuthService {
     this.persistToStorage();
   }
 
-  setAuth(payload: { user: User; accessToken: string; refreshToken: string }) {
+  setAuth(payload: {
+    user: User;
+    accessToken: string;
+    refreshToken: string;
+    currentTenant?: CurrentTenant | null;
+  }) {
     this._currentUser.set(payload.user);
     this._accessToken.set(payload.accessToken);
     this._refreshToken.set(payload.refreshToken);
+    this._currentTenant.set(payload.currentTenant ?? this.resolveCurrentTenant(payload.user));
     this._isAuthenticated.set(true);
     this.persistToStorage();
   }
@@ -121,6 +184,7 @@ export class AuthService {
     this._currentUser.set(null);
     this._accessToken.set(null);
     this._refreshToken.set(null);
+    this._currentTenant.set(null);
     this._isAuthenticated.set(false);
     localStorage.removeItem(AUTH_STORAGE_KEY);
   }
@@ -140,6 +204,7 @@ export class AuthService {
         this._currentUser.set(state.user);
         this._accessToken.set(state.accessToken);
         this._refreshToken.set(state.refreshToken);
+        this._currentTenant.set(state.currentTenant ?? this.resolveCurrentTenant(state.user));
         this._isAuthenticated.set(true);
       }
     } catch {
@@ -152,8 +217,35 @@ export class AuthService {
       user: this._currentUser(),
       accessToken: this._accessToken(),
       refreshToken: this._refreshToken(),
+      currentTenant: this._currentTenant(),
       isAuthenticated: this._isAuthenticated(),
     };
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ state }));
+  }
+
+  private resolveCurrentTenant(user: User | null, selectedTenantSlug?: string): CurrentTenant | null {
+    if (!user) {
+      return null;
+    }
+
+    const memberships = user.memberships ?? [];
+    const slug = selectedTenantSlug || user.tenant?.slug || null;
+    const membership =
+      memberships.find((item) => (slug ? item.tenantSlug === slug : false)) ??
+      memberships.find((item) => (user.tenantId ? item.tenantId === user.tenantId : false));
+
+    const tenantId = user.tenantId ?? membership?.tenantId ?? null;
+    const tenantSlug = slug ?? membership?.tenantSlug ?? null;
+    const tenantName = user.tenant?.name ?? membership?.tenantName ?? null;
+
+    if (!tenantId && !tenantSlug && !tenantName) {
+      return null;
+    }
+
+    return {
+      id: tenantId,
+      slug: tenantSlug,
+      name: tenantName,
+    };
   }
 }

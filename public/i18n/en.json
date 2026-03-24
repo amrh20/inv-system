@@ -8,7 +8,8 @@
     "TOGGLE_SIDEBAR": "Toggle sidebar",
     "LIGHT_MODE": "Light mode",
     "DARK_MODE": "Dark mode",
-    "CHANGE_LANGUAGE": "Change language"
+    "CHANGE_LANGUAGE": "Change language",
+    "GO_TO_ADMIN_PANEL": "Go to Admin Panel"
   },
   "NAV": {
     "SECTIONS": {
@@ -47,6 +48,8 @@
     "SUPER_ADMIN": "Super Admin"
   },
   "COMMON": {
+    "OK": "OK",
+    "BRANCHES": "Branches",
     "USER": "User",
     "SEARCH": "Search...",
     "SEARCH_BY_NAME_OR_BARCODE": "Search by name or barcode...",
@@ -128,11 +131,20 @@
     "ENGLISH": "English",
     "ARABIC": "Arabic",
     "ROLES": {
+      "STOREKEEPER": "Store Keeper",
       "ADMIN": "Admin",
       "SUPER_ADMIN": "Super Admin",
       "MANAGER": "Manager",
       "USER": "User",
-      "STORE_KEEPER": "Store Keeper"
+      "DEPTMANAGER": "Department Manager",
+      "COSTCONTROL": "Cost Control",
+      "FINANCE_MANAGER": "Finance Manager",
+      "AUDITOR": "Auditor",
+      "SECURITY": "Security",
+      "DEPT_MANAGER": "Department Manager",
+      "SECURITY_MANAGER": "Security Manager",
+      "COST_CONTROL": "Cost Control"
+
     },
     "STATUS_VALUES": {
       "DRAFT": "Draft",
@@ -167,6 +179,13 @@
     "DEMO_CREDENTIALS": "Demo Credentials",
     "FILL_DEMO": "Fill Demo Data",
     "ERROR_INVALID_CREDENTIALS": "Login failed. Please check your credentials.",
+    "ACCOUNT_INACTIVE_TITLE": "Account Deactivated",
+    "ACCOUNT_INACTIVE_CONTENT": "Your account has been deactivated by the administrator. Please contact your manager for assistance.",
+    "ERROR_SELECT_TENANT_RETRY": "Please sign in again and select a tenant.",
+    "SELECT_TENANT_TITLE": "Choose your tenant",
+    "SELECT_TENANT_SUBTITLE": "Your account belongs to multiple tenants. Select one to continue.",
+    "TENANT_ROLE": "Role",
+    "BACK_TO_CREDENTIALS": "Back to credentials",
     "STATS": {
       "UPTIME": "Uptime SLA",
       "DASHBOARD_LOAD": "Dashboard Load",
@@ -1272,12 +1291,17 @@
   "USERS": {
     "TITLE": "User management",
     "SUBTITLE": "{{count}} users",
+    "PLAN_USAGE": "Plan Usage: {{activeCount}} / {{maxUsers}}",
+    "LIMIT_REACHED": "Limit reached",
+    "LIMIT_TOOLTIP": "User limit reached. Please contact support to upgrade your plan.",
     "NEW": "New user",
     "CREATE": "Create",
     "SEARCH_PLACEHOLDER": "Search by name or email…",
     "ALL_ROLES": "All roles",
     "EMPTY_TITLE": "No users",
     "EMPTY_MSG": "Create a user to get started.",
+    "EMPTY_LIMIT_TITLE": "No more user slots available",
+    "EMPTY_LIMIT_MSG": "Your plan has reached its user limit. Contact support to upgrade your plan.",
     "COL_USER": "User",
     "COL_EMAIL": "Email",
     "COL_ROLE": "Role",
@@ -1296,8 +1320,15 @@
       "PASSWORD_PLACEHOLDER_EDIT": "Leave blank to keep",
       "ROLE": "Role",
       "DEPARTMENT": "Department",
+      "DEPARTMENT_PLACEHOLDER": "Select department",
+      "NO_DEPARTMENTS": "No departments found",
+      "CREATE_DEPARTMENTS_FIRST": "Create departments first from Master Data > Departments.",
       "PHONE": "Phone",
-      "ACTIVE": "Active"
+      "ACTIVE": "Active",
+      "EMAIL_SEARCH_PLACEHOLDER": "Type at least 3 characters to search existing users…",
+      "NEW_USER_EMAIL_OPTION": "New user: {{email}}",
+      "IMPORT_EXISTING_HINT": "Found in your other hotels — profile fields were filled in. No password needed; the user keeps their existing password.",
+      "IMPORT_BADGE": "Existing user"
     },
     "ROLES": {
       "ADMIN": "Admin",
@@ -1317,7 +1348,8 @@
       "LOAD": "Failed to load users.",
       "SAVE": "Failed to save user.",
       "NAME_EMAIL": "First name and email are required.",
-      "PASSWORD_REQUIRED": "Password is required for new users."
+      "PASSWORD_REQUIRED": "Password is required for new users.",
+      "DEPARTMENT_REQUIRED": "Department is required for Department Manager role."
     }
   },
   "AUDIT_LOG": {
@@ -1457,6 +1489,8 @@
     "STATUS_EXPIRED": "Expired",
     "STATUS_SUSPENDED": "Suspended",
     "COL_HOTEL": "Hotel / Tenant",
+    "TENANT_BRANCH_OF": "Branch of",
+    "PROVIDER_LABEL": "Provider",
     "COL_PLAN": "Plan",
     "COL_USERS": "Users",
     "COL_LICENSE": "License Period",
@@ -1495,6 +1529,11 @@
     "CREATE_SLUG_PLACEHOLDER": "grand-palace-hotel",
     "CREATE_SLUG_HINT": "Unique ID — auto-generated from name, cannot be changed later",
     "CREATE_PLAN": "Plan",
+    "CREATE_PARENT_TENANT": "Parent Tenant",
+    "CREATE_PARENT_TENANT_PLACEHOLDER": "Select parent tenant (optional)",
+    "CREATE_ALLOW_BRANCHES": "Allow Branches",
+    "CREATE_MAX_BRANCHES": "Max Branches",
+    "CREATE_MAX_BRANCHES_PLACEHOLDER": "0",
     "PLAN_BASIC": "BASIC (5 users)",
     "PLAN_PRO": "PRO (25 users)",
     "PLAN_ENTERPRISE": "ENTERPRISE (Unlimited)",
@@ -1503,6 +1542,7 @@
     "CREATE_LICENSE_START": "License Start",
     "CREATE_LICENSE_END": "License End",
     "CREATE_LICENSE_END_HINT": "Leave empty for lifetime license",
+    "CREATE_LICENSE_DATE_RANGE_INVALID": "End date must be after start date",
     "CREATE_ADMIN_DESC": "This user will receive ADMIN access to the new hotel system.",
     "CREATE_ADMIN_FIRST_NAME": "First Name",
     "CREATE_ADMIN_FIRST_PLACEHOLDER": "John",

@@ -7,6 +7,11 @@ export interface TenantRow {
   id: string;
   name: string;
   slug: string;
+  parentId?: string | null;
+  parentName?: string | null;
+  branches?: TenantRow[];
+  hasBranches?: boolean;
+  maxBranches?: number;
   planType: PlanType;
   subStatus: SubscriptionStatus;
   isActive: boolean;

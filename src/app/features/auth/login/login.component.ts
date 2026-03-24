@@ -1,4 +1,4 @@
-import { Component, signal, inject, effect } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -6,13 +6,16 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
-import { LucideAngularModule, Hotel, Mail, Lock, Languages, Eye, EyeOff } from 'lucide-angular';
+import { LucideAngularModule, Mail, Lock, Languages, Eye, EyeOff } from 'lucide-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { LanguageService } from '../../../core/services/language.service';
-import type { LoginCredentials } from '../../../core/models';
-
-export type AuthType = 'hotel' | 'admin';
+import {
+  normalizeTenantMembershipsFromLogin,
+  type LoginCredentials,
+  type TenantMembership,
+} from '../../../core/models';
 
 @Component({
   selector: 'app-login',
@@ -24,20 +27,15 @@ export type AuthType = 'hotel' | 'admin';
     NzButtonModule,
     NzAlertModule,
     NzDropDownModule,
+    NzModalModule,
     LucideAngularModule,
     TranslatePipe,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
-export class LoginComponent {
-  private static readonly HOTEL_DEMO = {
-    tenantSlug: 'grand-horizon',
-    email: 'admin@grandhorizon.com',
-    password: 'Admin@123',
-  } as const;
-
-  private static readonly SUPER_ADMIN_DEMO = {
+export class LoginComponent implements OnInit {
+  private static readonly DEMO = {
     email: 'superadmin@ose.cloud',
     password: 'SuperAdmin@2026',
   } as const;
@@ -46,15 +44,14 @@ export class LoginComponent {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly translate = inject(TranslateService);
+  private readonly modal = inject(NzModalService);
   readonly language = inject(LanguageService);
 
-  readonly authType = signal<AuthType>('hotel');
   readonly loading = signal(false);
   readonly error = signal('');
   readonly showDemoPanel = signal(false);
   readonly showPassword = signal(false);
 
-  readonly lucideHotel = Hotel;
   readonly lucideMail = Mail;
   readonly lucideLock = Lock;
   readonly lucideLanguages = Languages;
@@ -69,27 +66,14 @@ export class LoginComponent {
   ];
 
   form: FormGroup = this.fb.group({
-    tenantSlug: ['', Validators.required],
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
 
-  constructor() {
-    effect(() => {
-      const isAdmin = this.authType() === 'admin';
-      this.error.set('');
-      const control = this.form.get('tenantSlug');
-      if (isAdmin) {
-        control?.clearValidators();
-      } else {
-        control?.setValidators(Validators.required);
-      }
-      control?.updateValueAndValidity();
-    });
-  }
+  constructor() {}
 
-  setAuthType(type: AuthType) {
-    this.authType.set(type);
+  ngOnInit(): void {
+    localStorage.removeItem('tenantSlug');
   }
 
   toggleDemoPanel() {
@@ -101,24 +85,16 @@ export class LoginComponent {
   }
 
   fillDemo() {
-    if (this.authType() === 'admin') {
-      this.form.patchValue({
-        tenantSlug: '',
-        email: LoginComponent.SUPER_ADMIN_DEMO.email,
-        password: LoginComponent.SUPER_ADMIN_DEMO.password,
-      });
-    } else {
-      this.form.patchValue({
-        tenantSlug: LoginComponent.HOTEL_DEMO.tenantSlug,
-        email: LoginComponent.HOTEL_DEMO.email,
-        password: LoginComponent.HOTEL_DEMO.password,
-      });
-    }
+    this.form.patchValue({
+      email: LoginComponent.DEMO.email,
+      password: LoginComponent.DEMO.password,
+    });
     this.error.set('');
     this.showDemoPanel.set(false);
   }
 
   onSubmit() {
+    console.log('Attempting Login...');
     this.error.set('');
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -128,26 +104,200 @@ export class LoginComponent {
     const credentials: LoginCredentials = {
       email: this.form.value.email,
       password: this.form.value.password,
-      tenantSlug: this.authType() === 'admin' ? undefined : this.form.value.tenantSlug,
     };
     this.auth.login(credentials).subscribe({
       next: (res) => {
-        if (res?.success && res.data?.user) {
-          const role = res.data.user.role;
-          if (role === 'SUPER_ADMIN') {
-            this.router.navigate(['/admin'], { replaceUrl: true });
-          } else {
-            this.router.navigate(['/dashboard'], { replaceUrl: true });
-          }
+        const data = res?.data;
+        const accountInactiveMessage = this.getAccountInactiveMessage(res);
+        if (accountInactiveMessage) {
+          this.loading.set(false);
+          this.showAccountInactiveModal(accountInactiveMessage);
+          return;
         }
+
+        if (res?.success && data?.user) {
+          this.navigateByRole(data.user.role);
+          return;
+        }
+
+        const requiresTenantSelection =
+          res?.requiresTenantSelection === true || data?.requiresTenantSelection === true;
+        if (res?.success && requiresTenantSelection) {
+          const envelopeMemberships = (res as { memberships?: unknown[] })?.memberships;
+          const rawMemberships =
+            (Array.isArray(data?.memberships) && data.memberships.length > 0
+              ? data.memberships
+              : undefined) ??
+            (Array.isArray(envelopeMemberships) && envelopeMemberships.length > 0
+              ? envelopeMemberships
+              : undefined) ??
+            data?.user?.memberships ??
+            [];
+
+          const memberships = normalizeTenantMembershipsFromLogin(rawMemberships);
+          if (memberships.length > 0) {
+            this.completeLoginWithMembership(credentials, memberships[0], memberships);
+            return;
+          }
+
+          this.loading.set(false);
+          this.error.set(this.translate.instant('LOGIN.ERROR_SELECT_TENANT_RETRY'));
+          return;
+        }
+
+        this.error.set(res?.message?.trim() || this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS'));
       },
       error: (err) => {
         this.loading.set(false);
+        const accountInactiveMessage = this.getAccountInactiveMessage(err?.error);
+        if (accountInactiveMessage !== null) {
+          this.error.set('');
+          this.modal.error({
+            nzTitle: this.translate.instant('LOGIN.ACCOUNT_INACTIVE_TITLE'),
+            nzContent: accountInactiveMessage,
+            nzMaskClosable: false,
+            nzClosable: false,
+            nzKeyboard: false,
+            nzOkText: this.translate.instant('COMMON.OK'),
+          });
+          return;
+        }
+        const errorData = this.coerceErrorBody(err?.error);
         this.error.set(
-          err?.error?.message ?? this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS')
+          errorData?.message ?? this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS')
         );
       },
       complete: () => this.loading.set(false),
     });
+  }
+
+  private navigateByRole(role: string): void {
+    if (role === 'SUPER_ADMIN') {
+      this.router.navigate(['/admin/tenants'], { replaceUrl: true });
+    } else {
+      this.router.navigate(['/dashboard'], { replaceUrl: true });
+    }
+  }
+
+  private showAccountInactiveModal(apiMessage?: string): void {
+    this.error.set('');
+    const backendMessage = apiMessage?.trim();
+    this.modal.error({
+      nzTitle: this.translate.instant('LOGIN.ACCOUNT_INACTIVE_TITLE'),
+      nzContent: backendMessage || this.translate.instant('LOGIN.ACCOUNT_INACTIVE_CONTENT'),
+      nzMaskClosable: false,
+      nzClosable: false,
+      nzKeyboard: false,
+      nzOkText: this.translate.instant('COMMON.OK'),
+    });
+  }
+
+  private completeLoginWithMembership(
+    credentials: LoginCredentials,
+    membership: TenantMembership,
+    memberships: TenantMembership[],
+  ): void {
+    this.error.set('');
+    this.loading.set(true);
+
+    this.auth
+      .login({
+        email: credentials.email,
+        password: credentials.password,
+        tenantSlug: membership.tenantSlug,
+        selectedTenantId: membership.tenantId,
+        selectedRole: membership.role,
+        memberships,
+      })
+      .subscribe({
+        next: (res) => {
+          const accountInactiveMessage = this.getAccountInactiveMessage(res);
+          if (accountInactiveMessage) {
+            this.showAccountInactiveModal(accountInactiveMessage);
+            return;
+          }
+          if (res?.success && res.data?.user) {
+            this.navigateByRole(res.data.user.role);
+            return;
+          }
+          this.error.set(res?.message?.trim() || this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS'));
+        },
+        error: (err) => {
+          this.loading.set(false);
+          const accountInactiveMessage = this.getAccountInactiveMessage(err?.error);
+          if (accountInactiveMessage !== null) {
+            this.error.set('');
+            this.modal.error({
+              nzTitle: this.translate.instant('LOGIN.ACCOUNT_INACTIVE_TITLE'),
+              nzContent: accountInactiveMessage,
+              nzMaskClosable: false,
+              nzClosable: false,
+              nzKeyboard: false,
+              nzOkText: this.translate.instant('COMMON.OK'),
+            });
+            return;
+          }
+          const errorData = this.coerceErrorBody(err?.error);
+          this.error.set(
+            errorData?.message ?? this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS')
+          );
+        },
+        complete: () => this.loading.set(false),
+      });
+  }
+
+  private getAccountInactiveMessage(
+    payload: unknown,
+  ): string | null {
+    const body = this.coerceErrorBody(payload);
+    if (!body || typeof body !== 'object') {
+      return null;
+    }
+
+    const code = body.error ?? body.code ?? body.data?.error ?? body.data?.code;
+    if (code !== 'ACCOUNT_INACTIVE') {
+      return null;
+    }
+
+    return (
+      body.message?.trim() ||
+      body.data?.message?.trim() ||
+      this.translate.instant('LOGIN.ACCOUNT_INACTIVE_CONTENT')
+    );
+  }
+
+  private coerceErrorBody(payload: unknown): {
+    error?: string;
+    code?: string;
+    message?: string;
+    data?: { error?: string; code?: string; message?: string };
+  } | null {
+    if (!payload) {
+      return null;
+    }
+
+    if (typeof payload === 'string') {
+      try {
+        return JSON.parse(payload) as {
+          error?: string;
+          code?: string;
+          message?: string;
+          data?: { error?: string; code?: string; message?: string };
+        };
+      } catch {
+        return { message: payload };
+      }
+    }
+
+    if (typeof payload === 'object') {
+      return payload as {
+        error?: string;
+        code?: string;
+        message?: string;
+        data?: { error?: string; code?: string; message?: string };
+      };
+    }
+
+    return null;
   }
 }

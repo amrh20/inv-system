@@ -4,13 +4,25 @@
       <h1 class="admin-users__title">
         <lucide-icon [img]="lucideUsers" [size]="24" class="admin-users__title-icon" />
         {{ 'USERS.TITLE' | translate }}
+        @if (maxUsers() !== null) {
+          <nz-tag [nzColor]="usageTagColor()" class="admin-users__usage-tag">
+            {{ 'USERS.PLAN_USAGE' | translate: { activeCount: activeCount(), maxUsers: maxUsers() } }}
+          </nz-tag>
+        }
       </h1>
       <p class="admin-users__meta">{{ 'USERS.SUBTITLE' | translate: { count: total() } }}</p>
     </div>
-    <button nz-button nzType="primary" type="button" (click)="openCreate()">
-      <lucide-icon [img]="lucidePlus" [size]="16" />
-      <span>{{ 'USERS.NEW' | translate }}</span>
-    </button>
+    <div class="admin-users__create-wrap">
+      <span nz-tooltip [nzTooltipTitle]="createLimitReached() ? ('USERS.LIMIT_TOOLTIP' | translate) : null">
+        <button nz-button nzType="primary" type="button" [disabled]="createLimitReached()" (click)="openCreate()">
+          <lucide-icon [img]="lucidePlus" [size]="16" />
+          <span>{{ 'USERS.NEW' | translate }}</span>
+        </button>
+      </span>
+      @if (createLimitReached()) {
+        <span class="admin-users__limit-note">{{ 'USERS.LIMIT_REACHED' | translate }}</span>
+      }
+    </div>
   </div>
 
   <div class="admin-users__filters">
@@ -76,10 +88,17 @@
     [nzNoResult]="noResultTpl"
   >
     <ng-template #noResultTpl>
-      <app-empty-state
-        [title]="'USERS.EMPTY_TITLE' | translate"
-        [message]="'USERS.EMPTY_MSG' | translate"
-      />
+      @if (createLimitReached()) {
+        <app-empty-state
+          [title]="'USERS.EMPTY_LIMIT_TITLE' | translate"
+          [message]="'USERS.EMPTY_LIMIT_MSG' | translate"
+        />
+      } @else {
+        <app-empty-state
+          [title]="'USERS.EMPTY_TITLE' | translate"
+          [message]="'USERS.EMPTY_MSG' | translate"
+        />
+      }
     </ng-template>
     <thead>
       <tr>
@@ -178,28 +197,76 @@
         <input nz-input [(ngModel)]="formFirstName" name="fn" />
       </div>
       <div class="admin-users__form-row">
-        <label class="admin-users__label">{{ 'USERS.FORM.LAST_NAME' | translate }}</label>
+        <label class="admin-users__label">{{ 'USERS.FORM.LAST_NAME' | translate }}*</label>
         <input nz-input [(ngModel)]="formLastName" name="ln" />
       </div>
       <div class="admin-users__form-row">
-        <label class="admin-users__label">{{ 'USERS.FORM.EMAIL' | translate }} *</label>
-        <input nz-input type="email" [(ngModel)]="formEmail" name="em" [disabled]="!!editRow()" />
-      </div>
-      <div class="admin-users__form-row">
-        <label class="admin-users__label">
-          {{ 'USERS.FORM.PASSWORD' | translate }}
-          @if (!editRow()) {
-            *
+        <label class="admin-users__label admin-users__label--with-tag">
+          <span>{{ 'USERS.FORM.EMAIL' | translate }} *</span>
+          @if (!editRow() && isImporting()) {
+            <nz-tag nzColor="processing" class="admin-users__import-badge">{{ 'USERS.FORM.IMPORT_BADGE' | translate }}</nz-tag>
           }
         </label>
-        <input
-          nz-input
-          type="password"
-          [(ngModel)]="formPassword"
-          name="pw"
-          [attr.placeholder]="editRow() ? ('USERS.FORM.PASSWORD_PLACEHOLDER_EDIT' | translate) : ''"
-        />
+        @if (editRow()) {
+          <input nz-input type="email" [(ngModel)]="formEmail" name="em" [disabled]="true" />
+        } @else {
+          <nz-select
+            class="admin-users__full-width"
+            name="emPick"
+            nzShowSearch
+            nzServerSearch
+            [nzLoading]="emailSearchLoading()"
+            [nzPlaceHolder]="'USERS.FORM.EMAIL_SEARCH_PLACEHOLDER' | translate"
+            nzAllowClear
+            [nzFilterOption]="emailSelectShowAllOptions"
+            [compareWith]="compareEmailPick"
+            [(ngModel)]="emailPick"
+            (ngModelChange)="onCreateEmailPickChange($event)"
+            (nzOnSearch)="onCreateEmailSearch($event)"
+          >
+            @for (opt of emailSelectOptions(); track emailPickTrack($index, opt)) {
+              <nz-option [nzValue]="opt" [nzLabel]="emailOptionLabel(opt)" />
+            }
+          </nz-select>
+        }
       </div>
+      @if (!editRow() && isImporting()) {
+        <nz-alert
+          nzType="info"
+          nzShowIcon
+          [nzMessage]="'USERS.FORM.IMPORT_EXISTING_HINT' | translate"
+          class="admin-users__import-hint"
+        />
+      }
+      @if (!editRow() && !isImporting()) {
+        <div class="admin-users__form-row">
+          <label class="admin-users__label">
+            {{ 'USERS.FORM.PASSWORD' | translate }}
+            *
+          </label>
+          <input
+            nz-input
+            type="password"
+            [(ngModel)]="formPassword"
+            name="pw"
+            [attr.placeholder]="''"
+          />
+        </div>
+      }
+      @if (editRow()) {
+        <div class="admin-users__form-row">
+          <label class="admin-users__label">
+            {{ 'USERS.FORM.PASSWORD' | translate }}
+          </label>
+          <input
+            nz-input
+            type="password"
+            [(ngModel)]="formPassword"
+            name="pw"
+            [attr.placeholder]="'USERS.FORM.PASSWORD_PLACEHOLDER_EDIT' | translate"
+          />
+        </div>
+      }
       <div class="admin-users__form-row admin-users__form-row--2">
         <div>
           <label class="admin-users__label">{{ 'USERS.FORM.ROLE' | translate }}</label>
@@ -210,8 +277,27 @@
           </nz-select>
         </div>
         <div>
-          <label class="admin-users__label">{{ 'USERS.FORM.DEPARTMENT' | translate }}</label>
-          <input nz-input [(ngModel)]="formDepartment" name="dept" />
+          <label class="admin-users__label">
+            {{ 'USERS.FORM.DEPARTMENT' | translate }}
+            @if (formRole === 'DEPT_MANAGER') {
+              *
+            }
+          </label>
+          <nz-select
+            [(ngModel)]="formDepartmentId"
+            name="dept"
+            class="admin-users__full-width"
+            [nzPlaceHolder]="'USERS.FORM.DEPARTMENT_PLACEHOLDER' | translate"
+            [nzNotFoundContent]="'USERS.FORM.NO_DEPARTMENTS' | translate"
+            nzAllowClear
+          >
+            @for (dept of departments(); track dept.id) {
+              <nz-option [nzValue]="dept.id" [nzLabel]="dept.name" />
+            }
+          </nz-select>
+          @if (!departments().length) {
+            <div class="admin-users__department-empty">{{ 'USERS.FORM.CREATE_DEPARTMENTS_FIRST' | translate }}</div>
+          }
         </div>
       </div>
       <div class="admin-users__form-row">
