@@ -590,3 +590,71 @@
   text-align: right;
   margin: 0;
 }
+
+/* Branch comparison cards */
+.org-comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.org-branch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &--skeleton { min-height: 220px; }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  &__avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__name {
+    font-size: 14px;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.85);
+    margin: 0;
+  }
+
+  &__metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+  }
+
+  &__metric-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  &__metric-label { color: rgba(0, 0, 0, 0.45); font-weight: 500; }
+
+  &__metric-value { font-weight: 600; color: rgba(0, 0, 0, 0.8); font-family: monospace; }
+
+  &__switch-btn { width: 100%; }
+}
+
+.org-bar--blue  { background: #2563eb; }
+.org-bar--green { background: #16a34a; }
+.org-bar--red   { background: #dc2626; }
+.org-bar--amber { background: #d97706; }

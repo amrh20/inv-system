@@ -9,6 +9,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowRightLeft,
+  Building2,
   Clock,
   DollarSign,
   FileInput,
@@ -23,9 +24,12 @@ import {
 import { AuthService } from '../../core/services/auth.service';
 import { DashboardService } from './services/dashboard.service';
 import type {
+  BranchSummary,
   DashboardSummary,
   InventoryOverview,
   MonthlyPerformance,
+  OrganizationDashboardSummary,
+  OrganizationGroupTotals,
   RiskIndicators,
   ValueByDepartment,
 } from './models/dashboard.model';
@@ -43,7 +47,14 @@ const fmtSARFull = (v: number | undefined | null) =>
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, NzButtonModule, TranslatePipe, LucideAngularModule, NgClass, EmptyStateComponent],
+  imports: [
+    DatePipe,
+    NzButtonModule,
+    TranslatePipe,
+    LucideAngularModule,
+    NgClass,
+    EmptyStateComponent,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -62,6 +73,8 @@ export class DashboardComponent implements OnInit {
   readonly lucideArrowRightLeft = ArrowRightLeft;
   readonly lucideTrendingDown = TrendingDown;
   readonly lucideClock = Clock;
+  readonly lucideBuilding2 = Building2;
+  readonly lucideActivity = Activity;
 
   readonly data = signal<DashboardSummary | null>(null);
   readonly loading = signal(true);
@@ -69,6 +82,44 @@ export class DashboardComponent implements OnInit {
   readonly responseTimeMs = signal<number | null>(null);
   readonly currentUser = this.auth.currentUser;
   readonly isParentOrganizationContext = computed(() => this.auth.isParentOrganizationContext());
+  readonly parentTenantId = computed(() => this.auth.currentTenant()?.id ?? null);
+
+  /** Child hotels / branches for organization comparison view */
+  readonly branchSummaries = signal<BranchSummary[]>([]);
+  readonly organizationSummary = signal<OrganizationDashboardSummary | null>(null);
+  readonly orgLoading = signal(false);
+  readonly orgError = signal<string | null>(null);
+  readonly switchingBranchSlug = signal<string | null>(null);
+
+  /** Group KPIs: always sum of all rows in `branchSummaries` (API `data` array). */
+  readonly orgTotals = computed<OrganizationGroupTotals>(() => {
+    const rows = this.branchSummaries();
+    return {
+      totalInventoryValue: rows.reduce((a, b) => a + (b.inventoryValue ?? 0), 0),
+      totalConsumption: rows.reduce((a, b) => a + (b.consumptionValue ?? 0), 0),
+      totalPendingTasks: rows.reduce((a, b) => a + (b.pendingTasks ?? 0), 0),
+    };
+  });
+
+  readonly maxBranchInventory = computed(() => {
+    const rows = this.branchSummaries();
+    return Math.max(...rows.map((b) => b.inventoryValue ?? 0), 1);
+  });
+
+  readonly maxBranchConsumption = computed(() => {
+    const rows = this.branchSummaries();
+    return Math.max(...rows.map((b) => b.consumptionValue ?? 0), 1);
+  });
+
+  readonly maxBranchWaste = computed(() => {
+    const rows = this.branchSummaries();
+    return Math.max(...rows.map((b) => b.wasteValue ?? 0), 1);
+  });
+
+  readonly maxBranchPending = computed(() => {
+    const rows = this.branchSummaries();
+    return Math.max(...rows.map((b) => b.pendingTasks ?? 0), 1);
+  });
 
   readonly ov = computed<InventoryOverview | null>(() => this.data()?.inventoryOverview ?? null);
   readonly mp = computed<MonthlyPerformance | null>(() => this.data()?.monthlyPerformance ?? null);
@@ -88,10 +139,17 @@ export class DashboardComponent implements OnInit {
 
   readonly dateStr = signal('');
   readonly timeStr = signal('');
+  /** Current tenant (organization / property) — from auth context, never hardcoded */
   readonly tenantName = computed(() => {
+    const ct = this.auth.currentTenant();
+    if (ct?.name) {
+      return ct.name;
+    }
+    if (ct?.slug) {
+      return ct.slug;
+    }
     const u = this.currentUser();
-    const tenant = u?.tenant;
-    return tenant?.name ?? 'Grand Horizon Hotel';
+    return u?.tenant?.name ?? u?.tenant?.slug ?? '';
   });
 
   readonly operationalHealthItems = computed(() => {
@@ -143,6 +201,10 @@ export class DashboardComponent implements OnInit {
   ngOnInit() {
     if (this.isParentOrganizationContext()) {
       this.loading.set(false);
+      this.orgLoading.set(true);
+      this.fetchOrganizationDashboard();
+      const interval = setInterval(() => this.updateDateTime(), 60000);
+      this.destroyRef.onDestroy(() => clearInterval(interval));
       return;
     }
     this.fetchDashboard();
@@ -156,6 +218,62 @@ export class DashboardComponent implements OnInit {
       now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
     );
     this.timeStr.set(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+  }
+
+  fetchOrganizationDashboard(): void {
+    const parentId = this.parentTenantId();
+    if (!parentId) {
+      this.orgLoading.set(false);
+      this.orgError.set('DASHBOARD.ORG_ERROR_MISSING_PARENT');
+      return;
+    }
+    this.orgLoading.set(true);
+    this.orgError.set(null);
+    this.dashboardApi
+      .getOrganizationSummary(parentId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (payload) => {
+          if (!payload) {
+            this.organizationSummary.set(null);
+            this.branchSummaries.set([]);
+            this.orgError.set('DASHBOARD.ORG_ERROR_LOAD');
+            this.orgLoading.set(false);
+            return;
+          }
+          const branches = payload.branches ?? [];
+          this.organizationSummary.set({ ...payload, branches });
+          this.branchSummaries.set(branches);
+          this.orgLoading.set(false);
+        },
+        error: (err) => {
+          this.orgError.set(
+            err?.error?.message ?? err?.message ?? 'DASHBOARD.ORG_ERROR_LOAD',
+          );
+          this.organizationSummary.set(null);
+          this.branchSummaries.set([]);
+          this.orgLoading.set(false);
+        },
+      });
+  }
+
+  viewBranch(tenantSlug: string): void {
+    if (!tenantSlug || this.switchingBranchSlug()) {
+      return;
+    }
+    this.switchingBranchSlug.set(tenantSlug);
+    this.auth
+      .switchTenant(tenantSlug)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.switchingBranchSlug.set(null);
+          window.location.href = '/dashboard';
+        },
+        error: () => {
+          this.switchingBranchSlug.set(null);
+        },
+      });
   }
 
   fetchDashboard() {
@@ -197,5 +315,9 @@ export class DashboardComponent implements OnInit {
 
   navigateTo(path: string) {
     this.router.navigateByUrl(path);
+  }
+
+  isBranchSwitching(slug: string): boolean {
+    return this.switchingBranchSlug() === slug;
   }
 }

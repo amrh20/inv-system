@@ -1,9 +1,197 @@
 <div class="dashboard-page">
   @if (isParentOrganizationContext()) {
-    <app-empty-state
-      [title]="'DASHBOARD.ORG_COMING_SOON_TITLE' | translate"
-      [message]="'DASHBOARD.ORG_COMING_SOON_MESSAGE' | translate"
-    />
+    <div>
+      @if (orgError(); as orgErr) {
+        <div class="dashboard-page__error">
+          <lucide-icon [img]="lucideAlertTriangle" [size]="48" class="dashboard-page__error-icon" [strokeWidth]="2" />
+          <h2 class="dashboard-page__error-title">{{ 'DASHBOARD.UNAVAILABLE' | translate }}</h2>
+          <p class="dashboard-page__error-message">
+            @if (orgErr.startsWith('DASHBOARD.')) {
+              {{ orgErr | translate }}
+            } @else {
+              {{ orgErr }}
+            }
+          </p>
+          <button nz-button nzType="primary" (click)="fetchOrganizationDashboard()">
+            <lucide-icon [img]="lucideRefresh" [size]="16" [strokeWidth]="2" />
+            <span>{{ 'COMMON.REFRESH' | translate }}</span>
+          </button>
+        </div>
+      } @else {
+        <div class="dashboard-page__header">
+          <div>
+            <h1 class="dashboard-page__title">
+              {{ 'DASHBOARD.ORG_TITLE' | translate }}{{ currentUser()?.firstName || ('COMMON.USER' | translate) }}
+            </h1>
+            <p class="dashboard-page__meta">
+              {{ tenantName() }} — {{ dateStr() }}
+            </p>
+          </div>
+          <div class="dashboard-page__header-actions">
+            <button
+              nz-button
+              nzType="link"
+              [disabled]="orgLoading()"
+              (click)="fetchOrganizationDashboard()"
+              class="dashboard-page__refresh-btn"
+            >
+              @if (orgLoading()) {
+                <lucide-icon [img]="lucideLoader" [size]="14" class="dashboard-page__spin" [strokeWidth]="2" />
+              } @else {
+                <lucide-icon [img]="lucideRefresh" [size]="14" [strokeWidth]="2" />
+              }
+              <span>{{ 'COMMON.REFRESH' | translate }}</span>
+            </button>
+            <span class="dashboard-page__time">{{ timeStr() }}</span>
+          </div>
+        </div>
+
+        <div class="dashboard-page__cards">
+          @if (orgLoading()) {
+            @for (i of [1, 2, 3]; track i) {
+              <div class="dashboard-page__card dashboard-page__card--skeleton">
+                <div class="dashboard-page__skeleton dashboard-page__skeleton--label"></div>
+                <div class="dashboard-page__skeleton dashboard-page__skeleton--value"></div>
+                <div class="dashboard-page__skeleton dashboard-page__skeleton--sub"></div>
+              </div>
+            }
+          } @else {
+            <div class="dashboard-page__card">
+              <div class="dashboard-page__card-head">
+                <span class="dashboard-page__card-label">{{ 'DASHBOARD.ORG_TOTAL_INVENTORY_VALUE' | translate }}</span>
+                <div class="dashboard-page__card-icon dashboard-page__card-icon--blue">
+                  <lucide-icon [img]="lucideDollarSign" [size]="18" [strokeWidth]="2" />
+                </div>
+              </div>
+              <p class="dashboard-page__card-value">{{ fmtSAR(orgTotals().totalInventoryValue) }}</p>
+              <p class="dashboard-page__card-sub">{{ 'DASHBOARD.ORG_TOTAL_GROUP' | translate }}</p>
+            </div>
+            <div class="dashboard-page__card">
+              <div class="dashboard-page__card-head">
+                <span class="dashboard-page__card-label">{{ 'DASHBOARD.ORG_TOTAL_CONSUMPTION' | translate }}</span>
+                <div class="dashboard-page__card-icon dashboard-page__card-icon--green">
+                  <lucide-icon [img]="lucideArrowRightLeft" [size]="18" [strokeWidth]="2" />
+                </div>
+              </div>
+              <p class="dashboard-page__card-value">{{ fmtSAR(orgTotals().totalConsumption) }}</p>
+              <p class="dashboard-page__card-sub">{{ 'DASHBOARD.ORG_TOTAL_GROUP' | translate }}</p>
+            </div>
+            <div class="dashboard-page__card">
+              <div class="dashboard-page__card-head">
+                <span class="dashboard-page__card-label">{{ 'DASHBOARD.ORG_TOTAL_PENDING_TASKS' | translate }}</span>
+                <div class="dashboard-page__card-icon dashboard-page__card-icon--purple">
+                  <lucide-icon [img]="lucideActivity" [size]="18" [strokeWidth]="2" />
+                </div>
+              </div>
+              <p class="dashboard-page__card-value">{{ fmt(orgTotals().totalPendingTasks) }}</p>
+              <p class="dashboard-page__card-sub">{{ 'DASHBOARD.ORG_PENDING_SUBTITLE' | translate }}</p>
+            </div>
+          }
+        </div>
+
+        <div class="dashboard-page__section mt-5">
+          <h2 class="dashboard-page__section-title">{{ 'DASHBOARD.ORG_BRANCH_COMPARISON' | translate }}</h2>
+          @if (orgLoading()) {
+            <div class="org-comparison-grid">
+              @for (i of [1, 2, 3]; track i) {
+                <div class="dashboard-page__card org-branch-card org-branch-card--skeleton">
+                  <div class="dashboard-page__skeleton" style="height:32px;border-radius:6px;margin-bottom:8px"></div>
+                  @for (j of [1, 2, 3, 4]; track j) {
+                    <div class="dashboard-page__skeleton" style="height:36px;border-radius:4px"></div>
+                  }
+                </div>
+              }
+            </div>
+          } @else if (branchSummaries().length === 0) {
+            <app-empty-state
+              [title]="'DASHBOARD.ORG_NO_BRANCHES' | translate"
+              [message]="'DASHBOARD.ORG_NO_BRANCHES_HINT' | translate"
+            />
+          } @else {
+            <div class="org-comparison-grid">
+              @for (b of branchSummaries(); track b.branchName) {
+                <div class="dashboard-page__card org-branch-card">
+                  <div class="org-branch-card__header">
+                    <div class="org-branch-card__avatar">{{ b.branchName.charAt(0).toUpperCase() }}</div>
+                    <h3 class="org-branch-card__name">{{ b.branchName }}</h3>
+                  </div>
+
+                  <div class="org-branch-card__metrics">
+                    <div class="org-branch-card__metric">
+                      <div class="org-branch-card__metric-head">
+                        <span class="org-branch-card__metric-label">{{ 'DASHBOARD.ORG_COL_INVENTORY' | translate }}</span>
+                        <span class="org-branch-card__metric-value">{{ fmtSAR(b.inventoryValue) }}</span>
+                      </div>
+                      <div class="dashboard-page__bar-track" style="height:5px">
+                        <div class="dashboard-page__bar-fill org-bar--blue"
+                          [style.width.%]="maxBranchInventory() > 1 ? (b.inventoryValue / maxBranchInventory()) * 100 : 100">
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="org-branch-card__metric">
+                      <div class="org-branch-card__metric-head">
+                        <span class="org-branch-card__metric-label">{{ 'DASHBOARD.ORG_COL_CONSUMPTION' | translate }}</span>
+                        <span class="org-branch-card__metric-value">{{ fmtSAR(b.consumptionValue) }}</span>
+                      </div>
+                      <div class="dashboard-page__bar-track" style="height:5px">
+                        <div class="dashboard-page__bar-fill org-bar--green"
+                          [style.width.%]="maxBranchConsumption() > 1 ? (b.consumptionValue / maxBranchConsumption()) * 100 : 100">
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="org-branch-card__metric">
+                      <div class="org-branch-card__metric-head">
+                        <span class="org-branch-card__metric-label">{{ 'DASHBOARD.ORG_COL_WASTE' | translate }}</span>
+                        <span class="org-branch-card__metric-value">{{ fmtSAR(b.wasteValue) }}</span>
+                      </div>
+                      <div class="dashboard-page__bar-track" style="height:5px">
+                        <div class="dashboard-page__bar-fill org-bar--red"
+                          [style.width.%]="maxBranchWaste() > 1 ? (b.wasteValue / maxBranchWaste()) * 100 : 100">
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="org-branch-card__metric">
+                      <div class="org-branch-card__metric-head">
+                        <span class="org-branch-card__metric-label">{{ 'DASHBOARD.ORG_COL_PENDING' | translate }}</span>
+                        <span class="org-branch-card__metric-value">
+                          {{ fmt(b.pendingTasks) }} {{ 'DASHBOARD.ORG_PENDING_TASKS_UNIT' | translate }}
+                        </span>
+                      </div>
+                      <div class="dashboard-page__bar-track" style="height:5px">
+                        <div class="dashboard-page__bar-fill org-bar--amber"
+                          [style.width.%]="maxBranchPending() > 1 ? (b.pendingTasks / maxBranchPending()) * 100 : 100">
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    nz-button
+                    nzType="default"
+                    nzSize="small"
+                    class="org-branch-card__switch-btn"
+                    [disabled]="switchingBranchSlug() !== null"
+                    [nzLoading]="isBranchSwitching(b.tenantSlug)"
+                    (click)="viewBranch(b.tenantSlug)"
+                  >
+                    {{ 'DASHBOARD.ORG_SWITCH_TO_BRANCH' | translate }}
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        @if (organizationSummary()?.generatedAt; as genAt) {
+          <p class="dashboard-page__footer">
+            {{ 'DASHBOARD.DATA_AS_OF' | translate }} {{ genAt | date: 'medium' }}
+          </p>
+        }
+      }
+    </div>
   } @else if (error()) {
     <div class="dashboard-page__error">
       <lucide-icon [img]="lucideAlertTriangle" [size]="48" class="dashboard-page__error-icon" [strokeWidth]="2" />

@@ -91,3 +91,31 @@ export interface ChartData {
   topConsumed?: { name: string; qty: number }[];
   lowStockData?: { name: string; value: number; fill: string }[];
 }
+
+/** Single branch / hotel row from GET /dashboard/organization-summary */
+export interface BranchSummary {
+  /** Display name from API (`branchName`) */
+  branchName: string;
+  /** Used for tenant switch — API may omit; falls back to `branchName` */
+  tenantSlug: string;
+  inventoryValue: number;
+  /** Mapped from API `consumption` */
+  consumptionValue: number;
+  /** Mapped from API `waste` */
+  wasteValue: number;
+  pendingTasks: number;
+}
+
+export interface OrganizationGroupTotals {
+  totalInventoryValue: number;
+  totalConsumption: number;
+  totalPendingTasks: number;
+}
+
+/** Response body for organization comparison dashboard (object shape) or wrapped as array-only `data` from API */
+export interface OrganizationDashboardSummary {
+  parentTenantId?: string;
+  totals?: OrganizationGroupTotals;
+  branches: BranchSummary[];
+  generatedAt?: string;
+}
