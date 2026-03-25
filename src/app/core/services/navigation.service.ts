@@ -57,7 +57,7 @@ export interface NavSection {
   roles?: readonly UserRole[];
 }
 
-const ADMIN_ROLES: readonly UserRole[] = ['ADMIN', 'SUPER_ADMIN'];
+const ADMIN_ROLES: readonly UserRole[] = ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'];
 
 const NAV_SECTIONS: readonly NavSection[] = [
   {
@@ -185,7 +185,24 @@ function filterNavEntry(entry: NavEntry, role: UserRole | undefined): NavEntry |
   return { ...entry, children };
 }
 
-function filterSections(role: UserRole | undefined): NavSection[] {
+function filterSections(role: UserRole | undefined, orgDashboardOnly: boolean): NavSection[] {
+  if (orgDashboardOnly) {
+    return [
+      {
+        heading: 'NAV.SECTIONS.MENU',
+        items: [
+          {
+            kind: 'link',
+            path: '/dashboard',
+            label: 'NAV.DASHBOARD',
+            icon: LayoutDashboard,
+            pathMatch: 'full',
+          },
+        ],
+      },
+    ];
+  }
+
   const base = NAV_SECTIONS.filter((s) => roleAllowed(role, s.roles))
     .map((section) => ({
       ...section,
@@ -216,7 +233,9 @@ export class NavigationService {
   private readonly auth = inject(AuthService);
 
   /** Menu tree after role filtering (reacts to `AuthService.currentUser`). */
-  readonly sections = computed(() => filterSections(this.auth.currentUser()?.role));
+  readonly sections = computed(() =>
+    filterSections(this.auth.currentUser()?.role, this.auth.isParentOrganizationContext()),
+  );
 
   /** Flat map for breadcrumbs on routes without `data.breadcrumb`. */
   breadcrumbLabelForPath(urlPath: string): string | null {

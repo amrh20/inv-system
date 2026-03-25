@@ -5,6 +5,7 @@
 export type UserRole =
   | 'SUPER_ADMIN'
   | 'ADMIN'
+  | 'ORG_MANAGER'
   | 'STOREKEEPER'
   | 'DEPT_MANAGER'
   | 'COST_CONTROL'

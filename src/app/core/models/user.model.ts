@@ -24,6 +24,9 @@ export interface UserMembership {
   tenantId: string | null;
   tenantSlug: string;
   tenantName: string;
+  parentId?: string | null;
+  isInherited?: boolean;
+  isSuperAdmin?: boolean;
   role: UserRole;
 }
 

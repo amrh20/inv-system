@@ -5,6 +5,14 @@ import type { ApiResponse } from '../../../core/models/api-response.model';
 import { environment } from '../../../../environments/environment';
 import type { TenantRow } from '../models/tenant.model';
 
+/** Nested admin for tenant create (e.g. wizard step 2 first hotel). */
+export interface TenantCreateAdminUserPayload {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  password?: string;
+}
+
 export interface TenantCreatePayload {
   name: string;
   slug: string;
@@ -16,10 +24,20 @@ export interface TenantCreatePayload {
   maxBranches?: number;
   licenseStartDate?: string;
   licenseEndDate?: string | null;
-  adminEmail: string;
-  adminPassword: string;
+  /** Preferred for child / wizard step 2 when backend expects a single admin object. */
+  adminUser?: TenantCreateAdminUserPayload;
+  /** Omitted for child tenants when managers are inherited from the parent org. */
+  adminEmail?: string;
+  /** Required when creating a new user; omit when `existingUserId` is sent. */
+  adminPassword?: string;
+  /** When set, links an existing platform user instead of creating credentials. */
+  existingUserId?: string;
+  /** Branch only: whether org-level managers are also assigned to the new branch. */
+  assignOrgManagersToBranch?: boolean;
   adminFirstName?: string;
   adminLastName?: string;
+  /** Initial manager phone (root org create) when supported by API. */
+  adminPhone?: string;
 }
 
 export interface TenantUpdatePayload {
@@ -66,6 +84,11 @@ export class TenantsService {
     return this.http
       .post<ApiResponse<TenantRow>>(this.base, payload)
       .pipe(map((res) => res.data));
+  }
+
+  /** Single tenant (e.g. org manager email for “add hotel under org”). */
+  getById(id: string): Observable<TenantRow> {
+    return this.http.get<ApiResponse<TenantRow>>(`${this.base}/${id}`).pipe(map((res) => res.data));
   }
 
   list(params: TenantsListParams): Observable<TenantsListResult> {

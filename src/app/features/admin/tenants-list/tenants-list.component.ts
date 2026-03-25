@@ -89,6 +89,8 @@ export class TenantsListComponent implements OnInit {
   readonly pageIndex = signal(1);
   readonly pageSize = signal(15);
   readonly createModalOpen = signal(false);
+  /** When set, create modal opens in “add hotel under this org” mode (wizard step 2). */
+  readonly branchParentForCreate = signal<TenantRow | null>(null);
   readonly editTenant = signal<TenantRow | null>(null);
   readonly licenseTenant = signal<TenantRow | null>(null);
 
@@ -124,9 +126,17 @@ export class TenantsListComponent implements OnInit {
     return {
       ...tenant,
       parentName: tenant.parentName ?? null,
+      managerEmail: tenant.managerEmail ?? null,
+      orgManagerEmail: tenant.orgManagerEmail ?? null,
+      primaryManagerEmail: tenant.primaryManagerEmail ?? null,
       hasBranches: tenant.hasBranches ?? false,
       branches: (tenant.branches ?? []).map((branch) => this.normalizeTenant(branch)),
     };
+  }
+
+  /** Top-level list row = organization (not a branch row). */
+  isOrganizationRow(t: TenantRow): boolean {
+    return t.parentId == null || t.parentId === '';
   }
 
   hasExpandableBranches(tenant: TenantRow): boolean {
@@ -266,6 +276,12 @@ export class TenantsListComponent implements OnInit {
   }
 
   openCreate(): void {
+    this.branchParentForCreate.set(null);
+    this.createModalOpen.set(true);
+  }
+
+  openAddHotelUnderOrg(org: TenantRow): void {
+    this.branchParentForCreate.set(org);
     this.createModalOpen.set(true);
   }
 
@@ -279,6 +295,7 @@ export class TenantsListComponent implements OnInit {
 
   onCreateSaved(): void {
     this.createModalOpen.set(false);
+    this.branchParentForCreate.set(null);
     this.load();
   }
 

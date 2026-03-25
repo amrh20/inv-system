@@ -9,6 +9,11 @@ export interface TenantRow {
   slug: string;
   parentId?: string | null;
   parentName?: string | null;
+  /** Org-level manager email (list/detail; used for “add hotel under org”). */
+  managerEmail?: string | null;
+  /** Some APIs expose the org manager email under this key. */
+  orgManagerEmail?: string | null;
+  primaryManagerEmail?: string | null;
   branches?: TenantRow[];
   hasBranches?: boolean;
   maxBranches?: number;

@@ -1,5 +1,9 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { EMPTY, Subject, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, finalize, switchMap, take, tap } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -8,14 +12,23 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Building2, Eye, EyeOff, KeySquare, User } from 'lucide-angular';
 import type { PlanType } from '../../../core/models/enums';
-import type { TenantCreatePayload, TenantUpdatePayload } from '../services/tenants.service';
+import type { EmailPickOption, ExistingUserSearchHit } from '../models/admin.models';
+import type {
+  TenantCreateAdminUserPayload,
+  TenantCreatePayload,
+  TenantUpdatePayload,
+} from '../services/tenants.service';
 import { TenantsService } from '../services/tenants.service';
+import { UsersAdminService } from '../services/users-admin.service';
 import type { TenantRow } from '../models/tenant.model';
 
 const PLAN_LIMITS: Record<string, number | null> = {
@@ -25,10 +38,18 @@ const PLAN_LIMITS: Record<string, number | null> = {
   CUSTOM: null as unknown as number,
 };
 
+/** Default org-tenant capacity for child hotels when creating the root org in the wizard. */
+const WIZARD_ORG_DEFAULT_MAX_BRANCHES = 100;
+
+/** Root org in wizard step 1: licensing is fixed server-side defaults (step 2 captures hotel license). */
+const WIZARD_ROOT_ORG_PLAN: PlanType = 'BASIC';
+const WIZARD_ROOT_ORG_SUB_STATUS = 'TRIAL';
+
 @Component({
   selector: 'app-tenant-form-modal',
   standalone: true,
   imports: [
+    CommonModule,
     FormsModule,
     NzAlertModule,
     NzButtonModule,
@@ -37,8 +58,11 @@ const PLAN_LIMITS: Record<string, number | null> = {
     NzInputModule,
     NzDatePickerModule,
     NzModalModule,
+    NzRadioModule,
     NzSelectModule,
+    NzStepsModule,
     NzSwitchModule,
+    NzTagModule,
     TranslatePipe,
     LucideAngularModule,
   ],
@@ -47,14 +71,29 @@ const PLAN_LIMITS: Record<string, number | null> = {
 })
 export class TenantFormModalComponent {
   private readonly api = inject(TenantsService);
+  private readonly usersAdmin = inject(UsersAdminService);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly visible = input.required<boolean>();
   readonly tenant = input<TenantRow | null>(null);
+  /** When opening the create modal to add a hotel under an existing org (list action). */
+  readonly branchParentTenant = input<TenantRow | null>(null);
   readonly saved = output<void>();
 
+  private readonly createEmailSearch$ = new Subject<string>();
+
   readonly isEditMode = computed(() => !!this.tenant());
+  /** New org + first hotel (two-step). */
+  readonly createMode = signal<'wizard' | 'branch'>('wizard');
+  readonly currentStep = signal(1);
+  /** Set after step 1 API success (wizard). */
+  createdOrgId: string | null = null;
+  createdOrganizationName = '';
+
+  readonly isWizardFlow = computed(() => !this.isEditMode() && this.createMode() === 'wizard');
+  readonly isBranchFlow = computed(() => !this.isEditMode() && this.createMode() === 'branch');
 
   readonly lucideBuilding2 = Building2;
   readonly lucideKeySquare = KeySquare;
@@ -66,10 +105,49 @@ export class TenantFormModalComponent {
   readonly loadingParentTenants = signal(false);
   readonly showPassword = signal(false);
   readonly allTenants = signal<TenantRow[]>([]);
+  readonly importingExistingAdmin = signal(false);
+  readonly emailSelectOptions = signal<EmailPickOption[]>([]);
+  readonly emailSearchLoading = signal(false);
+
+  /** Step 2 (wizard): first hotel under the org created in step 1. */
+  hotelName = '';
+  hotelSlug = '';
+  /** Step 2: licensing for the first-hotel tenant (POST child payload). */
+  hotelPlanType: PlanType = 'BASIC';
+  hotelSubStatus = 'TRIAL';
+  hotelMaxUsers = 5;
+  hotelLicenseStartDate: Date | null = new Date();
+  hotelLicenseEndDate: Date | null = null;
+  /** Email of the org manager from wizard step 1 (for "same as organization manager"). */
+  wizardOrgManagerEmail = '';
+  /** Step 2: who administers the first hotel. */
+  hotelAdminMode: 'same' | 'new' = 'same';
+  hotelAdminFirstName = '';
+  hotelAdminLastName = '';
+  hotelAdminEmail = '';
+  hotelAdminPassword = '';
+  readonly showHotelAdminPassword = signal(false);
+
   readonly parentTenantOptions = computed(() => {
     const currentId = this.editId;
     return this.allTenants().filter((item) => item.id !== currentId);
   });
+
+  /** Server-side search: do not filter options client-side. */
+  readonly emailSelectShowAllOptions = (): boolean => true;
+
+  readonly compareEmailPick = (
+    a: EmailPickOption | null | undefined,
+    b: EmailPickOption | null | undefined,
+  ): boolean => {
+    if (a == null && b == null) {
+      return true;
+    }
+    if (a == null || b == null) {
+      return false;
+    }
+    return a.source === b.source && a.email.toLowerCase() === b.email.toLowerCase();
+  };
 
   name = '';
   slug = '';
@@ -81,15 +159,39 @@ export class TenantFormModalComponent {
   parentId: string | null = null;
   hasBranches = false;
   maxBranches = 0;
+  assignOrgManagersToBranch = true;
   adminFirstName = '';
   adminLastName = '';
   adminEmail = '';
+  /** Wizard step 1: initial organization manager phone. */
+  adminPhone = '';
   adminPassword = '';
+  emailPick: EmailPickOption | null = null;
   formError = '';
 
   private editId: string | null = null;
 
   constructor() {
+    this.createEmailSearch$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((raw) => {
+          const q = (raw ?? '').trim();
+          if (q.length < 3) {
+            this.emailSelectOptions.set([]);
+            return EMPTY;
+          }
+          this.emailSearchLoading.set(true);
+          return this.usersAdmin.searchExistingByEmail(q).pipe(
+            finalize(() => this.emailSearchLoading.set(false)),
+            tap((hits) => this.buildCreateEmailOptions(hits, q)),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+
     effect(() => {
       if (this.visible()) {
         this.loadParentTenantOptions();
@@ -97,7 +199,12 @@ export class TenantFormModalComponent {
         if (t) {
           this.patchForEdit(t);
         } else {
-          this.resetForm();
+          const branchParent = this.branchParentTenant();
+          if (branchParent) {
+            this.openAsBranch(branchParent);
+          } else {
+            this.resetForm();
+          }
         }
       } else {
         this.formError = '';
@@ -114,15 +221,34 @@ export class TenantFormModalComponent {
   }
 
   get modalTitle(): string {
-    return this.isEditMode()
-      ? this.translate.instant('SUPER_ADMIN.EDIT_TENANT_TITLE')
-      : this.translate.instant('SUPER_ADMIN.CREATE_TENANT_TITLE');
+    if (this.isEditMode()) {
+      return this.translate.instant('SUPER_ADMIN.EDIT_TENANT_TITLE');
+    }
+    if (this.isWizardFlow() && this.currentStep() === 2 && this.parentId) {
+      const orgLabel = this.createdOrganizationName || this.name.trim();
+      return this.translate.instant('SUPER_ADMIN.ADD_HOTEL_TO_ORG_TITLE', { name: orgLabel });
+    }
+    if (this.isWizardFlow() && this.currentStep() === 2) {
+      const orgLabel = this.createdOrganizationName || this.name.trim();
+      return this.translate.instant('SUPER_ADMIN.WIZARD_FIRST_HOTEL_MODAL_TITLE', {
+        name: orgLabel,
+      });
+    }
+    if (this.isWizardFlow() && this.currentStep() === 1) {
+      return this.translate.instant('SUPER_ADMIN.CREATE_ORG_TITLE');
+    }
+    return this.parentId
+      ? this.translate.instant('SUPER_ADMIN.CREATE_BRANCH_HOTEL_TITLE')
+      : this.translate.instant('SUPER_ADMIN.CREATE_ORG_TITLE');
   }
 
   get submitLabel(): string {
-    return this.isEditMode()
-      ? this.translate.instant('COMMON.SAVE')
-      : this.translate.instant('SUPER_ADMIN.CREATE_SUBMIT');
+    if (this.isEditMode()) {
+      return this.translate.instant('COMMON.SAVE');
+    }
+    return this.parentId
+      ? this.translate.instant('SUPER_ADMIN.CREATE_SUBMIT_BRANCH')
+      : this.translate.instant('SUPER_ADMIN.CREATE_SUBMIT_ORG');
   }
 
   get isDateRangeInvalid(): boolean {
@@ -132,6 +258,16 @@ export class TenantFormModalComponent {
     return this.startOfDay(this.licenseEndDate).getTime() < this.startOfDay(this.licenseStartDate).getTime();
   }
 
+  get isWizardHotelLicenseDateRangeInvalid(): boolean {
+    if (!this.hotelLicenseStartDate || !this.hotelLicenseEndDate) {
+      return false;
+    }
+    return (
+      this.startOfDay(this.hotelLicenseEndDate).getTime() <
+      this.startOfDay(this.hotelLicenseStartDate).getTime()
+    );
+  }
+
   readonly disableEndDate = (current: Date): boolean => {
     if (!this.licenseStartDate) {
       return false;
@@ -139,8 +275,108 @@ export class TenantFormModalComponent {
     return this.startOfDay(current).getTime() < this.startOfDay(this.licenseStartDate).getTime();
   };
 
+  readonly disableWizardHotelLicenseEndDate = (current: Date): boolean => {
+    if (!this.hotelLicenseStartDate) {
+      return false;
+    }
+    return this.startOfDay(current).getTime() < this.startOfDay(this.hotelLicenseStartDate).getTime();
+  };
+
+  /** Resolve org manager email from list/detail row (supports common API field names). */
+  private readManagerEmailFromTenant(row: TenantRow): string {
+    const email = row.managerEmail ?? row.orgManagerEmail ?? row.primaryManagerEmail;
+    return (email ?? '').trim();
+  }
+
+  /** Load org manager email when the list row did not include it. */
+  private hydrateOrgManagerEmailFromApi(orgId: string): void {
+    this.api
+      .getById(orgId)
+      .pipe(
+        take(1),
+        catchError(() => of(null)),
+      )
+      .subscribe((row) => {
+        if (!row) {
+          return;
+        }
+        const email = this.readManagerEmailFromTenant(row);
+        if (email) {
+          this.wizardOrgManagerEmail = email;
+        }
+      });
+  }
+
+  private resetWizardHotelLicensingToDefaults(): void {
+    this.hotelPlanType = 'BASIC';
+    this.hotelSubStatus = 'TRIAL';
+    const limit = PLAN_LIMITS[this.hotelPlanType];
+    this.hotelMaxUsers = limit != null ? limit : 5;
+    this.hotelLicenseStartDate = new Date();
+    this.hotelLicenseEndDate = null;
+  }
+
+  /**
+   * Add a hotel under an existing organization: wizard step 2 only, with parentId and org manager email prefilled.
+   */
+  openAsBranch(parentOrg: TenantRow): void {
+    this.editId = null;
+    this.formError = '';
+    this.createMode.set('wizard');
+    this.currentStep.set(2);
+    this.createdOrgId = parentOrg.id;
+    this.createdOrganizationName = parentOrg.name?.trim() ?? '';
+    this.parentId = parentOrg.id;
+    this.wizardOrgManagerEmail = this.readManagerEmailFromTenant(parentOrg);
+    this.hydrateOrgManagerEmailFromApi(parentOrg.id);
+
+    this.hotelName = '';
+    this.hotelSlug = '';
+    this.resetWizardHotelLicensingToDefaults();
+    this.applyWizardHotelLicenseFromOrgRow(parentOrg);
+    this.hotelAdminMode = 'same';
+    this.hotelAdminFirstName = '';
+    this.hotelAdminLastName = '';
+    this.hotelAdminEmail = '';
+    this.hotelAdminPassword = '';
+    this.showHotelAdminPassword.set(false);
+
+    this.name = '';
+    this.slug = '';
+    this.planType = 'BASIC';
+    this.subStatus = 'TRIAL';
+    this.maxUsers = 5;
+    this.licenseStartDate = new Date();
+    this.licenseEndDate = null;
+    this.hasBranches = false;
+    this.maxBranches = 0;
+    this.assignOrgManagersToBranch = true;
+    this.adminFirstName = '';
+    this.adminLastName = '';
+    this.adminEmail = '';
+    this.adminPhone = '';
+    this.adminPassword = '';
+    this.emailPick = null;
+    this.importingExistingAdmin.set(false);
+    this.emailSelectOptions.set([]);
+  }
+
   private resetForm(): void {
     this.editId = null;
+    this.createMode.set('wizard');
+    this.currentStep.set(1);
+    this.createdOrgId = null;
+    this.createdOrganizationName = '';
+    this.hotelName = '';
+    this.hotelSlug = '';
+    this.resetWizardHotelLicensingToDefaults();
+    this.wizardOrgManagerEmail = '';
+    this.hotelAdminMode = 'same';
+    this.hotelAdminFirstName = '';
+    this.hotelAdminLastName = '';
+    this.hotelAdminEmail = '';
+    this.hotelAdminPassword = '';
+    this.showHotelAdminPassword.set(false);
     this.name = '';
     this.slug = '';
     this.planType = 'BASIC';
@@ -151,10 +387,15 @@ export class TenantFormModalComponent {
     this.parentId = null;
     this.hasBranches = false;
     this.maxBranches = 0;
+    this.assignOrgManagersToBranch = true;
     this.adminFirstName = '';
     this.adminLastName = '';
     this.adminEmail = '';
+    this.adminPhone = '';
     this.adminPassword = '';
+    this.emailPick = null;
+    this.importingExistingAdmin.set(false);
+    this.emailSelectOptions.set([]);
     this.formError = '';
   }
 
@@ -173,12 +414,60 @@ export class TenantFormModalComponent {
     this.adminFirstName = '';
     this.adminLastName = '';
     this.adminEmail = '';
+    this.adminPhone = '';
     this.adminPassword = '';
+    this.emailPick = null;
+    this.importingExistingAdmin.set(false);
+    this.emailSelectOptions.set([]);
+  }
+
+  switchToBranchMode(): void {
+    this.createMode.set('branch');
+    this.currentStep.set(1);
+    this.createdOrgId = null;
+    this.createdOrganizationName = '';
+    this.hotelName = '';
+    this.hotelSlug = '';
+    this.resetWizardHotelLicensingToDefaults();
+    this.wizardOrgManagerEmail = '';
+    this.hotelAdminMode = 'same';
+    this.hotelAdminFirstName = '';
+    this.hotelAdminLastName = '';
+    this.hotelAdminEmail = '';
+    this.hotelAdminPassword = '';
+    this.formError = '';
+  }
+
+  switchToWizardMode(): void {
+    this.createMode.set('wizard');
+    this.currentStep.set(1);
+    this.createdOrgId = null;
+    this.createdOrganizationName = '';
+    this.parentId = null;
+    this.hotelName = '';
+    this.hotelSlug = '';
+    this.resetWizardHotelLicensingToDefaults();
+    this.wizardOrgManagerEmail = '';
+    this.hotelAdminMode = 'same';
+    this.hotelAdminFirstName = '';
+    this.hotelAdminLastName = '';
+    this.hotelAdminEmail = '';
+    this.hotelAdminPassword = '';
+    this.formError = '';
   }
 
   onNameChange(): void {
     if (!this.isEditMode() && this.name) {
       this.slug = this.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    }
+  }
+
+  onHotelNameChange(): void {
+    if (this.hotelName) {
+      this.hotelSlug = this.hotelName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
@@ -191,12 +480,45 @@ export class TenantFormModalComponent {
     if (limit != null) this.maxUsers = limit;
   }
 
+  onWizardHotelPlanChange(plan: PlanType): void {
+    this.hotelPlanType = plan;
+    const limit = PLAN_LIMITS[plan];
+    if (limit != null) this.hotelMaxUsers = limit;
+  }
+
+  onWizardHotelLicenseStartDateChange(date: Date | null): void {
+    this.hotelLicenseStartDate = date;
+  }
+
   onParentChange(parentId: string | null): void {
     this.parentId = parentId;
     if (this.parentId) {
       this.hasBranches = false;
       this.maxBranches = 0;
+      if (!this.isEditMode()) {
+        const parent = this.allTenants().find((t) => t.id === parentId);
+        if (parent) {
+          this.applyParentLicenseDefaults(parent);
+        }
+      }
+    } else {
+      if (!this.isEditMode()) {
+        this.planType = 'BASIC';
+        this.maxUsers = 5;
+        this.subStatus = 'TRIAL';
+        this.licenseStartDate = new Date();
+        this.licenseEndDate = null;
+      }
+      this.assignOrgManagersToBranch = true;
     }
+  }
+
+  private applyParentLicenseDefaults(parent: TenantRow): void {
+    this.planType = (parent.planType as PlanType) ?? 'BASIC';
+    this.maxUsers = parent.maxUsers ?? 5;
+    this.subStatus = parent.subStatus ?? 'TRIAL';
+    this.licenseStartDate = parent.licenseStartDate ? new Date(parent.licenseStartDate) : new Date();
+    this.licenseEndDate = parent.licenseEndDate ? new Date(parent.licenseEndDate) : null;
   }
 
   onHasBranchesChange(enabled: boolean): void {
@@ -214,7 +536,14 @@ export class TenantFormModalComponent {
     this.loadingParentTenants.set(true);
     this.api.list({ page: 1, limit: 1000 }).subscribe({
       next: (res) => {
-        this.allTenants.set(res.data ?? []);
+        const rows = res.data ?? [];
+        this.allTenants.set(rows);
+        if (!this.isEditMode() && this.parentId) {
+          const parent = rows.find((t) => t.id === this.parentId);
+          if (parent) {
+            this.applyParentLicenseDefaults(parent);
+          }
+        }
         this.loadingParentTenants.set(false);
       },
       error: () => {
@@ -224,8 +553,72 @@ export class TenantFormModalComponent {
     });
   }
 
+  onCreateEmailSearch(value: string): void {
+    this.createEmailSearch$.next(value ?? '');
+  }
+
+  onCreateEmailPickChange(opt: EmailPickOption | null): void {
+    this.emailPick = opt;
+    if (!opt) {
+      this.adminEmail = '';
+      this.adminFirstName = '';
+      this.adminLastName = '';
+      this.adminPassword = '';
+      this.importingExistingAdmin.set(false);
+      return;
+    }
+    this.adminEmail = opt.email.trim();
+    if (opt.source === 'existing') {
+      this.importingExistingAdmin.set(true);
+      this.adminFirstName = opt.user.firstName ?? '';
+      this.adminLastName = opt.user.lastName ?? '';
+      this.adminPassword = '';
+    } else {
+      this.importingExistingAdmin.set(false);
+      this.adminFirstName = '';
+      this.adminLastName = '';
+    }
+  }
+
+  emailPickTrack(_index: number, opt: EmailPickOption): string {
+    return `${opt.source}:${opt.email.toLowerCase()}`;
+  }
+
+  emailOptionLabel(opt: EmailPickOption): string {
+    if (opt.source === 'existing') {
+      const u = opt.user;
+      const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
+      return name ? `${u.email} (${name})` : u.email;
+    }
+    return this.translate.instant('USERS.FORM.NEW_USER_EMAIL_OPTION', { email: opt.email });
+  }
+
+  private buildCreateEmailOptions(hits: ExistingUserSearchHit[], query: string): void {
+    const options: EmailPickOption[] = hits.map((user) => ({
+      source: 'existing' as const,
+      email: user.email,
+      user,
+    }));
+    const q = query.trim();
+    const qLower = q.toLowerCase();
+    const hasExact = hits.some((h) => h.email.toLowerCase() === qLower);
+    if (this.looksLikeCompleteEmail(q) && !hasExact) {
+      options.push({ source: 'new', email: q });
+    }
+    this.emailSelectOptions.set(options);
+  }
+
+  private looksLikeCompleteEmail(value: string): boolean {
+    const v = value.trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
   togglePasswordVisibility(): void {
     this.showPassword.update((v) => !v);
+  }
+
+  toggleHotelAdminPasswordVisibility(): void {
+    this.showHotelAdminPassword.update((v) => !v);
   }
 
   close(): void {
@@ -240,9 +633,181 @@ export class TenantFormModalComponent {
     }
     if (this.isEditMode()) {
       this.submitEdit();
-    } else {
+    } else if (this.isBranchFlow()) {
       this.submitCreate();
     }
+  }
+
+  submitWizardStep1(): void {
+    this.formError = '';
+    if (this.createdOrgId) {
+      this.currentStep.set(2);
+      return;
+    }
+    if (!this.name?.trim() || !this.slug?.trim()) {
+      this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
+      return;
+    }
+    if (!this.adminFirstName?.trim() || !this.adminLastName?.trim() || !this.adminEmail?.trim()) {
+      this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
+      return;
+    }
+    if (!this.adminPhone?.trim()) {
+      this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
+      return;
+    }
+    if (!this.adminPassword || this.adminPassword.length < 8) {
+      this.formError = 'SUPER_ADMIN.CREATE_PASSWORD_MIN';
+      return;
+    }
+
+    this.saving.set(true);
+    this.api
+      .create(this.buildWizardOrgCreatePayload())
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: (row) => {
+          if (!row?.id) {
+            this.formError = 'SUPER_ADMIN.CREATE_FAILED';
+            return;
+          }
+          this.createdOrgId = row.id;
+          this.createdOrganizationName = row.name ?? this.name.trim();
+          this.applyWizardHotelLicenseFromOrgRow(row);
+          this.wizardOrgManagerEmail = this.adminEmail.trim();
+          this.currentStep.set(2);
+        },
+        error: (err) => {
+          this.formError = err.error?.message || err.message || 'SUPER_ADMIN.CREATE_FAILED';
+        },
+      });
+  }
+
+  wizardGoBackToStep1(): void {
+    if (this.saving()) {
+      return;
+    }
+    if (this.parentId) {
+      return;
+    }
+    this.formError = '';
+    this.currentStep.set(1);
+  }
+
+  submitWizardStep2(): void {
+    this.formError = '';
+    const orgId = this.createdOrgId;
+    if (!orgId) {
+      this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
+      return;
+    }
+    if (this.isWizardHotelLicenseDateRangeInvalid) {
+      this.formError = 'SUPER_ADMIN.CREATE_LICENSE_DATE_RANGE_INVALID';
+      return;
+    }
+    if (!this.hotelMaxUsers || this.hotelMaxUsers < 1) {
+      this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
+      return;
+    }
+    if (!this.hotelName?.trim() || !this.hotelSlug?.trim()) {
+      this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
+      return;
+    }
+
+    let hotelAdminUser: TenantCreateAdminUserPayload;
+    if (this.hotelAdminMode === 'same') {
+      if (!this.wizardOrgManagerEmail?.trim()) {
+        this.formError = 'SUPER_ADMIN.WIZARD_ORG_MANAGER_EMAIL_MISSING';
+        return;
+      }
+      hotelAdminUser = { email: this.wizardOrgManagerEmail.trim() };
+    } else {
+      if (
+        !this.hotelAdminFirstName?.trim() ||
+        !this.hotelAdminLastName?.trim() ||
+        !this.hotelAdminEmail?.trim() ||
+        !this.hotelAdminPassword ||
+        this.hotelAdminPassword.length < 8
+      ) {
+        this.formError =
+          !this.hotelAdminPassword || this.hotelAdminPassword.length < 8
+            ? 'SUPER_ADMIN.CREATE_PASSWORD_MIN'
+            : 'SUPER_ADMIN.CREATE_VALIDATION';
+        return;
+      }
+      hotelAdminUser = {
+        email: this.hotelAdminEmail.trim(),
+        firstName: this.hotelAdminFirstName.trim(),
+        lastName: this.hotelAdminLastName.trim(),
+        password: this.hotelAdminPassword,
+      };
+    }
+
+    const childPayload = this.buildWizardChildHotelPayload(orgId, hotelAdminUser);
+    this.saving.set(true);
+    this.api
+      .create(childPayload)
+      .pipe(finalize(() => this.saving.set(false)))
+      .subscribe({
+        next: () => {
+          this.message.success(this.translate.instant('SUPER_ADMIN.WIZARD_COMPLETE_SUCCESS'));
+          this.saved.emit();
+        },
+        error: (err) => {
+          this.formError = err.error?.message || err.message || 'SUPER_ADMIN.CREATE_FAILED';
+        },
+      });
+  }
+
+  private buildWizardOrgCreatePayload(): TenantCreatePayload {
+    const rootMax = PLAN_LIMITS[WIZARD_ROOT_ORG_PLAN] ?? 5;
+    return {
+      name: this.name.trim(),
+      slug: this.slug.trim().toLowerCase().replace(/\s+/g, '-'),
+      planType: WIZARD_ROOT_ORG_PLAN,
+      subStatus: WIZARD_ROOT_ORG_SUB_STATUS as 'TRIAL' | 'ACTIVE',
+      maxUsers: rootMax,
+      licenseStartDate: this.toApiDate(new Date()),
+      licenseEndDate: null,
+      parentId: null,
+      hasBranches: true,
+      maxBranches: WIZARD_ORG_DEFAULT_MAX_BRANCHES,
+      adminEmail: this.adminEmail.trim(),
+      adminFirstName: this.adminFirstName?.trim() || 'Admin',
+      adminLastName: this.adminLastName?.trim() || this.name.trim(),
+      adminPhone: this.adminPhone.trim(),
+      adminPassword: this.adminPassword,
+    };
+  }
+
+  private applyWizardHotelLicenseFromOrgRow(row: TenantRow): void {
+    const pt = (row.planType as PlanType) ?? 'BASIC';
+    this.hotelPlanType = pt;
+    this.hotelSubStatus = row.subStatus ?? 'TRIAL';
+    const limit = PLAN_LIMITS[pt];
+    this.hotelMaxUsers = row.maxUsers ?? (limit != null ? limit : 5);
+    this.hotelLicenseStartDate = row.licenseStartDate ? new Date(row.licenseStartDate) : new Date();
+    this.hotelLicenseEndDate = row.licenseEndDate ? new Date(row.licenseEndDate) : null;
+  }
+
+  private buildWizardChildHotelPayload(
+    parentId: string,
+    adminUser: TenantCreateAdminUserPayload,
+  ): TenantCreatePayload {
+    return {
+      name: this.hotelName.trim(),
+      slug: this.hotelSlug.trim().toLowerCase().replace(/\s+/g, '-'),
+      planType: this.hotelPlanType,
+      subStatus: this.hotelSubStatus,
+      maxUsers: this.hotelMaxUsers,
+      licenseStartDate: this.toApiDate(this.hotelLicenseStartDate),
+      licenseEndDate: this.toApiDate(this.hotelLicenseEndDate) ?? null,
+      parentId,
+      hasBranches: false,
+      maxBranches: 0,
+      assignOrgManagersToBranch: true,
+      adminUser,
+    };
   }
 
   private submitEdit(): void {
@@ -276,13 +841,19 @@ export class TenantFormModalComponent {
   }
 
   private submitCreate(): void {
-    if (!this.name?.trim() || !this.slug?.trim() || !this.adminEmail?.trim() || !this.adminPassword) {
+    if (!this.name?.trim() || !this.slug?.trim() || !this.adminEmail?.trim()) {
       this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
       return;
     }
-    if (this.adminPassword.length < 8) {
-      this.formError = 'SUPER_ADMIN.CREATE_PASSWORD_MIN';
+    if (!this.adminFirstName?.trim() || !this.adminLastName?.trim()) {
+      this.formError = 'SUPER_ADMIN.CREATE_VALIDATION';
       return;
+    }
+    if (!this.importingExistingAdmin()) {
+      if (!this.adminPassword || this.adminPassword.length < 8) {
+        this.formError = 'SUPER_ADMIN.CREATE_PASSWORD_MIN';
+        return;
+      }
     }
     const payload: TenantCreatePayload = {
       name: this.name.trim(),
@@ -296,10 +867,17 @@ export class TenantFormModalComponent {
       hasBranches: !!this.hasBranches,
       maxBranches: this.maxBranches || 0,
       adminEmail: this.adminEmail.trim(),
-      adminPassword: this.adminPassword,
       adminFirstName: this.adminFirstName?.trim() || 'Admin',
       adminLastName: this.adminLastName?.trim() || this.name.trim(),
     };
+    if (this.importingExistingAdmin() && this.emailPick?.source === 'existing') {
+      payload.existingUserId = this.emailPick.user.id;
+    } else {
+      payload.adminPassword = this.adminPassword;
+    }
+    if (this.parentId) {
+      payload.assignOrgManagersToBranch = this.assignOrgManagersToBranch;
+    }
     this.saving.set(true);
     this.api.create(payload).subscribe({
       next: () => {

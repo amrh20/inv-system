@@ -1,5 +1,10 @@
 <div class="dashboard-page">
-  @if (error()) {
+  @if (isParentOrganizationContext()) {
+    <app-empty-state
+      [title]="'DASHBOARD.ORG_COMING_SOON_TITLE' | translate"
+      [message]="'DASHBOARD.ORG_COMING_SOON_MESSAGE' | translate"
+    />
+  } @else if (error()) {
     <div class="dashboard-page__error">
       <lucide-icon [img]="lucideAlertTriangle" [size]="48" class="dashboard-page__error-icon" [strokeWidth]="2" />
       <h2 class="dashboard-page__error-title">{{ 'DASHBOARD.UNAVAILABLE' | translate }}</h2>

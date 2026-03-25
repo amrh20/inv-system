@@ -6,6 +6,9 @@ export interface TenantMembership {
   tenantId: string | null;
   tenantSlug: string;
   tenantName: string;
+  parentId?: string | null;
+  isInherited?: boolean;
+  isSuperAdmin?: boolean;
   role: UserRole;
 }
 
@@ -30,13 +33,19 @@ export function normalizeTenantMembershipsFromLogin(raw: unknown[] | undefined):
       (typeof m['tenantName'] === 'string' && m['tenantName']) ||
       (tenant && typeof tenant['name'] === 'string' && tenant['name']) ||
       '';
+    const parentId =
+      (typeof m['parentId'] === 'string' && m['parentId']) ||
+      (tenant && typeof tenant['parentId'] === 'string' && tenant['parentId']) ||
+      null;
+    const isInherited = m['isInherited'] === true;
+    const isSuperAdmin = m['isSuperAdmin'] === true;
 
     let tenantId: string | null = null;
     if (typeof m['tenantId'] === 'string') tenantId = m['tenantId'];
     else if (tenant && typeof tenant['id'] === 'string') tenantId = tenant['id'];
 
     if (!tenantSlug && !tenantId) continue;
-    out.push({ tenantId, tenantSlug, tenantName, role });
+    out.push({ tenantId, tenantSlug, tenantName, parentId, isInherited, isSuperAdmin, role });
   }
   return out;
 }

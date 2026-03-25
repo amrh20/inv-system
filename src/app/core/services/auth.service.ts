@@ -194,6 +194,37 @@ export class AuthService {
     return user ? roles.includes(user.role) : false;
   }
 
+  /**
+   * Parent-organization mode is enabled only when:
+   * - Current tenant is a root organization (parentId === null), and
+   * - User has at least one child hotel membership under that organization.
+   *
+   * This intentionally keeps standalone root tenants unrestricted.
+   */
+  isParentOrganizationContext(): boolean {
+    const currentTenant = this._currentTenant();
+    const memberships = this._currentUser()?.memberships ?? [];
+    if (!currentTenant?.id || memberships.length === 0) {
+      return false;
+    }
+
+    const currentMembership =
+      memberships.find((item) => item.tenantId === currentTenant.id) ??
+      memberships.find((item) => currentTenant.slug && item.tenantSlug === currentTenant.slug);
+
+    if (!currentMembership || !currentMembership.tenantId) {
+      return false;
+    }
+
+    if (currentMembership.parentId !== null) {
+      return false;
+    }
+
+    return memberships.some(
+      (item) => !!item.tenantId && item.parentId === currentMembership.tenantId,
+    );
+  }
+
   private hydrateFromStorage() {
     try {
       const raw = localStorage.getItem(AUTH_STORAGE_KEY);

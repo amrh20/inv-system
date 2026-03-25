@@ -29,6 +29,7 @@ import type {
   RiskIndicators,
   ValueByDepartment,
 } from './models/dashboard.model';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 
 const fmt = (v: number | undefined | null) =>
   new Intl.NumberFormat('en-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v ?? 0);
@@ -42,7 +43,7 @@ const fmtSARFull = (v: number | undefined | null) =>
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, NzButtonModule, TranslatePipe, LucideAngularModule, NgClass],
+  imports: [DatePipe, NzButtonModule, TranslatePipe, LucideAngularModule, NgClass, EmptyStateComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -67,6 +68,7 @@ export class DashboardComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly responseTimeMs = signal<number | null>(null);
   readonly currentUser = this.auth.currentUser;
+  readonly isParentOrganizationContext = computed(() => this.auth.isParentOrganizationContext());
 
   readonly ov = computed<InventoryOverview | null>(() => this.data()?.inventoryOverview ?? null);
   readonly mp = computed<MonthlyPerformance | null>(() => this.data()?.monthlyPerformance ?? null);
@@ -139,6 +141,10 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit() {
+    if (this.isParentOrganizationContext()) {
+      this.loading.set(false);
+      return;
+    }
     this.fetchDashboard();
     const interval = setInterval(() => this.updateDateTime(), 60000);
     this.destroyRef.onDestroy(() => clearInterval(interval));
@@ -153,6 +159,13 @@ export class DashboardComponent implements OnInit {
   }
 
   fetchDashboard() {
+    if (this.isParentOrganizationContext()) {
+      this.loading.set(false);
+      this.error.set(null);
+      this.data.set(null);
+      return;
+    }
+
     this.loading.set(true);
     this.error.set(null);
     this.dashboardApi

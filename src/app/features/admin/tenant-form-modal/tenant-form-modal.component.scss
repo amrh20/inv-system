@@ -1,4 +1,12 @@
 .tenant-form-modal {
+  &__steps {
+    margin-bottom: 20px;
+  }
+
+  &__mode-switch {
+    margin-bottom: 8px;
+  }
+
   &__alert {
     margin-bottom: 16px;
   }
@@ -16,6 +24,30 @@
       border-radius: 6px;
       padding: 16px;
     }
+  }
+
+  &__section-hint {
+    font-size: 12px;
+    color: var(--text-muted, #64748b);
+    margin: -4px 0 12px 0;
+    line-height: 1.4;
+  }
+
+  &__label-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__existing-user-alert {
+    margin-bottom: 0;
+  }
+
+  &__hotel-admin-radio {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   &__section-title {

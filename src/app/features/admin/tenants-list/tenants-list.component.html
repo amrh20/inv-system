@@ -177,10 +177,18 @@
                     <lucide-icon [img]="lucidePencil" [size]="14" />
                     <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
                   </li>
-                  <li nz-menu-item (click)="openLicense(t)">
-                    <lucide-icon [img]="lucideKeySquare" [size]="14" />
-                    <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
-                  </li>
+                  @if (isOrganizationRow(t)) {
+                    <li nz-menu-item (click)="openAddHotelUnderOrg(t)">
+                      <lucide-icon [img]="lucidePlus" [size]="14" />
+                      <span>{{ 'SUPER_ADMIN.ACTION_ADD_NEW_HOTEL' | translate }}</span>
+                    </li>
+                  }
+                  @if (!isOrganizationRow(t)) {
+                    <li nz-menu-item (click)="openLicense(t)">
+                      <lucide-icon [img]="lucideKeySquare" [size]="14" />
+                      <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
+                    </li>
+                  }
                   @if (t.subStatus === 'SUSPENDED' || !t.isActive) {
                     <li nz-menu-item (click)="onActivate(t)">
                       {{ 'SUPER_ADMIN.ACTION_ACTIVATE' | translate }}
@@ -277,10 +285,18 @@
                                 <lucide-icon [img]="lucidePencil" [size]="14" />
                                 <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
                               </li>
-                              <li nz-menu-item (click)="openLicense(branch)">
-                                <lucide-icon [img]="lucideKeySquare" [size]="14" />
-                                <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
-                              </li>
+                              @if (isOrganizationRow(branch)) {
+                                <li nz-menu-item (click)="openAddHotelUnderOrg(branch)">
+                                  <lucide-icon [img]="lucidePlus" [size]="14" />
+                                  <span>{{ 'SUPER_ADMIN.ACTION_ADD_NEW_HOTEL' | translate }}</span>
+                                </li>
+                              }
+                              @if (!isOrganizationRow(branch)) {
+                                <li nz-menu-item (click)="openLicense(branch)">
+                                  <lucide-icon [img]="lucideKeySquare" [size]="14" />
+                                  <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
+                                </li>
+                              }
                               @if (branch.subStatus === 'SUSPENDED' || !branch.isActive) {
                                 <li nz-menu-item (click)="onActivate(branch)">
                                   {{ 'SUPER_ADMIN.ACTION_ACTIVATE' | translate }}
@@ -343,6 +359,7 @@
 <app-tenant-form-modal
   [visible]="createModalOpen()"
   [tenant]="null"
+  [branchParentTenant]="branchParentForCreate()"
   (saved)="onCreateSaved()"
 />
 <app-tenant-form-modal

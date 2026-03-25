@@ -365,7 +365,7 @@ export const routes: Routes = [
         canActivate: [adminSectionGuard],
         loadComponent: () =>
           import('./features/admin/users/users-list/users-list.component').then((m) => m.UsersListComponent),
-        data: { breadcrumb: 'NAV.USERS' },
+        data: { breadcrumb: 'NAV.USERS', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
       },
       {
         path: 'audit-log',
@@ -374,7 +374,7 @@ export const routes: Routes = [
           import('./features/admin/audit-log/audit-log-page/audit-log-page.component').then(
             (m) => m.AuditLogPageComponent,
           ),
-        data: { breadcrumb: 'NAV.AUDIT_LOG' },
+        data: { breadcrumb: 'NAV.AUDIT_LOG', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
       },
       {
         path: 'inventory-history',
@@ -383,7 +383,7 @@ export const routes: Routes = [
           import('./features/admin/inventory-history/inventory-history-page/inventory-history-page.component').then(
             (m) => m.InventoryHistoryPageComponent,
           ),
-        data: { breadcrumb: 'NAV.INVENTORY_HISTORY' },
+        data: { breadcrumb: 'NAV.INVENTORY_HISTORY', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
       },
       {
         path: 'settings',
@@ -392,7 +392,7 @@ export const routes: Routes = [
           import('./features/admin/settings/settings-page/settings-page.component').then(
             (m) => m.SettingsPageComponent,
           ),
-        data: { breadcrumb: 'NAV.SETTINGS' },
+        data: { breadcrumb: 'NAV.SETTINGS', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
       },
       {
         path: '**',
