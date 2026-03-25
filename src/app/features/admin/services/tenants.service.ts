@@ -11,6 +11,34 @@ export interface TenantCreateAdminUserPayload {
   firstName?: string;
   lastName?: string;
   password?: string;
+  phone?: string;
+}
+
+/** POST /super-admin/tenants/full-organization — one-shot org + initial hotel. */
+export interface CreateFullOrganizationPayload {
+  organization: {
+    name: string;
+    slug: string;
+    maxBranches: number;
+  };
+  adminUser: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    phone: string;
+  };
+  hotel: {
+    name: string;
+    slug: string;
+    planType: string;
+    subStatus: string;
+    licenseStartDate?: string;
+    licenseEndDate?: string | null;
+    maxUsers?: number;
+    /** When hotel admin differs from the organization manager. */
+    adminUser?: TenantCreateAdminUserPayload;
+  };
 }
 
 export interface TenantCreatePayload {
@@ -66,6 +94,8 @@ export interface TenantsListParams {
   limit: number;
   search?: string;
   status?: string;
+  adminStatus?: 'ACTIVE' | 'SUSPENDED';
+  subStatus?: 'TRIAL' | 'EXPIRED';
 }
 
 export interface TenantsListResult {
@@ -79,10 +109,18 @@ export interface TenantsListResult {
 export class TenantsService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/super-admin/tenants`;
+  private readonly adminBase = `${environment.apiUrl}/admin/tenants`;
 
   create(payload: TenantCreatePayload): Observable<TenantRow> {
     return this.http
       .post<ApiResponse<TenantRow>>(this.base, payload)
+      .pipe(map((res) => res.data));
+  }
+
+  /** Creates organization, org manager, and first hotel in one request. */
+  createFullOrganization(payload: CreateFullOrganizationPayload): Observable<TenantRow> {
+    return this.http
+      .post<ApiResponse<TenantRow>>(`${this.base}/full-organization`, payload)
       .pipe(map((res) => res.data));
   }
 
@@ -97,25 +135,44 @@ export class TenantsService {
       .set('limit', String(params.limit));
     if (params.search) p = p.set('search', params.search);
     if (params.status) p = p.set('status', params.status);
-    return this.http.get<ApiResponse<TenantsListResult>>(this.base, { params: p }).pipe(
-      map((res) => {
-        const data = res.data as TenantsListResult;
-        return {
-          data: Array.isArray(data?.data) ? data.data : [],
-          total: data?.total ?? 0,
-          page: data?.page ?? 1,
-          limit: data?.limit ?? 20,
-        };
-      }),
-    );
+    if (params.adminStatus) p = p.set('adminStatus', params.adminStatus);
+    if (params.subStatus) p = p.set('subStatus', params.subStatus);
+    return this.http
+      .get<ApiResponse<TenantsListResult | TenantRow[]>>(this.base, { params: p })
+      .pipe(
+        map((res) => {
+          const payload = res.data as TenantsListResult | TenantRow[] | null | undefined;
+          const data = Array.isArray(payload)
+            ? payload
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : [];
+
+          const total =
+            (Array.isArray(payload) ? payload.length : payload?.total) ??
+            res.meta?.total ??
+            data.length;
+          const page = (Array.isArray(payload) ? params.page : payload?.page) ?? res.meta?.page ?? 1;
+          const limit =
+            (Array.isArray(payload) ? params.limit : payload?.limit) ?? res.meta?.limit ?? params.limit;
+
+          return { data, total, page, limit };
+        })
+      );
   }
 
-  activate(id: string): Observable<unknown> {
-    return this.http.post<ApiResponse<unknown>>(`${this.base}/${id}/activate`, {});
+  activate(id: string): Observable<TenantRow> {
+    return this.http
+      .post<ApiResponse<TenantRow>>(`${this.base}/${id}/activate`, {})
+      .pipe(map((res) => res.data));
   }
 
   suspend(id: string): Observable<unknown> {
     return this.http.post<ApiResponse<unknown>>(`${this.base}/${id}/suspend`, {});
+  }
+
+  suspendOrganization(id: string): Observable<unknown> {
+    return this.http.patch<ApiResponse<unknown>>(`${this.adminBase}/${id}/suspend`, {});
   }
 
   forceLogout(id: string): Observable<unknown> {

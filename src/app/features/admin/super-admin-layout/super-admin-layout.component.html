@@ -58,7 +58,35 @@
         <lucide-icon [img]="lucideLayoutDashboard" [size]="16" />
         <span>{{ 'SUPER_ADMIN.SYSTEM_ADMIN' | translate }}</span>
       </div>
-      <span class="super-admin-layout__badge">SUPER_ADMIN</span>
+      @if (currentUser(); as u) {
+        <button
+          nz-button
+          nzType="default"
+          type="button"
+          nz-dropdown
+          [nzDropdownMenu]="profileMenu"
+          nzTrigger="click"
+          nzPlacement="bottomRight"
+          class="super-admin-layout__profile-trigger"
+        >
+          <span class="super-admin-layout__profile-name">{{ displayName() }}</span>
+          <lucide-icon [img]="lucideChevronDown" [size]="14" />
+        </button>
+        <nz-dropdown-menu #profileMenu="nzDropdownMenu">
+          <ul nz-menu>
+            <li nz-menu-item nzDisabled>
+              <span>{{ u.email }}</span>
+            </li>
+            <li nz-menu-divider></li>
+            <li nz-menu-item nzDanger (click)="logout()">
+              <span class="super-admin-layout__menu-row">
+                <lucide-icon [img]="lucideLogOut" [size]="14" />
+                <span>{{ 'COMMON.LOGOUT' | translate }}</span>
+              </span>
+            </li>
+          </ul>
+        </nz-dropdown-menu>
+      }
     </header>
 
     <div class="super-admin-layout__content">

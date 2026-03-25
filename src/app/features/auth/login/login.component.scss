@@ -180,10 +180,6 @@
 
 .form-wrapper {
   width: 100%;
-  max-width: 31rem;
-  background: linear-gradient(165deg, #ffffff 0%, #fbfdff 65%, #f5f9ff 100%);
-  border-radius: var(--radius-brand);
-  box-shadow: 0 20px 44px -24px rgba(15, 23, 42, 0.32), 0 8px 18px -14px rgba(15, 23, 42, 0.24);
   padding: var(--login-space-xl);
   position: relative;
   overflow: hidden;
@@ -342,9 +338,10 @@
   border: 1px solid var(--border-color-input);
   border-radius: var(--radius-brand);
   height: var(--input-height);
-  min-height: var(--input-height);
+  min-height: 42px;
   background: #fff;
   transition: all 0.2s ease;
+
 
   &:focus-within {
     border-color: #2563eb;
@@ -473,5 +470,11 @@
     border-color: #1b3a8a !important;
     transform: translateY(-1px);
     box-shadow: 0 10px 18px -10px rgba(30, 64, 175, 0.55);
+  }
+}
+
+:host ::ng-deep {
+  .ant-form-item-control-input {
+    height: 42px !important;
   }
 }

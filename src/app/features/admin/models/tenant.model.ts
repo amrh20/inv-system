@@ -1,7 +1,9 @@
 import type { PlanType } from '../../../core/models/enums';
 
-/** Subscription status from Prisma schema */
+/** Subscription lifecycle status managed by licensing logic. */
 export type SubscriptionStatus = 'ACTIVE' | 'TRIAL' | 'EXPIRED' | 'SUSPENDED';
+/** Administrative account status (takes priority in UI). */
+export type TenantAdminStatus = 'ACTIVE' | 'SUSPENDED';
 
 export interface TenantRow {
   id: string;
@@ -19,6 +21,11 @@ export interface TenantRow {
   maxBranches?: number;
   planType: PlanType;
   subStatus: SubscriptionStatus;
+  /**
+   * Operational suspension (super-admin). Distinct from subscription `subStatus`.
+   * Returned by GET `/api/super-admin/tenants` and tenant detail; list UI normalizes if absent.
+   */
+  adminStatus: TenantAdminStatus;
   isActive: boolean;
   licenseStartDate: string;
   licenseEndDate: string | null;

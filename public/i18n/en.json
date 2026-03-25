@@ -194,6 +194,13 @@
       "STORES": "Store Locations"
     }
   },
+  "AUTH": {
+    "SUSPENSION": {
+      "TITLE": "Access Suspended",
+      "ORGANIZATION_MESSAGE": "Your organization is suspended. You have been signed out. Please contact support or your administrator.",
+      "ACCOUNT_MESSAGE": "Your account is suspended. You have been signed out. Please contact your administrator."
+    }
+  },
   "ITEMS": {
     "TITLE": "Item Master",
     "TOTAL_ITEMS": "{{count}} items total",
@@ -1475,6 +1482,8 @@
     "ENV_PRODUCTION": "Production"
   },
   "SUPER_ADMIN": {
+    "NEW_ORGANIZATION": "New Organization",
+    "NEW_ORGANIZATION_DESC": "Create a new organization to manage your hotels and users.",
     "SUBTITLE": "Super Admin",
     "PLATFORM_CONTROLS": "Platform Controls",
     "HOTEL_MANAGEMENT": "Hotel Management",
@@ -1488,6 +1497,9 @@
     "STAT_TRIAL": "Trial",
     "STAT_SUSPENDED": "Suspended / Expired",
     "SEARCH_PLACEHOLDER": "Search by name or slug...",
+    "FILTER_GROUP_ADMIN_STATUS": "Admin Status",
+    "FILTER_GROUP_SUBSCRIPTION_STATUS": "Subscription Status",
+    "STATUS_ACTIVE": "Active",
     "STATUS_TRIAL": "Trial",
     "STATUS_EXPIRED": "Expired",
     "STATUS_SUSPENDED": "Suspended",
@@ -1510,6 +1522,7 @@
     "ACTION_MANAGE_LICENSE": "Manage License",
     "ACTION_ACTIVATE": "Activate Tenant",
     "ACTION_SUSPEND": "Suspend Tenant",
+    "ACTION_SUSPEND_ORGANIZATION": "Suspend Organization",
     "ACTION_FORCE_LOGOUT": "Force Logout All",
     "ACTION_ADD_NEW_HOTEL": "Add New Hotel",
     "FILTER_BY": "Filter by",
@@ -1521,15 +1534,18 @@
     "CONFIRM_ACTIVATE_MSG": "Activate \"{{name}}\"?",
     "CONFIRM_SUSPEND_TITLE": "Suspend tenant?",
     "CONFIRM_SUSPEND_MSG": "Suspend \"{{name}}\"? All active sessions will be terminated.",
+    "CONFIRM_SUSPEND_ORG_TITLE": "Suspend organization?",
+    "CONFIRM_SUSPEND_ORG_MSG": "Are you sure? This will suspend the entire organization, including all its hotels and users.",
     "CONFIRM_FORCE_LOGOUT_TITLE": "Force logout all?",
     "CONFIRM_FORCE_LOGOUT_MSG": "Force logout all users of \"{{name}}\"?",
+    "PARENT_SUSPENDED_HINT": "Organization Suspended",
     "CREATE_TENANT_TITLE": "Create New Hotel",
     "CREATE_ORG_TITLE": "Create New Organization",
     "WIZARD_FIRST_HOTEL_MODAL_TITLE": "Add First Hotel for {{name}}",
     "ADD_HOTEL_TO_ORG_TITLE": "Add Hotel to {{name}}",
     "WIZARD_STEP_ORG": "Organization",
     "WIZARD_STEP_HOTEL": "First hotel",
-    "WIZARD_ORG_CONTINUE": "Create Organization & Continue",
+    "WIZARD_ORG_CONTINUE": "Continue",
     "WIZARD_FINISH": "Finish & Go to Dashboard",
     "WIZARD_FINISH_CREATE_HOTEL": "Finish & Create Hotel",
     "WIZARD_SECTION_ORG": "Organization",
@@ -1542,10 +1558,12 @@
     "WIZARD_HOTEL_ADMIN_SAME": "Same as organization manager",
     "WIZARD_HOTEL_ADMIN_NEW": "New hotel admin",
     "WIZARD_HOTEL_ADMIN_SAME_TIP": "The organization manager ({{email}}) will have both ORG_MANAGER and property ADMIN roles for this hotel.",
+    "WIZARD_HOTEL_ADMIN_SAME_AUTO": "The organization manager will be automatically assigned to this hotel.",
     "WIZARD_ORG_MANAGER_EMAIL_MISSING": "Organization manager email is missing. Choose “New hotel admin” and enter branch admin details, or ensure the API returns the org manager email for this tenant.",
     "WIZARD_SWITCH_TO_BRANCH": "Create under an existing organization instead",
     "WIZARD_SWITCH_TO_ORG": "Create a new organization instead",
     "WIZARD_COMPLETE_SUCCESS": "Organization and first hotel created successfully.",
+    "FULL_ORG_CREATE_SUCCESS": "Organization and initial hotel created successfully.",
     "CREATE_BRANCH_HOTEL_TITLE": "Create New Branch/Hotel",
     "CREATE_SECTION_HOTEL": "Hotel Information",
     "CREATE_SECTION_LICENSE": "License & Plan",

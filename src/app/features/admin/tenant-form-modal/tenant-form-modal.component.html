@@ -137,7 +137,6 @@
                     <nz-option [nzValue]="'TRIAL'" [nzLabel]="'SUPER_ADMIN.STATUS_TRIAL' | translate" />
                     <nz-option [nzValue]="'ACTIVE'" [nzLabel]="'COMMON.ACTIVE' | translate" />
                     <nz-option [nzValue]="'EXPIRED'" [nzLabel]="'SUPER_ADMIN.STATUS_EXPIRED' | translate" />
-                    <nz-option [nzValue]="'SUSPENDED'" [nzLabel]="'SUPER_ADMIN.STATUS_SUSPENDED' | translate" />
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -330,8 +329,6 @@
                   <nz-select [(ngModel)]="subStatus" class="tenant-form-modal__full-width">
                     <nz-option [nzValue]="'TRIAL'" [nzLabel]="'SUPER_ADMIN.STATUS_TRIAL' | translate" />
                     <nz-option [nzValue]="'ACTIVE'" [nzLabel]="'COMMON.ACTIVE' | translate" />
-                    <nz-option [nzValue]="'EXPIRED'" [nzLabel]="'SUPER_ADMIN.STATUS_EXPIRED' | translate" />
-                    <nz-option [nzValue]="'SUSPENDED'" [nzLabel]="'SUPER_ADMIN.STATUS_SUSPENDED' | translate" />
                   </nz-select>
                 </nz-form-control>
               </nz-form-item>
@@ -532,6 +529,24 @@
                 </nz-form-item>
               </div>
             </div>
+            <div nz-row [nzGutter]="16">
+              <div nz-col [nzSpan]="12">
+                <nz-form-item>
+                  <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_MAX_BRANCHES' | translate }}</nz-form-label>
+                  <nz-form-control>
+                    <input
+                      nz-input
+                      type="number"
+                      min="1"
+                      [(ngModel)]="maxBranches"
+                      (ngModelChange)="onMaxBranchesChange($event)"
+                      [placeholder]="'SUPER_ADMIN.CREATE_MAX_BRANCHES_PLACEHOLDER' | translate"
+                      name="wizardOrgMaxBranches"
+                    />
+                  </nz-form-control>
+                </nz-form-item>
+              </div>
+            </div>
           </div>
 
           <div class="tenant-form-modal__section tenant-form-modal__section--admin">
@@ -682,8 +697,6 @@
                     <nz-select [(ngModel)]="hotelSubStatus" class="tenant-form-modal__full-width">
                       <nz-option [nzValue]="'TRIAL'" [nzLabel]="'SUPER_ADMIN.STATUS_TRIAL' | translate" />
                       <nz-option [nzValue]="'ACTIVE'" [nzLabel]="'COMMON.ACTIVE' | translate" />
-                      <nz-option [nzValue]="'EXPIRED'" [nzLabel]="'SUPER_ADMIN.STATUS_EXPIRED' | translate" />
-                      <nz-option [nzValue]="'SUSPENDED'" [nzLabel]="'SUPER_ADMIN.STATUS_SUSPENDED' | translate" />
                     </nz-select>
                   </nz-form-control>
                 </nz-form-item>
@@ -753,7 +766,7 @@
               <nz-alert
                 nzType="info"
                 nzShowIcon
-                [nzMessage]="'SUPER_ADMIN.WIZARD_HOTEL_ADMIN_SAME_TIP' | translate: { email: wizardOrgManagerEmail }"
+                [nzMessage]="'SUPER_ADMIN.WIZARD_HOTEL_ADMIN_SAME_AUTO' | translate"
                 class="tenant-form-modal__existing-user-alert"
               />
             } @else {

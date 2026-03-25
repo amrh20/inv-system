@@ -57,6 +57,8 @@ body {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+  height: 42px !important;
+  min-height: 42px !important;
 
   &.ant-btn-primary {
     background: var(--primary-color) !important;

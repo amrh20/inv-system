@@ -9,7 +9,7 @@
     </div>
     <button nz-button nzType="primary" type="button" (click)="openCreate()">
       <lucide-icon [img]="lucidePlus" [size]="16" />
-      {{ 'SUPER_ADMIN.NEW_HOTEL' | translate }}
+      {{ 'SUPER_ADMIN.NEW_ORGANIZATION' | translate }}
     </button>
   </div>
 
@@ -49,10 +49,14 @@
       (change)="onFilterChange()"
     >
       <option value="">{{ 'COMMON.ALL_STATUSES' | translate }}</option>
-      <option value="ACTIVE">{{ 'COMMON.ACTIVE' | translate }}</option>
-      <option value="TRIAL">{{ 'SUPER_ADMIN.STATUS_TRIAL' | translate }}</option>
-      <option value="EXPIRED">{{ 'SUPER_ADMIN.STATUS_EXPIRED' | translate }}</option>
-      <option value="SUSPENDED">{{ 'SUPER_ADMIN.STATUS_SUSPENDED' | translate }}</option>
+      <optgroup [label]="'SUPER_ADMIN.FILTER_GROUP_ADMIN_STATUS' | translate">
+        <option value="ACTIVE">{{ 'SUPER_ADMIN.STATUS_ACTIVE' | translate }}</option>
+        <option value="SUSPENDED">{{ 'SUPER_ADMIN.STATUS_SUSPENDED' | translate }}</option>
+      </optgroup>
+      <optgroup [label]="'SUPER_ADMIN.FILTER_GROUP_SUBSCRIPTION_STATUS' | translate">
+        <option value="TRIAL">{{ 'SUPER_ADMIN.STATUS_TRIAL' | translate }}</option>
+        <option value="EXPIRED">{{ 'SUPER_ADMIN.STATUS_EXPIRED' | translate }}</option>
+      </optgroup>
     </select>
     <button
       nz-button
@@ -119,6 +123,9 @@
                     @if (t.hasBranches) {
                       <nz-tag nzColor="blue">{{ 'SUPER_ADMIN.PROVIDER_LABEL' | translate }}</nz-tag>
                     }
+                    @if (isAdminSuspended(t)) {
+                      <nz-tag nzColor="red">{{ 'SUPER_ADMIN.STATUS_SUSPENDED' | translate }}</nz-tag>
+                    }
                   </p>
                   <code class="tenants-page__hotel-slug">{{ t.slug }}</code>
                   @if (t.parentName) {
@@ -134,10 +141,14 @@
               <nz-tag>{{ t.planType }}</nz-tag>
             </td>
             <td>
-              <nz-tag [nzColor]="statusNzColor(t.subStatus)">{{ t.subStatus }}</nz-tag>
+              @if (isAdminSuspended(t)) {
+                <nz-tag nzColor="red">{{ 'SUPER_ADMIN.STATUS_SUSPENDED' | translate }}</nz-tag>
+              } @else {
+                <nz-tag [nzColor]="statusNzColor(t.subStatus)">{{ statusLabelKey(t.subStatus) | translate }}</nz-tag>
+              }
             </td>
             <td>
-              <nz-tag>{{ t.branches?.length }}</nz-tag>
+              <nz-tag>{{ t.branches?.length }} / {{ t.maxBranches }}</nz-tag>
             </td>
             <td>
               <div class="tenants-page__users-cell">
@@ -173,10 +184,12 @@
               </button>
               <nz-dropdown-menu #actionMenu="nzDropdownMenu">
                 <ul nz-menu>
-                  <li nz-menu-item (click)="openEdit(t)">
-                    <lucide-icon [img]="lucidePencil" [size]="14" />
-                    <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
-                  </li>
+                  @if (!isOrganizationRow(t)) {
+                    <li nz-menu-item (click)="openEdit(t)">
+                      <lucide-icon [img]="lucidePencil" [size]="14" />
+                      <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
+                    </li>
+                  }
                   @if (isOrganizationRow(t)) {
                     <li nz-menu-item (click)="openAddHotelUnderOrg(t)">
                       <lucide-icon [img]="lucidePlus" [size]="14" />
@@ -189,18 +202,26 @@
                       <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
                     </li>
                   }
-                  @if (t.subStatus === 'SUSPENDED' || !t.isActive) {
+                  @if (isAdminSuspended(t) || !t.isActive) {
                     <li nz-menu-item (click)="onActivate(t)">
                       {{ 'SUPER_ADMIN.ACTION_ACTIVATE' | translate }}
                     </li>
                   } @else {
-                    <li nz-menu-item nzDanger (click)="onSuspend(t)">
-                      {{ 'SUPER_ADMIN.ACTION_SUSPEND' | translate }}
+                    @if (isOrganizationRow(t)) {
+                      <li nz-menu-item nzDanger (click)="onSuspendOrganization(t)">
+                        {{ 'SUPER_ADMIN.ACTION_SUSPEND_ORGANIZATION' | translate }}
+                      </li>
+                    } @else {
+                      <li nz-menu-item nzDanger (click)="onSuspend(t)">
+                        {{ 'SUPER_ADMIN.ACTION_SUSPEND' | translate }}
+                      </li>
+                    }
+                  }
+                  @if (!isOrganizationRow(t)) {
+                    <li nz-menu-item nzDanger (click)="onForceLogout(t)">
+                      {{ 'SUPER_ADMIN.ACTION_FORCE_LOGOUT' | translate }}
                     </li>
                   }
-                  <li nz-menu-item nzDanger (click)="onForceLogout(t)">
-                    {{ 'SUPER_ADMIN.ACTION_FORCE_LOGOUT' | translate }}
-                  </li>
                 </ul>
               </nz-dropdown-menu>
             </td>
@@ -230,6 +251,9 @@
                                 @if (branch.hasBranches) {
                                   <nz-tag nzColor="blue">{{ 'SUPER_ADMIN.PROVIDER_LABEL' | translate }}</nz-tag>
                                 }
+                                @if (isAdminSuspended(branch)) {
+                                  <nz-tag nzColor="red">{{ 'SUPER_ADMIN.STATUS_SUSPENDED' | translate }}</nz-tag>
+                                }
                               </p>
                               <code class="tenants-page__hotel-slug">{{ branch.slug }}</code>
                               @if (branch.parentName) {
@@ -245,7 +269,18 @@
                           <nz-tag>{{ branch.planType }}</nz-tag>
                         </td>
                         <td>
-                          <nz-tag [nzColor]="statusNzColor(branch.subStatus)">{{ branch.subStatus }}</nz-tag>
+                          <div class="tenants-page__status-cell">
+                            @if (isAdminSuspended(branch)) {
+                              <nz-tag nzColor="red">{{ 'SUPER_ADMIN.STATUS_SUSPENDED' | translate }}</nz-tag>
+                            } @else {
+                              <nz-tag [nzColor]="statusNzColor(branch.subStatus)">{{
+                                statusLabelKey(branch.subStatus) | translate
+                              }}</nz-tag>
+                            }
+                            @if (isParentSuspended(t, branch)) {
+                              <nz-tag nzColor="red">{{ 'SUPER_ADMIN.PARENT_SUSPENDED_HINT' | translate }}</nz-tag>
+                            }
+                          </div>
                         </td>
                         <td>
                           <div class="tenants-page__users-cell">
@@ -297,7 +332,7 @@
                                   <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
                                 </li>
                               }
-                              @if (branch.subStatus === 'SUSPENDED' || !branch.isActive) {
+                              @if (isAdminSuspended(branch) || !branch.isActive) {
                                 <li nz-menu-item (click)="onActivate(branch)">
                                   {{ 'SUPER_ADMIN.ACTION_ACTIVATE' | translate }}
                                 </li>
@@ -323,34 +358,18 @@
       </tbody>
     </nz-table>
 
-    @if (totalPages() > 1) {
+    @if (total() > 0) {
       <div class="tenants-page__pagination">
-        <span class="tenants-page__pagination-info">
-          {{ 'SUPER_ADMIN.PAGE' | translate }} {{ pageIndex() }} {{ 'SUPER_ADMIN.OF' | translate }} {{ totalPages() }}
-        </span>
-        <div class="tenants-page__pagination-btns">
-          <button
-            nz-button
-            nzType="default"
-            nzSize="small"
-            [disabled]="pageIndex() <= 1"
-            (click)="onPageChange(pageIndex() - 1)"
-          >
-            <lucide-icon [img]="lucideChevronLeft" [size]="15" />
-          </button>
-          <span class="tenants-page__pagination-num">
-            {{ pageIndex() }} / {{ totalPages() }}
-          </span>
-          <button
-            nz-button
-            nzType="default"
-            nzSize="small"
-            [disabled]="pageIndex() >= totalPages()"
-            (click)="onPageChange(pageIndex() + 1)"
-          >
-            <lucide-icon [img]="lucideChevronRight" [size]="15" />
-          </button>
-        </div>
+        <nz-pagination
+          [nzTotal]="total()"
+          [nzPageIndex]="pageIndex()"
+          [nzPageSize]="pageSize()"
+          [nzShowSizeChanger]="true"
+          [nzPageSizeOptions]="[10, 15, 20, 50]"
+          [nzShowQuickJumper]="false"
+          (nzPageIndexChange)="onPageChange($event)"
+          (nzPageSizeChange)="onPageSizeChange($event)"
+        />
       </div>
     }
   </div>

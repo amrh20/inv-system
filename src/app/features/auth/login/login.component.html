@@ -133,22 +133,7 @@
         </nz-form-item>
       </form>
 
-      <div class="demo-section">
-        <button type="button" class="demo-toggle-btn" (click)="toggleDemoPanel()">
-          {{ 'LOGIN.FILL_DEMO' | translate }}
-        </button>
-        @if (showDemoPanel()) {
-          <div class="demo-credentials">
-            <div class="demo-list">
-              <p>{{ 'LOGIN.EMAIL' | translate }}: <code>superadmin@ose.cloud</code></p>
-              <p>{{ 'LOGIN.PASSWORD' | translate }}: <code>SuperAdmin@2026</code></p>
-            </div>
-            <button type="button" nz-button nzType="default" (click)="fillDemo()" class="demo-apply-btn">
-              {{ 'LOGIN.FILL_DEMO' | translate }}
-            </button>
-          </div>
-        }
-      </div>
+    
     </div>
   </div>
 </div>

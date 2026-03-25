@@ -50,10 +50,9 @@
             <nz-form-label>{{ 'COMMON.STATUS' | translate }}</nz-form-label>
             <nz-form-control>
               <nz-select [(ngModel)]="subStatus" class="license-management-modal__full-width">
-                <nz-option [nzValue]="'ACTIVE'" [nzLabel]="'COMMON.ACTIVE' | translate" />
                 <nz-option [nzValue]="'TRIAL'" [nzLabel]="'SUPER_ADMIN.STATUS_TRIAL' | translate" />
+                <nz-option [nzValue]="'ACTIVE'" [nzLabel]="'COMMON.ACTIVE' | translate" />
                 <nz-option [nzValue]="'EXPIRED'" [nzLabel]="'SUPER_ADMIN.STATUS_EXPIRED' | translate" />
-                <nz-option [nzValue]="'SUSPENDED'" [nzLabel]="'SUPER_ADMIN.STATUS_SUSPENDED' | translate" />
               </nz-select>
             </nz-form-control>
           </nz-form-item>

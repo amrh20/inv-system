@@ -3,6 +3,7 @@ import { inject, Injector } from '@angular/core';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
+import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../services/auth.service';
 
 const isAuthEndpoint = (url: string) =>
@@ -26,6 +27,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const injector = inject(Injector);
   const authService = injector.get(AuthService);
   const router = inject(Router);
+  const translate = injector.get(TranslateService);
   const token = authService.getAccessToken();
 
   const cloned = token
@@ -37,6 +39,29 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(cloned).pipe(
     catchError((error: HttpErrorResponse) => {
       const errorCode = error.error?.error ?? error.error?.code;
+
+      if (
+        error.status === 403 &&
+        (errorCode === 'ORGANIZATION_SUSPENDED' || errorCode === 'ACCOUNT_SUSPENDED')
+      ) {
+        const modal = injector.get(NzModalService);
+        modal.error({
+          nzTitle: translate.instant('AUTH.SUSPENSION.TITLE'),
+          nzContent:
+            errorCode === 'ORGANIZATION_SUSPENDED'
+              ? translate.instant('AUTH.SUSPENSION.ORGANIZATION_MESSAGE')
+              : translate.instant('AUTH.SUSPENSION.ACCOUNT_MESSAGE'),
+          nzMaskClosable: false,
+          nzClosable: false,
+          nzKeyboard: false,
+          nzOnOk: () => {
+            authService.clearAuth();
+            router.navigate(['/login']);
+          },
+        });
+        return throwError(() => error);
+      }
+
       if (error.status === 401 && errorCode === 'ACCOUNT_INACTIVE') {
         authService.logout();
         const loginPath = router.url.split('?')[0].split('#')[0];

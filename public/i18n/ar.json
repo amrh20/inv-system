@@ -186,6 +186,13 @@
       "STORES": "عدد المخازن"
     }
   },
+  "AUTH": {
+    "SUSPENSION": {
+      "TITLE": "تم تعليق الوصول",
+      "ORGANIZATION_MESSAGE": "تم تعليق المؤسسة. تم تسجيل خروجك. يرجى التواصل مع الدعم أو المسؤول.",
+      "ACCOUNT_MESSAGE": "تم تعليق حسابك. تم تسجيل خروجك. يرجى التواصل مع المسؤول."
+    }
+  },
   "ITEMS": {
     "TITLE": "دليل الأصناف",
     "TOTAL_ITEMS": "إجمالي الأصناف: {{count}}",
@@ -1466,6 +1473,7 @@
     "ENV_PRODUCTION": "إنتاج"
   },
   "SUPER_ADMIN": {
+    "NEW_ORGANIZATION": "منظمة جديدة",
     "SUBTITLE": "المشرف الأعلى",
     "PLATFORM_CONTROLS": "عناصر التحكم في المنصة",
     "HOTEL_MANAGEMENT": "إدارة الفنادق",
@@ -1479,6 +1487,9 @@
     "STAT_TRIAL": "تجريبي",
     "STAT_SUSPENDED": "معلق / منتهي",
     "SEARCH_PLACEHOLDER": "البحث بالاسم أو المعرف...",
+    "FILTER_GROUP_ADMIN_STATUS": "حالة الإدارة",
+    "FILTER_GROUP_SUBSCRIPTION_STATUS": "حالة الاشتراك",
+    "STATUS_ACTIVE": "نشط",
     "STATUS_TRIAL": "تجريبي",
     "STATUS_EXPIRED": "منتهي",
     "STATUS_SUSPENDED": "معلق",
@@ -1501,6 +1512,7 @@
     "ACTION_MANAGE_LICENSE": "إدارة الترخيص",
     "ACTION_ACTIVATE": "تفعيل المستأجر",
     "ACTION_SUSPEND": "تعليق المستأجر",
+    "ACTION_SUSPEND_ORGANIZATION": "تعليق المؤسسة",
     "ACTION_FORCE_LOGOUT": "تسجيل خروج الجميع",
     "ACTION_ADD_NEW_HOTEL": "إضافة فندق جديد",
     "FILTER_BY": "تصفية حسب",
@@ -1512,8 +1524,11 @@
     "CONFIRM_ACTIVATE_MSG": "تفعيل \"{{name}}\"؟",
     "CONFIRM_SUSPEND_TITLE": "تعليق المستأجر؟",
     "CONFIRM_SUSPEND_MSG": "تعليق \"{{name}}\"؟ سيتم إنهاء جميع الجلسات النشطة.",
+    "CONFIRM_SUSPEND_ORG_TITLE": "تعليق المؤسسة؟",
+    "CONFIRM_SUSPEND_ORG_MSG": "هل أنت متأكد؟ سيؤدي هذا إلى تعليق المؤسسة بالكامل، بما يشمل جميع الفنادق والمستخدمين.",
     "CONFIRM_FORCE_LOGOUT_TITLE": "تسجيل خروج الجميع؟",
     "CONFIRM_FORCE_LOGOUT_MSG": "تسجيل خروج جميع مستخدمي \"{{name}}\"؟",
+    "PARENT_SUSPENDED_HINT": "المؤسسة معلّقة",
     "CREATE_TENANT_TITLE": "إنشاء فندق جديد",
     "CREATE_ORG_TITLE": "إنشاء منظمة جديدة",
     "WIZARD_FIRST_HOTEL_MODAL_TITLE": "إضافة أول فندق لـ {{name}}",
@@ -1533,10 +1548,12 @@
     "WIZARD_HOTEL_ADMIN_SAME": "نفس مدير المنظمة",
     "WIZARD_HOTEL_ADMIN_NEW": "مسؤول فندق جديد",
     "WIZARD_HOTEL_ADMIN_SAME_TIP": "سيحصل مدير المنظمة ({{email}}) على دوري مدير المنظمة (ORG_MANAGER) ومسؤول العقار (ADMIN) لهذا الفندق.",
+    "WIZARD_HOTEL_ADMIN_SAME_AUTO": "سيتم تعيين مدير المنظمة تلقائياً لهذا الفندق.",
     "WIZARD_ORG_MANAGER_EMAIL_MISSING": "بريد مدير المنظمة غير متوفر. اختر «مسؤول فندق جديد» وأدخل بيانات مسؤول الفرع، أو تأكد أن الـ API يعيد بريد مدير المنظمة لهذا المستأجر.",
     "WIZARD_SWITCH_TO_BRANCH": "الإنشاء تحت منظمة موجودة بدلاً من ذلك",
     "WIZARD_SWITCH_TO_ORG": "إنشاء منظمة جديدة بدلاً من ذلك",
     "WIZARD_COMPLETE_SUCCESS": "تم إنشاء المنظمة والفندق الأول بنجاح.",
+    "FULL_ORG_CREATE_SUCCESS": "تم إنشاء المنظمة والفندق الأولي بنجاح.",
     "CREATE_BRANCH_HOTEL_TITLE": "إنشاء فرع / فندق جديد",
     "CREATE_SECTION_HOTEL": "معلومات الفندق",
     "CREATE_SECTION_LICENSE": "الترخيص والخطة",
