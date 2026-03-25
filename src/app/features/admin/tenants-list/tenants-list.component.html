@@ -217,11 +217,6 @@
                       </li>
                     }
                   }
-                  @if (!isOrganizationRow(t)) {
-                    <li nz-menu-item nzDanger (click)="onForceLogout(t)">
-                      {{ 'SUPER_ADMIN.ACTION_FORCE_LOGOUT' | translate }}
-                    </li>
-                  }
                 </ul>
               </nz-dropdown-menu>
             </td>
@@ -341,9 +336,6 @@
                                   {{ 'SUPER_ADMIN.ACTION_SUSPEND' | translate }}
                                 </li>
                               }
-                              <li nz-menu-item nzDanger (click)="onForceLogout(branch)">
-                                {{ 'SUPER_ADMIN.ACTION_FORCE_LOGOUT' | translate }}
-                              </li>
                             </ul>
                           </nz-dropdown-menu>
                         </td>

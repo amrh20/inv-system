@@ -14,6 +14,7 @@ import { Building2, Eye, EyeOff, KeySquare, User } from 'lucide-angular';
 import type { PlanType } from '../../../core/models/enums';
 import type { TenantCreatePayload } from '../services/tenants.service';
 import { TenantsService } from '../services/tenants.service';
+import { formErrorKeyFromHttp } from '../../../core/utils/http-error.util';
 
 const PLAN_LIMITS: Record<string, number | null> = {
   BASIC: 5,
@@ -158,7 +159,8 @@ export class TenantCreateModalComponent {
         this.saved.emit();
       },
       error: (err) => {
-        this.formError = err.error?.message || err.message || 'SUPER_ADMIN.CREATE_FAILED';
+        this.formError = formErrorKeyFromHttp(err, 'SUPER_ADMIN.CREATE_FAILED');
+        this.message.error(this.getErrorMessage());
         this.saving.set(false);
       },
     });

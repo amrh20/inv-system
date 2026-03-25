@@ -31,6 +31,7 @@ import type {
 import { TenantsService } from '../services/tenants.service';
 import { UsersAdminService } from '../services/users-admin.service';
 import type { TenantRow } from '../models/tenant.model';
+import { formErrorKeyFromHttp } from '../../../core/utils/http-error.util';
 
 const PLAN_LIMITS: Record<string, number | null> = {
   BASIC: 5,
@@ -713,7 +714,8 @@ export class TenantFormModalComponent {
           this.saved.emit();
         },
         error: (err) => {
-          this.formError = err.error?.message || err.message || 'SUPER_ADMIN.CREATE_FAILED';
+          this.formError = formErrorKeyFromHttp(err, 'SUPER_ADMIN.CREATE_FAILED');
+          this.message.error(this.getErrorMessage());
         },
       });
   }
@@ -776,7 +778,8 @@ export class TenantFormModalComponent {
           this.saved.emit();
         },
         error: (err) => {
-          this.formError = err.error?.message || err.message || 'SUPER_ADMIN.CREATE_FAILED';
+          this.formError = formErrorKeyFromHttp(err, 'SUPER_ADMIN.CREATE_FAILED');
+          this.message.error(this.getErrorMessage());
         },
       });
   }
@@ -876,7 +879,8 @@ export class TenantFormModalComponent {
         this.saved.emit();
       },
       error: (err) => {
-        this.formError = err.error?.message || err.message || 'SUPER_ADMIN.UPDATE_FAILED';
+        this.formError = formErrorKeyFromHttp(err, 'SUPER_ADMIN.UPDATE_FAILED');
+        this.message.error(this.getErrorMessage());
         this.saving.set(false);
       },
     });
@@ -930,7 +934,8 @@ export class TenantFormModalComponent {
         this.saved.emit();
       },
       error: (err) => {
-        this.formError = err.error?.message || err.message || 'SUPER_ADMIN.CREATE_FAILED';
+        this.formError = formErrorKeyFromHttp(err, 'SUPER_ADMIN.CREATE_FAILED');
+        this.message.error(this.getErrorMessage());
         this.saving.set(false);
       },
     });

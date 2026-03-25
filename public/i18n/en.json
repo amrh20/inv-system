@@ -1336,6 +1336,8 @@
       "PHONE": "Phone",
       "ACTIVE": "Active",
       "EMAIL_SEARCH_PLACEHOLDER": "Type at least 3 characters to search existing users…",
+      "LINK_EXISTING_USER": "Link to an existing system user?",
+      "EMAIL_NEW_PLACEHOLDER": "Enter new user email",
       "NEW_USER_EMAIL_OPTION": "New user: {{email}}",
       "IMPORT_EXISTING_HINT": "Found in your other hotels — profile fields were filled in. No password needed; the user keeps their existing password.",
       "IMPORT_BADGE": "Existing user"
@@ -1358,6 +1360,7 @@
       "LOAD": "Failed to load users.",
       "SAVE": "Failed to save user.",
       "NAME_EMAIL": "First name and email are required.",
+      "EXISTING_USER_REQUIRED": "Search and select an existing platform user, or turn off linking to enter a new email.",
       "PASSWORD_REQUIRED": "Password is required for new users.",
       "DEPARTMENT_REQUIRED": "Department is required for Department Manager role."
     }
@@ -1612,6 +1615,7 @@
     "CREATE_SUBMIT": "Create Hotel",
     "CREATE_SUCCESS": "Hotel created successfully",
     "CREATE_FAILED": "Failed to create hotel",
+    "ERROR_BRANCH_LIMIT_REACHED": "Branch limit reached for this parent.",
     "CREATE_VALIDATION": "Please fill all required fields.",
     "CREATE_PASSWORD_MIN": "Password must be at least 8 characters.",
     "EDIT_TENANT_TITLE": "Edit Hotel Details",

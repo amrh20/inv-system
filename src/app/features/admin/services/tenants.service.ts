@@ -1,6 +1,7 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import { environment } from '../../../../environments/environment';
 import type { TenantRow } from '../models/tenant.model';
@@ -112,16 +113,65 @@ export class TenantsService {
   private readonly adminBase = `${environment.apiUrl}/admin/tenants`;
 
   create(payload: TenantCreatePayload): Observable<TenantRow> {
-    return this.http
-      .post<ApiResponse<TenantRow>>(this.base, payload)
-      .pipe(map((res) => res.data));
+    return this.http.post<ApiResponse<TenantRow>>(this.base, payload).pipe(
+      switchMap((res) => {
+        if (!res.success) {
+          return throwError(
+            () =>
+              new HttpErrorResponse({
+                error: { message: res.message },
+                status: 400,
+                statusText: 'Bad Request',
+                url: this.base,
+              }),
+          );
+        }
+        if (res.data == null) {
+          return throwError(
+            () =>
+              new HttpErrorResponse({
+                error: { message: res.message || 'Request failed' },
+                status: 400,
+                statusText: 'Bad Request',
+                url: this.base,
+              }),
+          );
+        }
+        return of(res.data);
+      }),
+    );
   }
 
   /** Creates organization, org manager, and first hotel in one request. */
   createFullOrganization(payload: CreateFullOrganizationPayload): Observable<TenantRow> {
-    return this.http
-      .post<ApiResponse<TenantRow>>(`${this.base}/full-organization`, payload)
-      .pipe(map((res) => res.data));
+    const url = `${this.base}/full-organization`;
+    return this.http.post<ApiResponse<TenantRow>>(url, payload).pipe(
+      switchMap((res) => {
+        if (!res.success) {
+          return throwError(
+            () =>
+              new HttpErrorResponse({
+                error: { message: res.message },
+                status: 400,
+                statusText: 'Bad Request',
+                url,
+              }),
+          );
+        }
+        if (res.data == null) {
+          return throwError(
+            () =>
+              new HttpErrorResponse({
+                error: { message: res.message || 'Request failed' },
+                status: 400,
+                statusText: 'Bad Request',
+                url,
+              }),
+          );
+        }
+        return of(res.data);
+      }),
+    );
   }
 
   /** Single tenant (e.g. org manager email for “add hotel under org”). */

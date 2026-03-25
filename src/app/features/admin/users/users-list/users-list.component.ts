@@ -156,6 +156,10 @@ export class UsersListComponent implements OnInit {
   formPhone = '';
   formActive = true;
   formError = '';
+  private createEmailQuery = '';
+
+  /** Create modal: when true, email comes from platform user search (`nz-select`); when false, free-text new email. */
+  isExistingUser = false;
 
   ngOnInit(): void {
     this.search$
@@ -178,7 +182,7 @@ export class UsersListComponent implements OnInit {
           this.emailSearchLoading.set(true);
           return this.api.searchExistingByEmail(q).pipe(
             finalize(() => this.emailSearchLoading.set(false)),
-            tap((hits) => this.buildCreateEmailOptions(hits, q)),
+            tap((hits) => this.buildCreateEmailOptions(hits)),
           );
         }),
         takeUntilDestroyed(this.destroyRef),
@@ -242,6 +246,7 @@ export class UsersListComponent implements OnInit {
 
   openEdit(row: UserListRow): void {
     this.editRow.set(row);
+    this.isExistingUser = false;
     this.emailPick = null;
     this.isImporting.set(false);
     this.emailSelectOptions.set([]);
@@ -278,27 +283,45 @@ export class UsersListComponent implements OnInit {
     this.formDepartmentId = '';
     this.formPhone = '';
     this.formActive = true;
+    this.isExistingUser = false;
     this.emailPick = null;
     this.isImporting.set(false);
     this.emailSelectOptions.set([]);
+    this.createEmailQuery = '';
+  }
+
+  /** Clears email / import state when switching between new email and link-existing modes. */
+  onLinkExistingUserChange(linkExisting: boolean): void {
+    this.isExistingUser = linkExisting;
+    this.emailPick = null;
+    this.createEmailQuery = '';
+    this.emailSelectOptions.set([]);
+    this.formEmail = '';
+    this.formPassword = '';
+    this.isImporting.set(false);
+    this.formFirstName = '';
+    this.formLastName = '';
+    this.formPhone = '';
   }
 
   onCreateEmailSearch(value: string): void {
+    const nextQuery = (value ?? '').trim();
+    if (nextQuery) {
+      this.createEmailQuery = nextQuery;
+    }
     this.createEmailSearch$.next(value ?? '');
   }
 
   onCreateEmailPickChange(opt: EmailPickOption | null): void {
     this.emailPick = opt;
     if (!opt) {
-      this.formEmail = '';
-      this.formFirstName = '';
-      this.formLastName = '';
-      this.formPhone = '';
-      this.formPassword = '';
       this.isImporting.set(false);
+      this.formEmail = '';
+      this.createEmailQuery = '';
       return;
     }
     this.formEmail = opt.email.trim();
+    this.createEmailQuery = this.formEmail;
     if (opt.source === 'existing') {
       this.isImporting.set(true);
       this.formFirstName = opt.user.firstName ?? '';
@@ -323,32 +346,24 @@ export class UsersListComponent implements OnInit {
       const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
       return name ? `${u.email} (${name})` : u.email;
     }
-    return this.translate.instant('USERS.FORM.NEW_USER_EMAIL_OPTION', { email: opt.email });
+    return opt.email;
   }
 
-  private buildCreateEmailOptions(hits: ExistingUserSearchHit[], query: string): void {
+  private buildCreateEmailOptions(hits: ExistingUserSearchHit[]): void {
     const options: EmailPickOption[] = hits.map((user) => ({
       source: 'existing' as const,
       email: user.email,
       user,
     }));
-    const q = query.trim();
-    const qLower = q.toLowerCase();
-    const hasExact = hits.some((h) => h.email.toLowerCase() === qLower);
-    if (this.looksLikeCompleteEmail(q) && !hasExact) {
-      options.push({ source: 'new', email: q });
-    }
     this.emailSelectOptions.set(options);
-  }
-
-  /** Allows choosing a brand-new email that did not appear in search hits. */
-  private looksLikeCompleteEmail(value: string): boolean {
-    const v = value.trim();
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
   }
 
   saveUser(): void {
     const isEdit = !!this.editRow();
+    if (!isEdit && this.isExistingUser && !this.isImporting()) {
+      this.formError = this.t('USERS.ERRORS.EXISTING_USER_REQUIRED');
+      return;
+    }
     if (!this.formFirstName.trim() || !this.formEmail.trim()) {
       this.formError = this.t('USERS.ERRORS.NAME_EMAIL');
       return;

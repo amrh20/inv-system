@@ -333,23 +333,6 @@ export class TenantsListComponent implements OnInit {
     return this.isAdminSuspended(parent) && this.isAdminActive(child);
   }
 
-  onForceLogout(t: TenantRow): void {
-    this.confirmation
-      .confirm({
-        title: this.t('SUPER_ADMIN.CONFIRM_FORCE_LOGOUT_TITLE'),
-        message: this.t('SUPER_ADMIN.CONFIRM_FORCE_LOGOUT_MSG', { name: t.name }),
-        confirmText: this.t('COMMON.CONFIRM'),
-        cancelText: this.t('COMMON.CANCEL'),
-        confirmDanger: true,
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((ok: boolean) => {
-        if (ok) {
-          this.api.forceLogout(t.id).subscribe({ next: () => this.load() });
-        }
-      });
-  }
-
   summaryActive(): number {
     return this.tenants().filter((x) => this.isAdminActive(x) && x.subStatus === 'ACTIVE').length;
   }

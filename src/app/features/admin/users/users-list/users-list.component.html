@@ -200,6 +200,13 @@
         <label class="admin-users__label">{{ 'USERS.FORM.LAST_NAME' | translate }}*</label>
         <input nz-input [(ngModel)]="formLastName" name="ln" />
       </div>
+      @if (!editRow()) {
+        <div class="admin-users__form-row">
+          <label nz-checkbox [(ngModel)]="isExistingUser" name="linkExisting" (ngModelChange)="onLinkExistingUserChange($event)">
+            {{ 'USERS.FORM.LINK_EXISTING_USER' | translate }}
+          </label>
+        </div>
+      }
       <div class="admin-users__form-row">
         <label class="admin-users__label admin-users__label--with-tag">
           <span>{{ 'USERS.FORM.EMAIL' | translate }} *</span>
@@ -209,7 +216,7 @@
         </label>
         @if (editRow()) {
           <input nz-input type="email" [(ngModel)]="formEmail" name="em" [disabled]="true" />
-        } @else {
+        } @else if (isExistingUser) {
           <nz-select
             class="admin-users__full-width"
             name="emPick"
@@ -228,6 +235,14 @@
               <nz-option [nzValue]="opt" [nzLabel]="emailOptionLabel(opt)" />
             }
           </nz-select>
+        } @else {
+          <input
+            nz-input
+            type="email"
+            [(ngModel)]="formEmail"
+            name="emNew"
+            [attr.placeholder]="'USERS.FORM.EMAIL_NEW_PLACEHOLDER' | translate"
+          />
         }
       </div>
       @if (!editRow() && isImporting()) {
