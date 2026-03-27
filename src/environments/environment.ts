@@ -1,5 +1,4 @@
 export const environment = {
   production: false,
-  // Must match backend PORT (default 4000 in ose-inventory-system/backend)
-  apiUrl: 'http://localhost:4000/api',
+  apiUrl: 'https://inventory-system-backend-production-1df5.up.railway.app/api',
 };

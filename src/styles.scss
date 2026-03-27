@@ -217,3 +217,7 @@ textarea.ant-input {
 .ant-menu-item {
   text-align: start;
 }
+.ant-modal-body {
+  max-height: 70vh;
+  overflow: auto;
+}
