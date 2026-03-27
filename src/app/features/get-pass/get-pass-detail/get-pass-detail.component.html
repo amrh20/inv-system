@@ -32,24 +32,41 @@
         </button>
       }
       @if (canApprove()) {
-        <button nz-button nzDanger type="button" [disabled]="actionBusy()" (click)="openNotes('REJECT')">
-          <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
-          {{ 'GET_PASS.DETAIL.REJECT' | translate }}
-        </button>
-        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openNotes('APPROVE')">
-          <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
-          {{ 'GET_PASS.DETAIL.APPROVE' | translate }}
-        </button>
+        @if (d.status === 'PENDING_SECURITY') {
+          <button nz-button nzDanger type="button" [disabled]="actionBusy()" (click)="openNotes('REJECT')">
+            <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
+            {{ 'GET_PASS.DETAIL.REJECT' | translate }}
+          </button>
+          <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openNotes('APPROVE')">
+            <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+            {{ 'GET_PASS.DETAIL.APPROVE' | translate }}
+          </button>
+        } @else {
+          <ng-container *appHasPermission="'GET_PASS_APPROVE'">
+            <button nz-button nzDanger type="button" [disabled]="actionBusy()" (click)="openNotes('REJECT')">
+              <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
+              {{ 'GET_PASS.DETAIL.REJECT' | translate }}
+            </button>
+            <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openNotes('APPROVE')">
+              <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+              {{ 'GET_PASS.DETAIL.APPROVE' | translate }}
+            </button>
+          </ng-container>
+        }
       }
       @if (canCheckout()) {
-        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="checkout()">
-          {{ 'GET_PASS.DETAIL.CHECKOUT' | translate }}
-        </button>
+        <ng-container *appHasPermission="'GET_PASS_APPROVE_EXIT'">
+          <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="checkout()">
+            {{ 'GET_PASS.DETAIL.CHECKOUT' | translate }}
+          </button>
+        </ng-container>
       }
       @if (canReturn()) {
-        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openReturn()">
-          {{ 'GET_PASS.DETAIL.RETURN' | translate }}
-        </button>
+        <ng-container *appHasPermission="'GET_PASS_APPROVE_RETURN'">
+          <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openReturn()">
+            {{ 'GET_PASS.DETAIL.RETURN' | translate }}
+          </button>
+        </ng-container>
       }
       @if (canForceClose()) {
         <button nz-button nzDanger nzType="default" type="button" [disabled]="actionBusy()" (click)="closePass()">

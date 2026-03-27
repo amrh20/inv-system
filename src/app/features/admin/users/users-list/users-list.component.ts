@@ -26,7 +26,9 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Calendar, Mail, Pencil, Phone, Plus, RefreshCw, Search, Shield, Users, X } from 'lucide-angular';
+import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
+import { StatusToggleComponent } from '../../../../shared/components/status-toggle/status-toggle.component';
 import type { UserRole } from '../../../../core/models/enums';
 import { AuthService } from '../../../../core/services/auth.service';
 import {
@@ -43,6 +45,7 @@ import type { DepartmentRow } from '../../../master-data/models/department.model
 @Component({
   selector: 'app-users-list',
   standalone: true,
+  providers: [ConfirmationService],
   imports: [
     DatePipe,
     FormsModule,
@@ -60,16 +63,20 @@ import type { DepartmentRow } from '../../../master-data/models/department.model
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
+    StatusToggleComponent,
   ],
   templateUrl: './users-list.component.html',
   styleUrl: './users-list.component.scss',
 })
 export class UsersListComponent implements OnInit {
+  private static readonly USERS_COMPANY_MANAGE_PERMISSION = 'USERS_COMPANY_MANAGE';
+
   private readonly api = inject(UsersAdminService);
   private readonly departmentsApi = inject(DepartmentsService);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly auth = inject(AuthService);
+  private readonly confirmation = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly lucideUsers = Users;
@@ -88,7 +95,9 @@ export class UsersListComponent implements OnInit {
   readonly users = signal<UserListRow[]>([]);
   readonly total = signal(0);
   readonly maxUsers = signal<number | null>(null);
-  readonly activeCount = signal(0);
+  /** Active seats from list `meta.totalActiveUsers` (plan usage numerator). */
+  readonly totalActiveUsers = signal(0);
+  readonly deactivateFreesPlanSlotHint = signal<string | null>(null);
   readonly loading = signal(false);
   readonly listError = signal('');
   readonly usagePercent = computed(() => {
@@ -96,7 +105,7 @@ export class UsersListComponent implements OnInit {
     if (!max || max <= 0) {
       return 0;
     }
-    return Math.min(100, (this.activeCount() / max) * 100);
+    return Math.min(100, (this.totalActiveUsers() / max) * 100);
   });
   readonly usageTagColor = computed(() => {
     if (this.isLimitReached()) {
@@ -107,9 +116,8 @@ export class UsersListComponent implements OnInit {
     }
     return 'green';
   });
-  readonly createLimitReached = computed(
-    () => !this.isSuperAdmin() && this.maxUsers() != null && this.activeCount() >= (this.maxUsers() ?? 0),
-  );
+  readonly createLimitReached = computed(() => this.isLimitReached());
+  readonly statusUpdatingIds = signal<string[]>([]);
 
   readonly searchDraft = signal('');
   private readonly searchTerm = signal('');
@@ -203,8 +211,8 @@ export class UsersListComponent implements OnInit {
     this.load();
   }
 
-  t(key: string): string {
-    return this.translate.instant(key);
+  t(key: string, params?: Record<string, unknown>): string {
+    return this.translate.instant(key, params);
   }
 
   load(): void {
@@ -224,7 +232,8 @@ export class UsersListComponent implements OnInit {
           this.users.set(res.users);
           this.total.set(res.total);
           this.maxUsers.set(res.maxUsers);
-          this.activeCount.set(res.totalActiveUsers);
+          this.totalActiveUsers.set(res.totalActiveUsers);
+          this.deactivateFreesPlanSlotHint.set(res.deactivateFreesPlanSlotHint);
           this.loading.set(false);
         },
         error: (err: { error?: { message?: string } }) => {
@@ -406,11 +415,70 @@ export class UsersListComponent implements OnInit {
         this.closeModal();
         this.load();
       },
-      error: (err: { error?: { message?: string }; message?: string }) => {
+      error: (err: unknown) => {
         this.saving.set(false);
-        this.formError = err?.error?.message ?? err?.message ?? this.t('USERS.ERRORS.SAVE');
+        const msg = this.resolveUserMutationError(err, 'save');
+        if (this.isActiveSeatRoleConflict(err)) {
+          this.message.error(msg);
+          this.formError = '';
+        } else {
+          this.formError = msg;
+        }
       },
     });
+  }
+
+  onToggleStatusClick(row: UserListRow): void {
+    if (this.isStatusUpdating(row.id)) {
+      return;
+    }
+    const baseMessage = this.t('USERS.CONFIRM_TOGGLE_MESSAGE', {
+      action: this.t(row.isActive ? 'COMMON.DEACTIVATE' : 'COMMON.ACTIVATE'),
+    });
+    const hint = row.isActive ? this.deactivateFreesPlanSlotHint() : null;
+    const message =
+      row.isActive && hint?.trim() ? `${baseMessage}\n\n${hint.trim()}` : baseMessage;
+
+    this.confirmation
+      .confirm({
+        title: row.isActive ? this.t('USERS.CONFIRM_DEACTIVATE_TITLE') : this.t('USERS.CONFIRM_ACTIVATE_TITLE'),
+        message,
+        confirmText: this.t(row.isActive ? 'COMMON.DEACTIVATE' : 'COMMON.ACTIVATE'),
+        cancelText: this.t('COMMON.CANCEL'),
+        confirmDanger: row.isActive,
+      })
+      .pipe(first())
+      .subscribe((confirmed) => {
+        if (!confirmed) {
+          return;
+        }
+        this.setStatusUpdating(row.id, true);
+        const payload: UserCreatePayload = {
+          firstName: row.firstName?.trim() ?? '',
+          lastName: row.lastName?.trim() ?? '',
+          email: row.email?.trim() ?? '',
+          role: row.role,
+          departmentId: row.departmentId ?? undefined,
+          phone: row.phone?.trim() || undefined,
+          isActive: !row.isActive,
+        };
+        this.api
+          .update(row.id, payload)
+          .pipe(first())
+          .subscribe({
+            next: () => {
+              this.setStatusUpdating(row.id, false);
+              this.message.success(this.t(row.isActive ? 'USERS.MSG.DEACTIVATED' : 'USERS.MSG.ACTIVATED'));
+              this.load();
+            },
+            error: (err: unknown) => {
+              this.setStatusUpdating(row.id, false);
+              this.refreshUserRowInTable(row.id);
+              const msg = this.resolveUserMutationError(err, 'toggle');
+              this.message.error(msg);
+            },
+          });
+      });
   }
 
   onPageIndexChange(p: number): void {
@@ -455,8 +523,8 @@ export class UsersListComponent implements OnInit {
     return (a + b).slice(0, 2) || '?';
   }
 
-  isSuperAdmin(): boolean {
-    return this.auth.currentUser()?.role === 'SUPER_ADMIN';
+  canManageCompanyUsers(): boolean {
+    return this.auth.hasPermission(UsersListComponent.USERS_COMPANY_MANAGE_PERMISSION);
   }
 
   isLimitReached(): boolean {
@@ -464,7 +532,22 @@ export class UsersListComponent implements OnInit {
     if (max == null) {
       return false;
     }
-    return this.activeCount() >= max;
+    return this.totalActiveUsers() >= max;
+  }
+
+  isStatusUpdating(userId: string): boolean {
+    return this.statusUpdatingIds().includes(userId);
+  }
+
+  private setStatusUpdating(userId: string, updating: boolean): void {
+    const current = this.statusUpdatingIds();
+    if (updating) {
+      if (!current.includes(userId)) {
+        this.statusUpdatingIds.set([...current, userId]);
+      }
+      return;
+    }
+    this.statusUpdatingIds.set(current.filter((id) => id !== userId));
   }
 
   private loadDepartments(): void {
@@ -475,6 +558,52 @@ export class UsersListComponent implements OnInit {
         next: (res) => this.departments.set(res.departments ?? []),
         error: () => this.departments.set([]),
       });
+  }
+
+  private refreshUserRowInTable(userId: string): void {
+    this.users.update((list) =>
+      list.map((u) => (u.id === userId ? { ...u } : u)),
+    );
+  }
+
+  private isActiveSeatRoleConflict(err: unknown): boolean {
+    const http = err as {
+      status?: number;
+      error?: { message?: string | string[]; code?: string; statusCode?: number };
+    };
+    const status = http.status ?? http.error?.statusCode;
+    if (status !== 400) {
+      return false;
+    }
+    const code = (http.error?.code ?? '').toString().toUpperCase();
+    if (
+      code === 'ROLE_UNIQUE_ACTIVE' ||
+      code === 'UNIQUE_ACTIVE_ROLE' ||
+      code === 'ACTIVE_ROLE_ALREADY_ASSIGNED'
+    ) {
+      return true;
+    }
+    const raw = http.error?.message;
+    const msg = (Array.isArray(raw) ? raw.join(' ') : (raw ?? '')).toLowerCase();
+    return (
+      msg.includes('already') &&
+      msg.includes('assigned') &&
+      (msg.includes('active') || msg.includes('role'))
+    );
+  }
+
+  private resolveUserMutationError(err: unknown, context: 'toggle' | 'save'): string {
+    if (this.isActiveSeatRoleConflict(err)) {
+      return this.t('USERS.ERRORS.ROLE_UNIQUE_ACTIVE');
+    }
+    const http = err as { error?: { message?: string | string[] }; message?: string };
+    const raw = http?.error?.message;
+    const fromBody = Array.isArray(raw) ? raw.join(' ') : raw;
+    return (
+      fromBody ??
+      http?.message ??
+      (context === 'toggle' ? this.t('USERS.ERRORS.STATUS_UPDATE') : this.t('USERS.ERRORS.SAVE'))
+    );
   }
 
   private resolveDepartmentId(row: UserListRow): string {

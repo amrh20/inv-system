@@ -30,6 +30,7 @@ import {
   XCircle,
 } from 'lucide-angular';
 import type { MovementStatus, UserRole } from '../../../core/models/enums';
+import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { BreakageAttachmentMeta, BreakageDetail } from '../models/breakage.model';
@@ -50,6 +51,7 @@ import { BreakageService } from '../services/breakage.service';
     NzTableModule,
     TranslatePipe,
     LucideAngularModule,
+    HasPermissionDirective,
   ],
   templateUrl: './breakage-detail.component.html',
   styleUrl: './breakage-detail.component.scss',

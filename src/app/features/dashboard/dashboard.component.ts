@@ -1,4 +1,4 @@
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe, NgClass, NgIf } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
@@ -53,6 +53,7 @@ const fmtSARFull = (v: number | undefined | null) =>
     TranslatePipe,
     LucideAngularModule,
     NgClass,
+    NgIf,
     EmptyStateComponent,
   ],
   templateUrl: './dashboard.component.html',
@@ -81,6 +82,16 @@ export class DashboardComponent implements OnInit {
   readonly error = signal<string | null>(null);
   readonly responseTimeMs = signal<number | null>(null);
   readonly currentUser = this.auth.currentUser;
+
+  /** Property `ADMIN` role only — drives admin vs welcome dashboard. */
+  isAdmin = false;
+  userName = '';
+  /**
+   * Welcome entrance animation. Must be a `signal` so updates after `setTimeout` run change
+   * detection in this zoneless app (plain `boolean` would stay invisible at `opacity-0`).
+   */
+  readonly isVisible = signal(false);
+
   readonly isParentOrganizationContext = computed(() => this.auth.isParentOrganizationContext());
   readonly parentTenantId = computed(() => this.auth.currentTenant()?.id ?? null);
 
@@ -199,17 +210,36 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit() {
+    const user = this.auth.currentUser();
+    if (user) {
+      this.isAdmin = user.role === 'ADMIN';
+      const full = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+      this.userName = full || user.email || '';
+    }
+
+    const visibilityTimer = window.setTimeout(() => {
+      this.isVisible.set(true);
+    }, 50);
+
+    const interval = setInterval(() => this.updateDateTime(), 60000);
+    this.destroyRef.onDestroy(() => {
+      clearInterval(interval);
+      clearTimeout(visibilityTimer);
+    });
+
+    if (!this.isAdmin) {
+      this.loading.set(false);
+      this.orgLoading.set(false);
+      return;
+    }
+
     if (this.isParentOrganizationContext()) {
       this.loading.set(false);
       this.orgLoading.set(true);
       this.fetchOrganizationDashboard();
-      const interval = setInterval(() => this.updateDateTime(), 60000);
-      this.destroyRef.onDestroy(() => clearInterval(interval));
       return;
     }
     this.fetchDashboard();
-    const interval = setInterval(() => this.updateDateTime(), 60000);
-    this.destroyRef.onDestroy(() => clearInterval(interval));
   }
 
   private updateDateTime() {

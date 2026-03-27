@@ -16,6 +16,8 @@ export interface UsersListResult {
   total: number;
   maxUsers: number | null;
   totalActiveUsers: number;
+  /** Shown when confirming user deactivation (plan “active seat” hint). */
+  deactivateFreesPlanSlotHint: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -41,6 +43,11 @@ export class UsersAdminService {
         const metaMaxUsers = typeof meta['maxUsers'] === 'number' ? meta['maxUsers'] : null;
         const metaActiveUsers =
           typeof meta['totalActiveUsers'] === 'number' ? meta['totalActiveUsers'] : undefined;
+        const metaDeactivateHint = meta['deactivateFreesPlanSlotHint'];
+        let deactivateFreesPlanSlotHint =
+          typeof metaDeactivateHint === 'string' && metaDeactivateHint.trim()
+            ? metaDeactivateHint.trim()
+            : null;
 
         let users: UserListRow[] = [];
         let total = metaTotal ?? 0;
@@ -72,9 +79,13 @@ export class UsersAdminService {
           } else if (metaActiveUsers == null) {
             totalActiveUsers = users.filter((user) => user.isActive).length;
           }
+          const payloadHint = payload['deactivateFreesPlanSlotHint'];
+          if (typeof payloadHint === 'string' && payloadHint.trim() && !deactivateFreesPlanSlotHint) {
+            deactivateFreesPlanSlotHint = payloadHint.trim();
+          }
         }
 
-        return { users, total, maxUsers, totalActiveUsers };
+        return { users, total, maxUsers, totalActiveUsers, deactivateFreesPlanSlotHint };
       }),
     );
   }

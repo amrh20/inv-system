@@ -39,6 +39,16 @@ export class LoginComponent implements OnInit {
     email: 'superadmin@ose.cloud',
     password: 'SuperAdmin@2026',
   } as const;
+  private static readonly LOGIN_REDIRECTS: readonly { path: string; permission?: string }[] = [
+    { path: '/dashboard' },
+    { path: '/stock', permission: 'INVENTORY_VIEW' },
+    { path: '/reports', permission: 'REPORTS_VIEW' },
+    { path: '/settings', permission: 'SETTINGS_MANAGE' },
+    { path: '/users', permission: 'USERS_COMPANY_MANAGE' },
+    { path: '/audit-log', permission: 'AUDIT_LOG_VIEW' },
+    { path: '/inventory-history', permission: 'INVENTORY_VIEW' },
+    { path: '/get-passes' },
+  ];
 
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -116,7 +126,7 @@ export class LoginComponent implements OnInit {
         }
 
         if (res?.success && data?.user) {
-          this.navigateByRole(data.user.role);
+          this.navigateAfterLogin();
           return;
         }
 
@@ -171,12 +181,19 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  private navigateByRole(role: string): void {
-    if (role === 'SUPER_ADMIN') {
+  private navigateAfterLogin(): void {
+    if (this.auth.currentUser()?.role === 'SUPER_ADMIN') {
       this.router.navigate(['/admin/tenants'], { replaceUrl: true });
-    } else {
-      this.router.navigate(['/dashboard'], { replaceUrl: true });
+      return;
     }
+    const target = LoginComponent.LOGIN_REDIRECTS.find((route) =>
+      !route.permission || this.auth.hasPermission(route.permission),
+    )?.path;
+    if (target) {
+      this.router.navigate([target], { replaceUrl: true });
+      return;
+    }
+    this.router.navigate(['/dashboard'], { replaceUrl: true });
   }
 
   private showAccountInactiveModal(apiMessage?: string): void {
@@ -217,7 +234,7 @@ export class LoginComponent implements OnInit {
             return;
           }
           if (res?.success && res.data?.user) {
-            this.navigateByRole(res.data.user.role);
+            this.navigateAfterLogin();
             return;
           }
           this.error.set(res?.message?.trim() || this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS'));

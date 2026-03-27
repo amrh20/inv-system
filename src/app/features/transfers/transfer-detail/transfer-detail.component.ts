@@ -26,6 +26,7 @@ import {
   X,
 } from 'lucide-angular';
 import type { TransferStatus, UserRole } from '../../../core/models/enums';
+import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { TransferDetail } from '../models/transfer.model';
@@ -55,6 +56,7 @@ const STOREKEEPER_ROLES: UserRole[] = [
     NzTableModule,
     TranslatePipe,
     LucideAngularModule,
+    HasPermissionDirective,
   ],
   templateUrl: './transfer-detail.component.html',
   styleUrl: './transfer-detail.component.scss',

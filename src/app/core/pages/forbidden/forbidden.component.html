@@ -1,0 +1,26 @@
+<div
+  class="flex min-h-screen flex-col items-center justify-center bg-brand-surface px-6 py-12"
+>
+  <div class="flex max-w-lg flex-col items-center text-center">
+    <p class="mb-6 text-7xl font-bold leading-none tracking-tight text-brand-primary sm:text-8xl">
+      {{ 'FORBIDDEN.CODE' | translate }}
+    </p>
+    <lucide-icon
+      [img]="lucideLock"
+      [size]="56"
+      class="mb-8 text-brand-primary"
+      [strokeWidth]="2"
+    />
+    <p class="mb-10 text-base leading-relaxed text-brand-dark/75">
+      {{ 'FORBIDDEN.MESSAGE' | translate }}
+    </p>
+    <a
+      nz-button
+      nzType="primary"
+      routerLink="/dashboard"
+      class="!h-[38px] !rounded-[6px] !px-6 !inline-flex !items-center !justify-center"
+    >
+      {{ 'FORBIDDEN.BACK_TO_DASHBOARD' | translate }}
+    </a>
+  </div>
+</div>

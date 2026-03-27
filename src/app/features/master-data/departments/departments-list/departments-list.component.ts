@@ -1,4 +1,5 @@
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { NgClass } from '@angular/common';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -13,6 +14,8 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { EllipsisVertical, Pencil, Plus, Search, Trash2 } from 'lucide-angular';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { StatusToggleComponent } from '../../../../shared/components/status-toggle/status-toggle.component';
@@ -26,6 +29,7 @@ import { DepartmentsService } from '../../services/departments.service';
   providers: [ConfirmationService],
   imports: [
     FormsModule,
+    NgClass,
     NzAlertModule,
     NzButtonModule,
     NzDropdownModule,
@@ -38,15 +42,19 @@ import { DepartmentsService } from '../../services/departments.service';
     EmptyStateComponent,
     StatusToggleComponent,
     DepartmentFormComponent,
+    HasPermissionDirective,
   ],
   templateUrl: './departments-list.component.html',
   styleUrl: './departments-list.component.scss',
 })
 export class DepartmentsListComponent implements OnInit {
   private readonly api = inject(DepartmentsService);
+  private readonly auth = inject(AuthService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
+
+  protected readonly canEditBasicData = computed(() => this.auth.hasPermission('BASIC_DATA_EDIT'));
 
   readonly lucidePlus = Plus;
   readonly lucideSearch = Search;

@@ -27,6 +27,7 @@ import {
   Trash2,
   Users,
 } from 'lucide-angular';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { ItemMasterLookupsService } from '../../../items/services/item-master-lookups.service';
@@ -60,6 +61,7 @@ interface GroupedLocations {
     EmptyStateComponent,
     LocationCategoriesModalComponent,
     LocationFormComponent,
+    HasPermissionDirective,
   ],
   templateUrl: './locations-list.component.html',
   styleUrl: './locations-list.component.scss',

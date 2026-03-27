@@ -1,9 +1,17 @@
 import { Routes } from '@angular/router';
-import { adminSectionGuard } from './core/guards/admin-section.guard';
 import { authGuard } from './core/guards/auth.guard';
 import { blockSuperAdminDashboardGuard } from './core/guards/block-super-admin-dashboard.guard';
+import { permissionGuard } from './core/guards/permission.guard';
 import { defaultRedirectGuard } from './core/guards/super-admin-redirect.guard';
 import { requireSuperAdminGuard } from './core/guards/require-super-admin.guard';
+
+const ROUTE_PERMISSIONS = {
+  usersCompanyManage: 'USERS_COMPANY_MANAGE',
+  auditLogView: 'AUDIT_LOG_VIEW',
+  inventoryView: 'INVENTORY_VIEW',
+  settingsManage: 'SETTINGS_MANAGE',
+  grnView: 'GRN_VIEW',
+} as const;
 
 export const routes: Routes = [
   {
@@ -166,6 +174,8 @@ export const routes: Routes = [
       },
       {
         path: 'grn',
+        canActivate: [permissionGuard],
+        data: { permission: ROUTE_PERMISSIONS.grnView },
         children: [
           {
             path: '',
@@ -362,37 +372,43 @@ export const routes: Routes = [
       },
       {
         path: 'users',
-        canActivate: [adminSectionGuard],
+        canActivate: [permissionGuard],
         loadComponent: () =>
           import('./features/admin/users/users-list/users-list.component').then((m) => m.UsersListComponent),
-        data: { breadcrumb: 'NAV.USERS', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
+        data: { breadcrumb: 'NAV.USERS', permission: ROUTE_PERMISSIONS.usersCompanyManage },
       },
       {
         path: 'audit-log',
-        canActivate: [adminSectionGuard],
+        canActivate: [permissionGuard],
         loadComponent: () =>
           import('./features/admin/audit-log/audit-log-page/audit-log-page.component').then(
             (m) => m.AuditLogPageComponent,
           ),
-        data: { breadcrumb: 'NAV.AUDIT_LOG', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
+        data: { breadcrumb: 'NAV.AUDIT_LOG', permission: ROUTE_PERMISSIONS.auditLogView },
       },
       {
         path: 'inventory-history',
-        canActivate: [adminSectionGuard],
+        canActivate: [permissionGuard],
         loadComponent: () =>
           import('./features/admin/inventory-history/inventory-history-page/inventory-history-page.component').then(
             (m) => m.InventoryHistoryPageComponent,
           ),
-        data: { breadcrumb: 'NAV.INVENTORY_HISTORY', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
+        data: { breadcrumb: 'NAV.INVENTORY_HISTORY', permission: ROUTE_PERMISSIONS.inventoryView },
       },
       {
         path: 'settings',
-        canActivate: [adminSectionGuard],
+        canActivate: [permissionGuard],
         loadComponent: () =>
           import('./features/admin/settings/settings-page/settings-page.component').then(
             (m) => m.SettingsPageComponent,
           ),
-        data: { breadcrumb: 'NAV.SETTINGS', roles: ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'] },
+        data: { breadcrumb: 'NAV.SETTINGS', permission: ROUTE_PERMISSIONS.settingsManage },
+      },
+      {
+        path: 'forbidden',
+        loadComponent: () =>
+          import('./core/pages/forbidden/forbidden.component').then((m) => m.ForbiddenComponent),
+        data: { breadcrumb: 'FORBIDDEN.PAGE_TITLE' },
       },
       {
         path: '**',

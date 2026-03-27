@@ -1,4 +1,4 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, computed, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap, catchError, of } from 'rxjs';
@@ -36,6 +36,7 @@ export class AuthService {
   readonly currentUser = this._currentUser.asReadonly();
   readonly currentTenant = this._currentTenant.asReadonly();
   readonly isAuthenticated = this._isAuthenticated.asReadonly();
+  readonly permissions = computed(() => this.currentUser()?.permissions || []);
 
   constructor() {
     this.hydrateFromStorage();
@@ -60,6 +61,7 @@ export class AuthService {
       .pipe(
         tap((res) => {
           const rawUser = res.data?.user;
+          const responsePermissions = res.data?.permissions;
           const accessToken = res.data?.accessToken;
           const refreshToken = res.data?.refreshToken;
           if (res.success && rawUser && accessToken && refreshToken) {
@@ -67,6 +69,7 @@ export class AuthService {
               ...rawUser,
               tenantId: rawUser.tenantId ?? credentials.selectedTenantId ?? null,
               role: rawUser.role ?? credentials.selectedRole,
+              permissions: this.normalizePermissions(responsePermissions ?? rawUser.permissions),
               memberships: rawUser.memberships ?? credentials.memberships ?? [],
             };
             this.setAuth({
@@ -86,13 +89,21 @@ export class AuthService {
       .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/auth/switch-tenant`, body)
       .pipe(
         tap((res) => {
+          console.log('Switch Response:', res.data);
           const rawUser = res.data?.user;
-          const accessToken = res.data?.accessToken;
-          const refreshToken = res.data?.refreshToken;
+          const responsePermissions = res.data?.permissions;
+          const returnedAccessToken = res.data?.accessToken ?? null;
+          const accessToken = returnedAccessToken ?? this._accessToken();
+          const refreshToken = res.data?.refreshToken ?? this._refreshToken();
+          console.log('Switch Token Payload:', {
+            returned: this.decodeJwtPayload(returnedAccessToken),
+            effective: this.decodeJwtPayload(accessToken),
+          });
           if (res.success && rawUser && accessToken && refreshToken) {
             const previousMemberships = this._currentUser()?.memberships ?? [];
             const user = {
               ...rawUser,
+              permissions: this.normalizePermissions(responsePermissions ?? rawUser.permissions),
               memberships:
                 rawUser.memberships && rawUser.memberships.length
                   ? rawUser.memberships
@@ -103,6 +114,13 @@ export class AuthService {
               accessToken,
               refreshToken,
               currentTenant: this.resolveCurrentTenant(user, tenantSlug),
+            });
+            console.log('Switch Post-Auth Snapshot:', {
+              tenantSlug,
+              currentTenant: this._currentTenant(),
+              userTenantId: this._currentUser()?.tenantId,
+              permissions: this._currentUser()?.permissions,
+              isParentOrganizationContext: this.isParentOrganizationContext(),
             });
           }
         })
@@ -149,8 +167,12 @@ export class AuthService {
     return this.http.get<ApiResponse<User>>(`${this.apiUrl}/auth/me`).pipe(
       tap((res) => {
         if (res.success && res.data) {
-          this._currentUser.set(res.data);
-          this._currentTenant.set(this.resolveCurrentTenant(res.data));
+          const user = {
+            ...res.data,
+            permissions: this.normalizePermissions(res.data.permissions),
+          };
+          this._currentUser.set(user);
+          this._currentTenant.set(this.resolveCurrentTenant(user));
           this.persistToStorage();
         }
       })
@@ -194,6 +216,16 @@ export class AuthService {
     return user ? roles.includes(user.role) : false;
   }
 
+  hasPermission(key: string): boolean {
+    if (!key) {
+      return false;
+    }
+    if (this.currentUser()?.role === 'SUPER_ADMIN') {
+      return true;
+    }
+    return this.permissions().includes(key);
+  }
+
   /**
    * Parent-organization mode is enabled only when:
    * - Current tenant is a root organization (parentId === null), and
@@ -232,7 +264,10 @@ export class AuthService {
       const parsed = JSON.parse(raw) as { state?: AuthState };
       const state = parsed?.state;
       if (state?.isAuthenticated && state.user && state.accessToken && state.refreshToken) {
-        this._currentUser.set(state.user);
+        this._currentUser.set({
+          ...state.user,
+          permissions: this.normalizePermissions(state.user.permissions),
+        });
         this._accessToken.set(state.accessToken);
         this._refreshToken.set(state.refreshToken);
         this._currentTenant.set(state.currentTenant ?? this.resolveCurrentTenant(state.user));
@@ -244,13 +279,20 @@ export class AuthService {
   }
 
   private persistToStorage() {
+    const user = this._currentUser();
     const state: AuthState = {
-      user: this._currentUser(),
+      user: user
+        ? {
+            ...user,
+            permissions: this.normalizePermissions(user.permissions),
+          }
+        : null,
       accessToken: this._accessToken(),
       refreshToken: this._refreshToken(),
       currentTenant: this._currentTenant(),
       isAuthenticated: this._isAuthenticated(),
     };
+    console.log('State to be saved:', state);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ state }));
   }
 
@@ -261,13 +303,20 @@ export class AuthService {
 
     const memberships = user.memberships ?? [];
     const slug = selectedTenantSlug || user.tenant?.slug || null;
-    const membership =
-      memberships.find((item) => (slug ? item.tenantSlug === slug : false)) ??
-      memberships.find((item) => (user.tenantId ? item.tenantId === user.tenantId : false));
+    const membershipBySlug =
+      slug ? memberships.find((item) => item.tenantSlug === slug) : undefined;
+    const membershipByTenantId =
+      user.tenantId ? memberships.find((item) => item.tenantId === user.tenantId) : undefined;
+    const membership = membershipBySlug ?? membershipByTenantId;
 
-    const tenantId = user.tenantId ?? membership?.tenantId ?? null;
-    const tenantSlug = slug ?? membership?.tenantSlug ?? null;
-    const tenantName = user.tenant?.name ?? membership?.tenantName ?? null;
+    // On explicit switch, selected slug must win over stale user.tenantId from previous context.
+    const tenantId = selectedTenantSlug
+      ? membershipBySlug?.tenantId ?? user.tenantId ?? membershipByTenantId?.tenantId ?? null
+      : user.tenantId ?? membership?.tenantId ?? null;
+    const tenantSlug = selectedTenantSlug ?? slug ?? membership?.tenantSlug ?? null;
+    const tenantName = selectedTenantSlug
+      ? membershipBySlug?.tenantName ?? user.tenant?.name ?? membershipByTenantId?.tenantName ?? null
+      : user.tenant?.name ?? membership?.tenantName ?? null;
 
     if (!tenantId && !tenantSlug && !tenantName) {
       return null;
@@ -278,5 +327,30 @@ export class AuthService {
       slug: tenantSlug,
       name: tenantName,
     };
+  }
+
+  private normalizePermissions(permissions: unknown): string[] {
+    if (!Array.isArray(permissions)) {
+      return [];
+    }
+    return permissions.filter((key): key is string => typeof key === 'string' && key.length > 0);
+  }
+
+  private decodeJwtPayload(token: string | null): Record<string, unknown> | null {
+    if (!token) {
+      return null;
+    }
+    const parts = token.split('.');
+    if (parts.length < 2) {
+      return null;
+    }
+    try {
+      const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+      const payload = atob(padded);
+      return JSON.parse(payload) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 }

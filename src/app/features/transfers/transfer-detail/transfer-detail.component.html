@@ -44,31 +44,75 @@
       <button nz-button nzType="default" type="button" (click)="edit()" [disabled]="acting()">
         {{ 'TRANSFER.DETAIL.EDIT' | translate }}
       </button>
-      <button nz-button nzType="default" nzDanger type="button" (click)="deleteDraft()" [disabled]="acting()">
+      <button
+        *appHasPermission="'TRANSFER_CREATE'"
+        nz-button
+        nzType="default"
+        nzDanger
+        type="button"
+        (click)="deleteDraft()"
+        [disabled]="acting()"
+      >
         {{ 'COMMON.DELETE' | translate }}
       </button>
-      <button nz-button nzType="primary" type="button" (click)="submit()" [disabled]="acting()">
+      <button
+        *appHasPermission="'TRANSFER_CREATE'"
+        nz-button
+        nzType="primary"
+        type="button"
+        (click)="submit()"
+        [disabled]="acting()"
+      >
         {{ 'TRANSFER.DETAIL.SUBMIT' | translate }}
       </button>
     }
     @if (t.status === 'SUBMITTED' && isManager()) {
-      <button nz-button nzType="primary" type="button" (click)="approve()" [disabled]="acting()">
+      <button
+        *appHasPermission="'TRANSFER_APPROVE'"
+        nz-button
+        nzType="primary"
+        type="button"
+        (click)="approve()"
+        [disabled]="acting()"
+      >
         <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
         {{ 'TRANSFER.DETAIL.APPROVE' | translate }}
       </button>
-      <button nz-button nzType="default" nzDanger type="button" (click)="openReject()" [disabled]="acting()">
+      <button
+        *appHasPermission="'TRANSFER_APPROVE'"
+        nz-button
+        nzType="default"
+        nzDanger
+        type="button"
+        (click)="openReject()"
+        [disabled]="acting()"
+      >
         <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
         {{ 'TRANSFER.DETAIL.REJECT' | translate }}
       </button>
     }
     @if (t.status === 'APPROVED' && isStorekeeper()) {
-      <button nz-button nzType="primary" type="button" (click)="dispatch()" [disabled]="acting()">
+      <button
+        *appHasPermission="'TRANSFER_DISPATCH_RECEIVE'"
+        nz-button
+        nzType="primary"
+        type="button"
+        (click)="dispatch()"
+        [disabled]="acting()"
+      >
         <lucide-icon [img]="lucideTruck" [size]="14" [strokeWidth]="2" />
         {{ 'TRANSFER.DETAIL.DISPATCH' | translate }}
       </button>
     }
     @if (t.status === 'IN_TRANSIT' && isStorekeeper()) {
-      <button nz-button nzType="primary" type="button" (click)="receive()" [disabled]="acting()">
+      <button
+        *appHasPermission="'TRANSFER_DISPATCH_RECEIVE'"
+        nz-button
+        nzType="primary"
+        type="button"
+        (click)="receive()"
+        [disabled]="acting()"
+      >
         <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
         {{ 'TRANSFER.DETAIL.RECEIVE' | translate }}
       </button>
@@ -86,7 +130,14 @@
         (ngModelChange)="rejectReason.set($event)"
       />
       <div class="transfer-detail__reject-actions">
-        <button nz-button nzType="primary" nzDanger type="button" (click)="confirmReject()">
+        <button
+          *appHasPermission="'TRANSFER_APPROVE'"
+          nz-button
+          nzType="primary"
+          nzDanger
+          type="button"
+          (click)="confirmReject()"
+        >
           {{ 'TRANSFER.DETAIL.REJECT_CONFIRM' | translate }}
         </button>
         <button nz-button nzType="default" type="button" (click)="cancelReject()">

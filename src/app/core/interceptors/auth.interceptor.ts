@@ -40,25 +40,32 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       const errorCode = error.error?.error ?? error.error?.code;
 
-      if (
-        error.status === 403 &&
-        (errorCode === 'ORGANIZATION_SUSPENDED' || errorCode === 'ACCOUNT_SUSPENDED')
-      ) {
-        const modal = injector.get(NzModalService);
-        modal.error({
-          nzTitle: translate.instant('AUTH.SUSPENSION.TITLE'),
-          nzContent:
-            errorCode === 'ORGANIZATION_SUSPENDED'
-              ? translate.instant('AUTH.SUSPENSION.ORGANIZATION_MESSAGE')
-              : translate.instant('AUTH.SUSPENSION.ACCOUNT_MESSAGE'),
-          nzMaskClosable: false,
-          nzClosable: false,
-          nzKeyboard: false,
-          nzOnOk: () => {
-            authService.clearAuth();
-            router.navigate(['/login']);
-          },
-        });
+      if (error.status === 403) {
+        if (errorCode === 'ORGANIZATION_SUSPENDED' || errorCode === 'ACCOUNT_SUSPENDED') {
+          const modal = injector.get(NzModalService);
+          modal.error({
+            nzTitle: translate.instant('AUTH.SUSPENSION.TITLE'),
+            nzContent:
+              errorCode === 'ORGANIZATION_SUSPENDED'
+                ? translate.instant('AUTH.SUSPENSION.ORGANIZATION_MESSAGE')
+                : translate.instant('AUTH.SUSPENSION.ACCOUNT_MESSAGE'),
+            nzMaskClosable: false,
+            nzClosable: false,
+            nzKeyboard: false,
+            nzOnOk: () => {
+              authService.clearAuth();
+              router.navigate(['/login']);
+            },
+          });
+          return throwError(() => error);
+        }
+
+        if (!isAuthEndpoint(req.url)) {
+          const path = router.url.split('?')[0].split('#')[0];
+          if (path !== '/forbidden') {
+            void router.navigate(['/forbidden']);
+          }
+        }
         return throwError(() => error);
       }
 

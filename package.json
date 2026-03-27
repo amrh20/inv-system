@@ -33,6 +33,7 @@
     "@ngx-translate/http-loader": "^17.0.0",
     "lucide-angular": "^0.577.0",
     "ng-zorro-antd": "^21.2.0",
+    "primeicons": "^7.0.0",
     "rxjs": "~7.8.0",
     "tailwindcss": "^4.2.2",
     "tslib": "^2.3.0"

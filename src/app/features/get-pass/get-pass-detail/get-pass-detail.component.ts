@@ -21,6 +21,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { ArrowLeft, CheckCircle2, Package, Printer, XCircle } from 'lucide-angular';
 import type { GetPassStatus, GetPassType } from '../../../core/models/enums';
+import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { GetPassDetail, GetPassReturnLinePayload } from '../models/get-pass.model';
@@ -52,6 +53,7 @@ interface ReturnDraft {
     NzTableModule,
     TranslatePipe,
     LucideAngularModule,
+    HasPermissionDirective,
   ],
   templateUrl: './get-pass-detail.component.html',
   styleUrl: './get-pass-detail.component.scss',

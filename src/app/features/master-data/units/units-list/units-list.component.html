@@ -5,6 +5,7 @@
       <p class="units-page__meta">{{ 'UNITS.SUBTITLE' | translate }}</p>
     </div>
     <button
+      *appHasPermission="'BASIC_DATA_EDIT'"
       nz-button
       nzType="primary"
       type="button"
@@ -61,7 +62,9 @@
         <th nzWidth="120px">{{ 'UNITS.ABBREVIATION' | translate }}</th>
         <th>{{ 'COMMON.DESCRIPTION' | translate }}</th>
         <th nzWidth="100px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
-        <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        <ng-container *appHasPermission="'BASIC_DATA_EDIT'">
+          <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </ng-container>
       </tr>
     </thead>
     <tbody>
@@ -78,28 +81,30 @@
               {{ row.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
             </span>
           </td>
-          <td nzAlign="center">
-            <button
-              nz-button
-              nzType="text"
-              type="button"
-              nz-dropdown
-              [nzDropdownMenu]="menuTpl"
-              nzTrigger="click"
-              nzPlacement="bottomRight"
-              (click)="$event.stopPropagation()"
-            >
-              <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
-            </button>
-            <nz-dropdown-menu #menuTpl="nzDropdownMenu">
-              <ul nz-menu>
-                <li nz-menu-item (click)="openEdit(row)">
-                  <lucide-icon [img]="lucidePencil" [size]="14" />
-                  <span>{{ 'UNITS.EDIT' | translate }}</span>
-                </li>
-              </ul>
-            </nz-dropdown-menu>
-          </td>
+          <ng-container *appHasPermission="'BASIC_DATA_EDIT'">
+            <td nzAlign="center">
+              <button
+                nz-button
+                nzType="text"
+                type="button"
+                nz-dropdown
+                [nzDropdownMenu]="menuTpl"
+                nzTrigger="click"
+                nzPlacement="bottomRight"
+                (click)="$event.stopPropagation()"
+              >
+                <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
+              </button>
+              <nz-dropdown-menu #menuTpl="nzDropdownMenu">
+                <ul nz-menu>
+                  <li nz-menu-item (click)="openEdit(row)">
+                    <lucide-icon [img]="lucidePencil" [size]="14" />
+                    <span>{{ 'UNITS.EDIT' | translate }}</span>
+                  </li>
+                </ul>
+              </nz-dropdown-menu>
+            </td>
+          </ng-container>
         </tr>
       }
     </tbody>

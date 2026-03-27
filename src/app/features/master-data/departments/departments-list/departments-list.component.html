@@ -5,6 +5,7 @@
       <p class="departments-page__meta">{{ 'DEPARTMENTS.SUBTITLE' | translate }}</p>
     </div>
     <button
+      *appHasPermission="'BASIC_DATA_EDIT'"
       nz-button
       nzType="primary"
       type="button"
@@ -62,7 +63,9 @@
         <th nzWidth="100px" nzAlign="right">{{ 'DEPARTMENTS.LOCATIONS_COUNT' | translate }}</th>
         <th nzWidth="100px" nzAlign="right">{{ 'COMMON.ITEMS' | translate }}</th>
         <th nzWidth="140px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
-        <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        <ng-container *appHasPermission="'BASIC_DATA_EDIT'">
+          <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        </ng-container>
       </tr>
     </thead>
     <tbody>
@@ -73,37 +76,49 @@
           <td nzAlign="right">{{ row._count?.locations ?? 0 }}</td>
           <td nzAlign="right">{{ row._count?.items ?? 0 }}</td>
           <td nzAlign="center">
-            <app-status-toggle
-              [status]="row.isActive"
-              (statusChange)="onToggleStatus(row)"
-            />
+            <ng-container *appHasPermission="'BASIC_DATA_EDIT'">
+              <app-status-toggle
+                [status]="row.isActive"
+                (statusChange)="onToggleStatus(row)"
+              />
+            </ng-container>
+            @if (!canEditBasicData()) {
+              <span
+                class="status-badge"
+                [ngClass]="row.isActive ? 'status-active' : 'status-inactive'"
+              >
+                {{ row.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+              </span>
+            }
           </td>
-          <td nzAlign="center">
-            <button
-              nz-button
-              nzType="text"
-              type="button"
-              nz-dropdown
-              [nzDropdownMenu]="menuTpl"
-              nzTrigger="click"
-              nzPlacement="bottomRight"
-              (click)="$event.stopPropagation()"
-            >
-              <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
-            </button>
-            <nz-dropdown-menu #menuTpl="nzDropdownMenu">
-              <ul nz-menu>
-                <li nz-menu-item (click)="openEdit(row)">
-                  <lucide-icon [img]="lucidePencil" [size]="14" />
-                  <span>{{ 'DEPARTMENTS.EDIT' | translate }}</span>
-                </li>
-                <li nz-menu-item nzDanger (click)="onDeleteClick(row)">
-                  <lucide-icon [img]="lucideTrash" [size]="14" />
-                  <span>{{ 'COMMON.DELETE' | translate }}</span>
-                </li>
-              </ul>
-            </nz-dropdown-menu>
-          </td>
+          <ng-container *appHasPermission="'BASIC_DATA_EDIT'">
+            <td nzAlign="center">
+              <button
+                nz-button
+                nzType="text"
+                type="button"
+                nz-dropdown
+                [nzDropdownMenu]="menuTpl"
+                nzTrigger="click"
+                nzPlacement="bottomRight"
+                (click)="$event.stopPropagation()"
+              >
+                <lucide-icon [img]="lucideEllipsisVertical" [size]="16" />
+              </button>
+              <nz-dropdown-menu #menuTpl="nzDropdownMenu">
+                <ul nz-menu>
+                  <li nz-menu-item (click)="openEdit(row)">
+                    <lucide-icon [img]="lucidePencil" [size]="14" />
+                    <span>{{ 'DEPARTMENTS.EDIT' | translate }}</span>
+                  </li>
+                  <li nz-menu-item nzDanger (click)="onDeleteClick(row)">
+                    <lucide-icon [img]="lucideTrash" [size]="14" />
+                    <span>{{ 'COMMON.DELETE' | translate }}</span>
+                  </li>
+                </ul>
+              </nz-dropdown-menu>
+            </td>
+          </ng-container>
         </tr>
       }
     </tbody>

@@ -1,5 +1,6 @@
 <div class="dashboard-page">
   @if (isParentOrganizationContext()) {
+    <ng-container *ngIf="isAdmin">
     <div>
       @if (orgError(); as orgErr) {
         <div class="dashboard-page__error">
@@ -192,6 +193,32 @@
         }
       }
     </div>
+    </ng-container>
+    <ng-container *ngIf="!isAdmin">
+      <div
+        class="flex flex-col items-center justify-center h-full min-h-[calc(100vh-64px)] px-6 transition-all duration-700 ease-out"
+        [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
+      >
+        <div
+          class="flex items-center justify-center w-28 h-28 rounded-full bg-indigo-50 mb-8 transition-all duration-700 delay-100"
+          [ngClass]="isVisible() ? 'opacity-100 scale-100' : 'opacity-0 scale-75'"
+        >
+          <i class="pi pi-user text-5xl text-indigo-300"></i>
+        </div>
+        <h2
+          class="text-3xl font-semibold text-gray-700 mb-3 transition-all duration-700 delay-150"
+          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
+        >
+          Welcome back, {{ userName }}!
+        </h2>
+        <p
+          class="text-gray-400 text-base text-center max-w-md transition-all duration-700 delay-200"
+          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
+        >
+          Please use the sidebar to navigate through the system modules.
+        </p>
+      </div>
+    </ng-container>
   } @else if (error()) {
     <div class="dashboard-page__error">
       <lucide-icon [img]="lucideAlertTriangle" [size]="48" class="dashboard-page__error-icon" [strokeWidth]="2" />
@@ -203,6 +230,7 @@
       </button>
     </div>
   } @else {
+    <ng-container *ngIf="isAdmin">
     <!-- Header -->
     <div class="dashboard-page__header">
       <div>
@@ -431,5 +459,31 @@
         {{ 'DASHBOARD.DATA_AS_OF' | translate }} {{ data()!.generatedAt | date:'medium' }}
       </p>
     }
+    </ng-container>
+    <ng-container *ngIf="!isAdmin">
+      <div
+        class="flex flex-col items-center justify-center h-full min-h-[calc(100vh-64px)] px-6 transition-all duration-700 ease-out"
+        [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
+      >
+        <div
+          class="flex items-center justify-center w-28 h-28 rounded-full bg-indigo-50 mb-8 transition-all duration-700 delay-100"
+          [ngClass]="isVisible() ? 'opacity-100 scale-100' : 'opacity-0 scale-75'"
+        >
+          <i class="pi pi-user text-5xl text-indigo-300"></i>
+        </div>
+        <h2
+          class="text-3xl font-semibold text-gray-700 mb-3 transition-all duration-700 delay-150"
+          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
+        >
+          Welcome back, {{ userName }}!
+        </h2>
+        <p
+          class="text-gray-400 text-base text-center max-w-md transition-all duration-700 delay-200"
+          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
+        >
+          Please use the sidebar to navigate through the system modules.
+        </p>
+      </div>
+    </ng-container>
   }
 </div>

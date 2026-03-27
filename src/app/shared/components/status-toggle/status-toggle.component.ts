@@ -14,6 +14,7 @@ import { TranslatePipe } from '@ngx-translate/core';
       </span>
       <nz-switch
         [ngModel]="displayStatus()"
+        [nzDisabled]="disabled()"
         [nzControl]="true"
         (click)="onSwitchClick()"
         [nzCheckedChildren]="checkedTpl"
@@ -70,6 +71,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 export class StatusToggleComponent {
   /** Current status (true = Active, false = Inactive). Accepts boolean or status string. */
   readonly status = input<boolean | string>(false);
+  /** Prevent interaction while parent operation is pending. */
+  readonly disabled = input(false);
 
   readonly statusChange = output<boolean>();
 
@@ -98,6 +101,9 @@ export class StatusToggleComponent {
   }
 
   onSwitchClick(): void {
+    if (this.disabled()) {
+      return;
+    }
     this.statusChange.emit(!this.displayStatus());
   }
 }

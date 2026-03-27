@@ -45,6 +45,10 @@
   gap: 0.35rem;
 }
 
+.admin-users__create-tooltip {
+  display: inline-flex;
+}
+
 .admin-users__limit-note {
   font-size: 0.75rem;
   color: var(--color-brand-error, #ff4d4f);

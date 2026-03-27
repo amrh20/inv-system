@@ -21,11 +21,20 @@ import {
   Truck,
   User,
 } from 'lucide-angular';
-import type { UserRole } from '../models/enums';
 import { AuthService } from './auth.service';
 
 /** Lucide icon payload used by `lucide-icon` `[img]`. */
 type NavIcon = typeof LayoutDashboard;
+
+const NAV_PERMISSIONS = {
+  inventoryView: 'INVENTORY_VIEW',
+  grnView: 'GRN_VIEW',
+  reportsView: 'REPORTS_VIEW',
+  settingsManage: 'SETTINGS_MANAGE',
+  usersCompanyManage: 'USERS_COMPANY_MANAGE',
+  auditLogView: 'AUDIT_LOG_VIEW',
+  superAdminPortalAccess: 'SUPER_ADMIN_PORTAL_ACCESS',
+} as const;
 
 export type NavEntry =
   | {
@@ -35,29 +44,27 @@ export type NavEntry =
       icon: NavIcon;
       /** When true, only active on exact URL match (e.g. dashboard). */
       pathMatch?: 'full';
-      roles?: readonly UserRole[];
+      permission?: string;
     }
   | {
       kind: 'submenu';
       key: string;
       label: string;
       icon: NavIcon;
-      roles?: readonly UserRole[];
+      permission?: string;
       children: readonly {
         path: string;
         label: string;
         icon: NavIcon;
-        roles?: readonly UserRole[];
+        permission?: string;
       }[];
     };
 
 export interface NavSection {
   heading: string;
   items: readonly NavEntry[];
-  roles?: readonly UserRole[];
+  permission?: string;
 }
-
-const ADMIN_ROLES: readonly UserRole[] = ['ADMIN', 'ORG_MANAGER', 'SUPER_ADMIN'];
 
 const NAV_SECTIONS: readonly NavSection[] = [
   {
@@ -74,6 +81,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
   },
   {
     heading: 'NAV.SECTIONS.INVENTORY',
+    permission: NAV_PERMISSIONS.inventoryView,
     items: [
       { kind: 'link', path: '/items', label: 'NAV.ITEM_MASTER', icon: List },
       { kind: 'link', path: '/stock', label: 'NAV.STOCK_BALANCES', icon: Package },
@@ -85,6 +93,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
         key: 'master-data',
         label: 'NAV.MASTER_DATA',
         icon: FolderTree,
+        permission: NAV_PERMISSIONS.inventoryView,
         children: [
           { path: '/departments', label: 'NAV.DEPARTMENTS', icon: Building2 },
           { path: '/suppliers', label: 'NAV.SUPPLIERS', icon: Truck },
@@ -104,7 +113,12 @@ const NAV_SECTIONS: readonly NavSection[] = [
         label: 'NAV.TRANSACTIONS',
         icon: ArrowRightLeft,
         children: [
-          { path: '/grn', label: 'NAV.GRN_IMPORT', icon: FileInput },
+          {
+            path: '/grn',
+            label: 'NAV.GRN_IMPORT',
+            icon: FileInput,
+            permission: NAV_PERMISSIONS.grnView,
+          },
           { path: '/transfers', label: 'NAV.TRANSFERS', icon: ArrowRightLeft },
           { path: '/breakage', label: 'NAV.BREAKAGE_LOSS', icon: AlertTriangle },
           { path: '/get-passes', label: 'NAV.GET_PASS_WORKFLOW', icon: Package },
@@ -114,6 +128,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
   },
   {
     heading: 'NAV.SECTIONS.REPORTS',
+    permission: NAV_PERMISSIONS.reportsView,
     items: [
       {
         kind: 'submenu',
@@ -130,62 +145,82 @@ const NAV_SECTIONS: readonly NavSection[] = [
   },
   {
     heading: 'NAV.SECTIONS.ADMIN',
-    roles: ADMIN_ROLES,
     items: [
-      { kind: 'link', path: '/users', label: 'NAV.USERS', icon: User, roles: ADMIN_ROLES },
-      { kind: 'link', path: '/audit-log', label: 'NAV.AUDIT_LOG', icon: Shield, roles: ADMIN_ROLES },
+      {
+        kind: 'link',
+        path: '/users',
+        label: 'NAV.USERS',
+        icon: User,
+        permission: NAV_PERMISSIONS.usersCompanyManage,
+      },
+      {
+        kind: 'link',
+        path: '/audit-log',
+        label: 'NAV.AUDIT_LOG',
+        icon: Shield,
+        permission: NAV_PERMISSIONS.auditLogView,
+      },
       {
         kind: 'link',
         path: '/inventory-history',
         label: 'NAV.INVENTORY_HISTORY',
         icon: History,
-        roles: ADMIN_ROLES,
+        permission: NAV_PERMISSIONS.inventoryView,
       },
       {
         kind: 'link',
         path: '/settings',
         label: 'NAV.SETTINGS',
         icon: Settings,
-        roles: ADMIN_ROLES,
+        permission: NAV_PERMISSIONS.settingsManage,
       },
     ],
   },
 ];
 
-function roleAllowed(
-  role: UserRole | undefined,
-  allowed: readonly UserRole[] | undefined,
+function permissionAllowed(
+  permissions: readonly string[],
+  required: string | undefined,
+  isSuperAdmin: boolean,
 ): boolean {
-  if (!allowed?.length) {
+  if (!required) {
     return true;
   }
-  if (!role) {
-    return false;
+  if (permissions.includes(required)) {
+    return true;
   }
-  return allowed.includes(role);
+  return isSuperAdmin;
 }
 
 function filterSubmenuChildren<
-  T extends { roles?: readonly UserRole[]; path: string; label: string; icon: NavIcon },
->(children: readonly T[], role: UserRole | undefined): T[] {
-  return children.filter((c) => roleAllowed(role, c.roles));
+  T extends { permission?: string; path: string; label: string; icon: NavIcon },
+>(children: readonly T[], permissions: readonly string[], isSuperAdmin: boolean): T[] {
+  return children.filter((c) => permissionAllowed(permissions, c.permission, isSuperAdmin));
 }
 
-function filterNavEntry(entry: NavEntry, role: UserRole | undefined): NavEntry | null {
-  if (!roleAllowed(role, entry.roles)) {
+function filterNavEntry(
+  entry: NavEntry,
+  permissions: readonly string[],
+  isSuperAdmin: boolean,
+): NavEntry | null {
+  if (!permissionAllowed(permissions, entry.permission, isSuperAdmin)) {
     return null;
   }
   if (entry.kind === 'link') {
     return entry;
   }
-  const children = filterSubmenuChildren(entry.children, role);
+  const children = filterSubmenuChildren(entry.children, permissions, isSuperAdmin);
   if (!children.length) {
     return null;
   }
   return { ...entry, children };
 }
 
-function filterSections(role: UserRole | undefined, orgDashboardOnly: boolean): NavSection[] {
+function filterSections(
+  permissions: readonly string[],
+  orgDashboardOnly: boolean,
+  isSuperAdmin: boolean,
+): NavSection[] {
   if (orgDashboardOnly) {
     return [
       {
@@ -203,14 +238,19 @@ function filterSections(role: UserRole | undefined, orgDashboardOnly: boolean): 
     ];
   }
 
-  const base = NAV_SECTIONS.filter((s) => roleAllowed(role, s.roles))
+  const base = NAV_SECTIONS.filter((s) => permissionAllowed(permissions, s.permission, isSuperAdmin))
     .map((section) => ({
       ...section,
-      items: section.items.map((i) => filterNavEntry(i, role)).filter((i): i is NavEntry => i !== null),
+      items: section.items
+        .map((i) => filterNavEntry(i, permissions, isSuperAdmin))
+        .filter((i): i is NavEntry => i !== null),
     }))
     .filter((s) => s.items.length > 0);
 
-  if (role === 'SUPER_ADMIN') {
+  if (
+    isSuperAdmin ||
+    permissions.includes(NAV_PERMISSIONS.superAdminPortalAccess)
+  ) {
     base.push({
       heading: 'NAV.SECTIONS.SUPER_ADMIN',
       items: [
@@ -219,7 +259,7 @@ function filterSections(role: UserRole | undefined, orgDashboardOnly: boolean): 
           path: '/admin/tenants',
           label: 'NAV.SUPER_ADMIN',
           icon: Shield,
-          roles: ['SUPER_ADMIN'],
+          permission: NAV_PERMISSIONS.superAdminPortalAccess,
         },
       ],
     });
@@ -232,9 +272,13 @@ function filterSections(role: UserRole | undefined, orgDashboardOnly: boolean): 
 export class NavigationService {
   private readonly auth = inject(AuthService);
 
-  /** Menu tree after role filtering (reacts to `AuthService.currentUser`). */
+  /** Menu tree after permission filtering (reacts to `AuthService.permissions`). */
   readonly sections = computed(() =>
-    filterSections(this.auth.currentUser()?.role, this.auth.isParentOrganizationContext()),
+    filterSections(
+      this.auth.permissions(),
+      this.auth.isParentOrganizationContext(),
+      this.auth.currentUser()?.role === 'SUPER_ADMIN',
+    ),
   );
 
   /** Flat map for breadcrumbs on routes without `data.breadcrumb`. */

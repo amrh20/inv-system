@@ -14,6 +14,7 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { ArrowRightLeft, ChevronRight, Plus, RefreshCw } from 'lucide-angular';
+import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import type { TransferListRow } from '../models/transfer.model';
 import type { TransferStatus } from '../../../core/models/enums';
@@ -41,6 +42,7 @@ const TABS: Array<'ALL' | TransferStatus> = [
     NzTableModule,
     TranslatePipe,
     LucideAngularModule,
+    HasPermissionDirective,
     EmptyStateComponent,
   ],
   templateUrl: './transfer-list.component.html',

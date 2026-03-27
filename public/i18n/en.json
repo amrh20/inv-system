@@ -2,6 +2,12 @@
   "APP": {
     "INVENTORY_MANAGEMENT": "Inventory Management"
   },
+  "FORBIDDEN": {
+    "PAGE_TITLE": "Access denied",
+    "CODE": "403",
+    "MESSAGE": "Access Denied: You don't have permission to view this page.",
+    "BACK_TO_DASHBOARD": "Back to Dashboard"
+  },
   "LAYOUT": {
     "SWITCH_TO_LIGHT_MODE": "Switch to light mode",
     "SWITCH_TO_DARK_MODE": "Switch to dark mode",
@@ -432,6 +438,8 @@
   "DASHBOARD": {
     "PLACEHOLDER": "Placeholder - inventory dashboard will live here.",
     "WELCOME": "Welcome, ",
+    "WELCOME_BACK": "Welcome back, {{name}}!",
+    "WELCOME_NAV_HINT": "Please use the sidebar to navigate through the system modules.",
     "UNAVAILABLE": "Dashboard Unavailable",
     "ORG_COMING_SOON_TITLE": "Coming soon",
     "ORG_COMING_SOON_MESSAGE": "Organization-level reports across hotels will be available here soon.",
@@ -1323,7 +1331,7 @@
   "USERS": {
     "TITLE": "User management",
     "SUBTITLE": "{{count}} users",
-    "PLAN_USAGE": "Plan Usage: {{activeCount}} / {{maxUsers}}",
+    "PLAN_USAGE": "Plan Usage: {{totalActiveUsers}} / {{maxUsers}}",
     "LIMIT_REACHED": "Limit reached",
     "LIMIT_TOOLTIP": "User limit reached. Please contact support to upgrade your plan.",
     "NEW": "New user",
@@ -1341,6 +1349,9 @@
     "COL_PHONE": "Phone",
     "COL_LAST_LOGIN": "Last login",
     "NEVER": "Never",
+    "CONFIRM_ACTIVATE_TITLE": "Activate user",
+    "CONFIRM_DEACTIVATE_TITLE": "Deactivate user",
+    "CONFIRM_TOGGLE_MESSAGE": "Are you sure you want to {{action}} this user?",
     "NEW_TITLE": "New user",
     "EDIT_TITLE": "Edit user",
     "EDIT_USER": "Edit user",
@@ -1372,11 +1383,13 @@
       "FINANCE_MANAGER": "Finance Manager",
       "AUDITOR": "Auditor",
       "SUPER_ADMIN": "Super Admin",
-      "SECURITY_MANAGER": "Security"
+      "SECURITY": "Security"
     },
     "MSG": {
       "CREATED": "User created.",
-      "UPDATED": "User updated."
+      "UPDATED": "User updated.",
+      "ACTIVATED": "User activated.",
+      "DEACTIVATED": "User deactivated."
     },
     "ERRORS": {
       "LOAD": "Failed to load users.",
@@ -1384,7 +1397,9 @@
       "NAME_EMAIL": "First name and email are required.",
       "EXISTING_USER_REQUIRED": "Search and select an existing platform user, or turn off linking to enter a new email.",
       "PASSWORD_REQUIRED": "Password is required for new users.",
-      "DEPARTMENT_REQUIRED": "Department is required for Department Manager role."
+      "DEPARTMENT_REQUIRED": "Department is required for Department Manager role.",
+      "STATUS_UPDATE": "Failed to update user status.",
+      "ROLE_UNIQUE_ACTIVE": "This role is already assigned to an active user in this hotel."
     }
   },
   "AUDIT_LOG": {

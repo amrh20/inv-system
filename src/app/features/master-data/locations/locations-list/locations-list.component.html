@@ -10,6 +10,7 @@
       </p>
     </div>
     <button
+      *appHasPermission="'BASIC_DATA_EDIT'"
       nz-button
       nzType="primary"
       type="button"
@@ -98,8 +99,7 @@
                       </div>
                     </div>
                   </div>
-                  <div class="location-card__actions">
-                   
+                  <div *appHasPermission="'BASIC_DATA_EDIT'" class="location-card__actions">
                     <button
                       nz-button
                       nzType="text"
@@ -131,7 +131,7 @@
                 @if (loc.description) {
                   <p class="location-card__desc">{{ loc.description }}</p>
                 }
-                <div class="location-card__manage">
+                <div *appHasPermission="'BASIC_DATA_EDIT'" class="location-card__manage">
                   <button
                     nz-button
                     nzType="default"

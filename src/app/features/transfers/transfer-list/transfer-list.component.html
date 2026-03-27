@@ -17,7 +17,7 @@
       >
         <lucide-icon [img]="lucideRefresh" [size]="16" [class.transfer-list__spin]="loading()" [strokeWidth]="2" />
       </button>
-      <button nz-button nzType="primary" type="button" (click)="goNew()">
+      <button *appHasPermission="'TRANSFER_CREATE'" nz-button nzType="primary" type="button" (click)="goNew()">
         <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
         {{ 'TRANSFER.LIST.NEW' | translate }}
       </button>
@@ -60,7 +60,7 @@
             [title]="'TRANSFER.LIST.EMPTY_TITLE' | translate"
             [message]="'TRANSFER.LIST.EMPTY_MSG' | translate"
           />
-          <button nz-button nzType="primary" type="button" (click)="goNew()">
+          <button *appHasPermission="'TRANSFER_CREATE'" nz-button nzType="primary" type="button" (click)="goNew()">
             {{ 'TRANSFER.LIST.CREATE_FIRST' | translate }}
           </button>
         </div>

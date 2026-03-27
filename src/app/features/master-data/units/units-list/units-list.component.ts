@@ -14,6 +14,7 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { EllipsisVertical, Pencil, Plus, Search } from 'lucide-angular';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { UnitFormComponent } from '../unit-form/unit-form.component';
 import type { UnitRow } from '../../models/unit.model';
@@ -36,6 +37,7 @@ import { UnitsService } from '../../services/units.service';
     LucideAngularModule,
     EmptyStateComponent,
     UnitFormComponent,
+    HasPermissionDirective,
   ],
   templateUrl: './units-list.component.html',
   styleUrl: './units-list.component.scss',

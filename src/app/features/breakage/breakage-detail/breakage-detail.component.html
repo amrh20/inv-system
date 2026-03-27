@@ -17,16 +17,37 @@
     <div class="brk-d__actions">
       <div class="brk-d__actions-left">
         @if (canSubmit()) {
-          <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="submit()">
+          <button
+            *appHasPermission="'BREAKAGE_CREATE'"
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="actionBusy()"
+            (click)="submit()"
+          >
             {{ 'BREAKAGE.DETAIL.SUBMIT' | translate }}
           </button>
         }
         @if (canApprove()) {
-          <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openApproval('APPROVE')">
+          <button
+            *appHasPermission="'BREAKAGE_APPROVE_REJECT'"
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="actionBusy()"
+            (click)="openApproval('APPROVE')"
+          >
             <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
             {{ 'BREAKAGE.DETAIL.APPROVE' | translate }}
           </button>
-          <button nz-button nzDanger type="button" [disabled]="actionBusy()" (click)="openApproval('REJECT')">
+          <button
+            *appHasPermission="'BREAKAGE_APPROVE_REJECT'"
+            nz-button
+            nzDanger
+            type="button"
+            [disabled]="actionBusy()"
+            (click)="openApproval('REJECT')"
+          >
             <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
             {{ 'BREAKAGE.DETAIL.REJECT' | translate }}
           </button>
@@ -41,7 +62,15 @@
           {{ 'BREAKAGE.DETAIL.EVIDENCE_JSON' | translate }}
         </button>
         @if (canVoid()) {
-          <button nz-button nzDanger nzType="default" type="button" [disabled]="actionBusy()" (click)="voidDoc()">
+          <button
+            *appHasPermission="'BREAKAGE_CREATE'"
+            nz-button
+            nzDanger
+            nzType="default"
+            type="button"
+            [disabled]="actionBusy()"
+            (click)="voidDoc()"
+          >
             <lucide-icon [img]="lucideTrash" [size]="14" [strokeWidth]="2" />
           </button>
         }

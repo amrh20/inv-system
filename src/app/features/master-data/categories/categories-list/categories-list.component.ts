@@ -1,5 +1,5 @@
 import { NgClass } from '@angular/common';
-import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
@@ -15,6 +15,8 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { EllipsisVertical, Pencil, Plus, Search, Trash2 } from 'lucide-angular';
+import { HasPermissionDirective } from '../../../../core/directives/has-permission.directive';
+import { AuthService } from '../../../../core/services/auth.service';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { ItemMasterLookupsService } from '../../../items/services/item-master-lookups.service';
@@ -43,16 +45,23 @@ import { CategoriesService } from '../../services/categories.service';
     EmptyStateComponent,
     CategoryFormComponent,
     SubcategoryFormComponent,
+    HasPermissionDirective,
   ],
   templateUrl: './categories-list.component.html',
   styleUrl: './categories-list.component.scss',
 })
 export class CategoriesListComponent implements OnInit {
   private readonly api = inject(CategoriesService);
+  private readonly auth = inject(AuthService);
   private readonly lookups = inject(ItemMasterLookupsService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
+
+  /** Main table column count; actions column hidden without `BASIC_DATA_EDIT`. */
+  protected readonly basicDataTableColspan = computed(() =>
+    this.auth.hasPermission('BASIC_DATA_EDIT') ? 7 : 6,
+  );
 
   readonly lucidePlus = Plus;
   readonly lucideSearch = Search;

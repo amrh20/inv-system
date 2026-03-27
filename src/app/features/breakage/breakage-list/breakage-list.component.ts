@@ -19,6 +19,7 @@ import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { AlertTriangle, Eye, Plus, RefreshCw, Search } from 'lucide-angular';
+import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import type { MovementStatus } from '../../../core/models/enums';
 import type { BreakageListRow } from '../models/breakage.model';
@@ -48,6 +49,7 @@ const TABS: Array<'ALL' | MovementStatus> = [
     NzTableModule,
     TranslatePipe,
     LucideAngularModule,
+    HasPermissionDirective,
     EmptyStateComponent,
     BreakageCreateModalComponent,
   ],

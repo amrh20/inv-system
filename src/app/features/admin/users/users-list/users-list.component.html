@@ -6,14 +6,21 @@
         {{ 'USERS.TITLE' | translate }}
         @if (maxUsers() !== null) {
           <nz-tag [nzColor]="usageTagColor()" class="admin-users__usage-tag">
-            {{ 'USERS.PLAN_USAGE' | translate: { activeCount: activeCount(), maxUsers: maxUsers() } }}
+            {{
+              'USERS.PLAN_USAGE'
+                | translate: { totalActiveUsers: totalActiveUsers(), maxUsers: maxUsers() }
+            }}
           </nz-tag>
         }
       </h1>
       <p class="admin-users__meta">{{ 'USERS.SUBTITLE' | translate: { count: total() } }}</p>
     </div>
     <div class="admin-users__create-wrap">
-      <span nz-tooltip [nzTooltipTitle]="createLimitReached() ? ('USERS.LIMIT_TOOLTIP' | translate) : null">
+      <span
+        class="admin-users__create-tooltip"
+        nz-tooltip
+        [nzTooltipTitle]="createLimitReached() ? ('USERS.LIMIT_TOOLTIP' | translate) : null"
+      >
         <button nz-button nzType="primary" type="button" [disabled]="createLimitReached()" (click)="openCreate()">
           <lucide-icon [img]="lucidePlus" [size]="16" />
           <span>{{ 'USERS.NEW' | translate }}</span>
@@ -147,9 +154,11 @@
             }
           </td>
           <td nzAlign="center">
-            <span class="status-badge" [class.status-active]="u.isActive" [class.status-inactive]="!u.isActive">
-              {{ (u.isActive ? 'COMMON.ACTIVE' : 'COMMON.INACTIVE') | translate }}
-            </span>
+            <app-status-toggle
+              [status]="u.isActive"
+              [disabled]="isStatusUpdating(u.id)"
+              (statusChange)="onToggleStatusClick(u)"
+            />
           </td>
           <td>
             @if (u.lastLoginAt) {

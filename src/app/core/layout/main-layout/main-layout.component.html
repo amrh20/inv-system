@@ -215,16 +215,17 @@
                     <span class="tenant-switcher__menu-info">
                       <span>{{ membership.tenantName }}</span>
                     </span>
-                    @if (isActiveTenant(membership)) {
-                      <span class="tenant-switcher__active">
-                        <lucide-icon [img]="lucideCheck" [size]="14" />
-                        {{ 'COMMON.ACTIVE' | translate }}
-                      </span>
-                    } @else {
+                    <span class="tenant-switcher__menu-meta">
                       <span class="tenant-switcher__role">{{
-                      ('COMMON.ROLES.' + membership.role) | translate
-                    }}</span>
-                    }
+                        ('COMMON.ROLES.' + membership.role) | translate
+                      }}</span>
+                      @if (isActiveTenant(membership)) {
+                        <span class="tenant-switcher__active">
+                          <lucide-icon [img]="lucideCheck" [size]="14" />
+                          {{ 'COMMON.ACTIVE' | translate }}
+                        </span>
+                      }
+                    </span>
                   </span>
                 </li>
               }

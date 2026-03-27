@@ -62,6 +62,7 @@ export interface AuthResponse {
   user?: User;
   accessToken?: string;
   refreshToken?: string;
+  permissions?: string[];
   requiresTenantSelection?: boolean;
   memberships?: TenantMembership[];
 }

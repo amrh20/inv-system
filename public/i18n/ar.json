@@ -2,6 +2,12 @@
   "APP": {
     "INVENTORY_MANAGEMENT": "إدارة المخزون"
   },
+  "FORBIDDEN": {
+    "PAGE_TITLE": "رفض الوصول",
+    "CODE": "403",
+    "MESSAGE": "تم رفض الوصول: ليست لديك صلاحية لعرض هذه الصفحة.",
+    "BACK_TO_DASHBOARD": "العودة إلى لوحة التحكم"
+  },
   "LAYOUT": {
     "SWITCH_TO_LIGHT_MODE": "التبديل إلى الوضع الفاتح",
     "SWITCH_TO_DARK_MODE": "التبديل إلى الوضع الداكن",
@@ -424,6 +430,8 @@
   "DASHBOARD": {
     "PLACEHOLDER": "هذه شاشة مؤقتة - ستوضع لوحة المخزون هنا.",
     "WELCOME": "مرحباً، ",
+    "WELCOME_BACK": "مرحباً بعودتك، {{name}}!",
+    "WELCOME_NAV_HINT": "يُرجى استخدام الشريط الجانبي للتنقل بين وحدات النظام.",
     "UNAVAILABLE": "لوحة التحكم غير متاحة",
     "ORG_COMING_SOON_TITLE": "قريباً",
     "ORG_COMING_SOON_MESSAGE": "ستتوفر هنا قريباً تقارير على مستوى المؤسسة بين الفنادق.",
@@ -1315,7 +1323,7 @@
   "USERS": {
     "TITLE": "إدارة المستخدمين",
     "SUBTITLE": "{{count}} مستخدم",
-    "PLAN_USAGE": "استهلاك الخطة: {{activeCount}} / {{maxUsers}}",
+    "PLAN_USAGE": "استهلاك الخطة: {{totalActiveUsers}} / {{maxUsers}}",
     "LIMIT_REACHED": "تم الوصول إلى الحد",
     "LIMIT_TOOLTIP": "تم الوصول إلى حد المستخدمين. يرجى التواصل مع الدعم لترقية الخطة.",
     "NEW": "مستخدم جديد",
@@ -1333,6 +1341,9 @@
     "COL_PHONE": "الهاتف",
     "COL_LAST_LOGIN": "آخر دخول",
     "NEVER": "أبداً",
+    "CONFIRM_ACTIVATE_TITLE": "تفعيل المستخدم",
+    "CONFIRM_DEACTIVATE_TITLE": "تعطيل المستخدم",
+    "CONFIRM_TOGGLE_MESSAGE": "هل أنت متأكد أنك تريد {{action}} هذا المستخدم؟",
     "NEW_TITLE": "مستخدم جديد",
     "EDIT_TITLE": "تعديل مستخدم",
     "EDIT_USER": "تعديل مستخدم",
@@ -1364,10 +1375,13 @@
       "FINANCE_MANAGER": "المالية",
       "AUDITOR": "مدقق",
       "SUPER_ADMIN": "مسؤول عام",
-      "SECURITY_MANAGER": "الأمن"    },
+      "SECURITY": "الأمن"
+    },
     "MSG": {
       "CREATED": "تم إنشاء المستخدم.",
-      "UPDATED": "تم تحديث المستخدم."
+      "UPDATED": "تم تحديث المستخدم.",
+      "ACTIVATED": "تم تفعيل المستخدم.",
+      "DEACTIVATED": "تم تعطيل المستخدم."
     },
     "ERRORS": {
       "LOAD": "فشل تحميل المستخدمين.",
@@ -1375,7 +1389,9 @@
       "NAME_EMAIL": "الاسم الأول والبريد مطلوبان.",
       "EXISTING_USER_REQUIRED": "ابحث واختر مستخدمًا موجودًا على المنصة، أو ألغِ الربط لإدخال بريد جديد.",
       "PASSWORD_REQUIRED": "كلمة المرور مطلوبة للمستخدمين الجدد.",
-      "DEPARTMENT_REQUIRED": "القسم مطلوب لدور مدير القسم."
+      "DEPARTMENT_REQUIRED": "القسم مطلوب لدور مدير القسم.",
+      "STATUS_UPDATE": "فشل تحديث حالة المستخدم.",
+      "ROLE_UNIQUE_ACTIVE": "هذا الدور مُعيَّن بالفعل لمستخدم نشط في هذا الفندق."
     }
   },
   "AUDIT_LOG": {
