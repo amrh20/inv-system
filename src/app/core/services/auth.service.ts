@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { tap, catchError, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import type { User, ApiResponse, AuthResponse, LoginApiEnvelope, LoginCredentials } from '../models';
+import { SubscriptionNoticeService } from './subscription-notice.service';
 
 const AUTH_STORAGE_KEY = 'ose-auth';
 
@@ -25,6 +26,7 @@ export interface CurrentTenant {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly subscriptionNotice = inject(SubscriptionNoticeService);
   private readonly apiUrl = environment.apiUrl;
 
   private readonly _currentUser = signal<User | null>(null);
@@ -72,6 +74,9 @@ export class AuthService {
               permissions: this.normalizePermissions(responsePermissions ?? rawUser.permissions),
               memberships: rawUser.memberships ?? credentials.memberships ?? [],
             };
+            if (user.role !== 'SUPER_ADMIN' && user.tenant?.subStatus === 'EXPIRED') {
+              return;
+            }
             this.setAuth({
               user,
               accessToken,
@@ -209,6 +214,7 @@ export class AuthService {
     this._currentTenant.set(null);
     this._isAuthenticated.set(false);
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    this.subscriptionNotice.resetSession();
   }
 
   hasRole(...roles: string[]): boolean {

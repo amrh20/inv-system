@@ -8,6 +8,10 @@
     "MESSAGE": "تم رفض الوصول: ليست لديك صلاحية لعرض هذه الصفحة.",
     "BACK_TO_DASHBOARD": "العودة إلى لوحة التحكم"
   },
+  "SUBSCRIPTION": {
+    "EXPIRED_TITLE": "انتهى الاشتراك",
+    "EXPIRED_MESSAGE": "انتهت صلاحية اشتراكك. يرجى التجديد للمتابعة."
+  },
   "LAYOUT": {
     "SWITCH_TO_LIGHT_MODE": "التبديل إلى الوضع الفاتح",
     "SWITCH_TO_DARK_MODE": "التبديل إلى الوضع الداكن",

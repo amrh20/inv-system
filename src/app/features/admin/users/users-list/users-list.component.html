@@ -313,13 +313,15 @@
             class="admin-users__full-width"
             [nzPlaceHolder]="'USERS.FORM.DEPARTMENT_PLACEHOLDER' | translate"
             [nzNotFoundContent]="'USERS.FORM.NO_DEPARTMENTS' | translate"
+            [nzLoading]="departmentsLoading()"
             nzAllowClear
+            (nzOpenChange)="onDepartmentSelectOpen($event)"
           >
             @for (dept of departments(); track dept.id) {
               <nz-option [nzValue]="dept.id" [nzLabel]="dept.name" />
             }
           </nz-select>
-          @if (!departments().length) {
+          @if (!departments().length && !departmentsLoading()) {
             <div class="admin-users__department-empty">{{ 'USERS.FORM.CREATE_DEPARTMENTS_FIRST' | translate }}</div>
           }
         </div>

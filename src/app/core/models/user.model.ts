@@ -1,4 +1,4 @@
-import type { UserRole } from './enums';
+import type { SubscriptionStatus, UserRole } from './enums';
 
 /**
  * User model (API response - excludes passwordHash)
@@ -39,6 +39,8 @@ export interface Tenant {
   name: string;
   slug: string;
   subscriptionTier: string;
+  /** Present when API returns tenant subscription lifecycle (e.g. login / me). */
+  subStatus?: SubscriptionStatus;
   logoUrl: string | null;
   address: string | null;
   phone: string | null;

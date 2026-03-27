@@ -22,6 +22,11 @@ import {
   type LucideIconData,
 } from 'lucide-angular';
 import { AuthService } from '../../core/services/auth.service';
+import { SubscriptionNoticeService } from '../../core/services/subscription-notice.service';
+import {
+  getSubscriptionExpiredMessage,
+  isSubscriptionExpiredHttpError,
+} from '../../core/utils/subscription-http-error.util';
 import { DashboardService } from './services/dashboard.service';
 import type {
   BranchSummary,
@@ -62,6 +67,7 @@ const fmtSARFull = (v: number | undefined | null) =>
 export class DashboardComponent implements OnInit {
   private readonly dashboardApi = inject(DashboardService);
   private readonly auth = inject(AuthService);
+  private readonly subscriptionNotice = inject(SubscriptionNoticeService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -80,6 +86,8 @@ export class DashboardComponent implements OnInit {
   readonly data = signal<DashboardSummary | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  /** Subscription expired: show soft empty state; modal handled globally / on first API error. */
+  readonly subscriptionBlocked = signal(false);
   readonly responseTimeMs = signal<number | null>(null);
   readonly currentUser = this.auth.currentUser;
 
@@ -277,6 +285,15 @@ export class DashboardComponent implements OnInit {
           this.orgLoading.set(false);
         },
         error: (err) => {
+          if (isSubscriptionExpiredHttpError(err)) {
+            this.orgError.set(null);
+            this.organizationSummary.set(null);
+            this.branchSummaries.set([]);
+            this.orgLoading.set(false);
+            this.subscriptionBlocked.set(true);
+            this.subscriptionNotice.showExpiredNotice(getSubscriptionExpiredMessage(err));
+            return;
+          }
           this.orgError.set(
             err?.error?.message ?? err?.message ?? 'DASHBOARD.ORG_ERROR_LOAD',
           );
@@ -326,6 +343,14 @@ export class DashboardComponent implements OnInit {
           this.loading.set(false);
         },
         error: (err) => {
+          if (isSubscriptionExpiredHttpError(err)) {
+            this.error.set(null);
+            this.data.set(null);
+            this.loading.set(false);
+            this.subscriptionBlocked.set(true);
+            this.subscriptionNotice.showExpiredNotice(getSubscriptionExpiredMessage(err));
+            return;
+          }
           this.error.set(
             err?.error?.message ?? err?.message ?? 'Failed to load dashboard',
           );

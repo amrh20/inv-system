@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -11,11 +12,19 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule, Mail, Lock, Languages, Eye, EyeOff } from 'lucide-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { LanguageService } from '../../../core/services/language.service';
+import { SubscriptionNoticeService } from '../../../core/services/subscription-notice.service';
 import {
   normalizeTenantMembershipsFromLogin,
   type LoginCredentials,
   type TenantMembership,
+  type User,
 } from '../../../core/models';
+import {
+  getSubscriptionExpiredMessage,
+  getSubscriptionExpiredMessageFromApiEnvelope,
+  isSubscriptionExpiredApiEnvelope,
+  isSubscriptionExpiredHttpError,
+} from '../../../core/utils/subscription-http-error.util';
 
 @Component({
   selector: 'app-login',
@@ -55,6 +64,7 @@ export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly translate = inject(TranslateService);
   private readonly modal = inject(NzModalService);
+  private readonly subscriptionNotice = inject(SubscriptionNoticeService);
   readonly language = inject(LanguageService);
 
   readonly loading = signal(false);
@@ -126,7 +136,22 @@ export class LoginComponent implements OnInit {
         }
 
         if (res?.success && data?.user) {
+          if (data.user.tenant?.subStatus === 'EXPIRED' && !this.isSuperAdmin(data.user)) {
+            this.auth.clearAuth();
+            this.subscriptionNotice.showExpiredNotice(null);
+            this.loading.set(false);
+            return;
+          }
           this.navigateAfterLogin();
+          return;
+        }
+
+        if (isSubscriptionExpiredApiEnvelope(res)) {
+          this.auth.clearAuth();
+          this.subscriptionNotice.showExpiredNotice(
+            getSubscriptionExpiredMessageFromApiEnvelope(res),
+          );
+          this.loading.set(false);
           return;
         }
 
@@ -172,6 +197,12 @@ export class LoginComponent implements OnInit {
           });
           return;
         }
+        if (err instanceof HttpErrorResponse && isSubscriptionExpiredHttpError(err)) {
+          this.error.set('');
+          this.auth.clearAuth();
+          this.subscriptionNotice.showExpiredNotice(getSubscriptionExpiredMessage(err));
+          return;
+        }
         const errorData = this.coerceErrorBody(err?.error);
         this.error.set(
           errorData?.message ?? this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS')
@@ -183,17 +214,21 @@ export class LoginComponent implements OnInit {
 
   private navigateAfterLogin(): void {
     if (this.auth.currentUser()?.role === 'SUPER_ADMIN') {
-      this.router.navigate(['/admin/tenants'], { replaceUrl: true });
+      void this.router.navigate(['/admin/tenants'], { replaceUrl: true });
       return;
     }
     const target = LoginComponent.LOGIN_REDIRECTS.find((route) =>
       !route.permission || this.auth.hasPermission(route.permission),
     )?.path;
     if (target) {
-      this.router.navigate([target], { replaceUrl: true });
+      void this.router.navigate([target], { replaceUrl: true });
       return;
     }
-    this.router.navigate(['/dashboard'], { replaceUrl: true });
+    void this.router.navigate(['/dashboard'], { replaceUrl: true });
+  }
+
+  private isSuperAdmin(user: User): boolean {
+    return user.role === 'SUPER_ADMIN';
   }
 
   private showAccountInactiveModal(apiMessage?: string): void {
@@ -234,7 +269,20 @@ export class LoginComponent implements OnInit {
             return;
           }
           if (res?.success && res.data?.user) {
+            const user = res.data.user;
+            if (user.tenant?.subStatus === 'EXPIRED' && !this.isSuperAdmin(user)) {
+              this.auth.clearAuth();
+              this.subscriptionNotice.showExpiredNotice(null);
+              return;
+            }
             this.navigateAfterLogin();
+            return;
+          }
+          if (isSubscriptionExpiredApiEnvelope(res)) {
+            this.auth.clearAuth();
+            this.subscriptionNotice.showExpiredNotice(
+              getSubscriptionExpiredMessageFromApiEnvelope(res),
+            );
             return;
           }
           this.error.set(res?.message?.trim() || this.translate.instant('LOGIN.ERROR_INVALID_CREDENTIALS'));
@@ -252,6 +300,12 @@ export class LoginComponent implements OnInit {
               nzKeyboard: false,
               nzOkText: this.translate.instant('COMMON.OK'),
             });
+            return;
+          }
+          if (err instanceof HttpErrorResponse && isSubscriptionExpiredHttpError(err)) {
+            this.error.set('');
+            this.auth.clearAuth();
+            this.subscriptionNotice.showExpiredNotice(getSubscriptionExpiredMessage(err));
             return;
           }
           const errorData = this.coerceErrorBody(err?.error);

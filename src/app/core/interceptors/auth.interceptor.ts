@@ -5,6 +5,11 @@ import { Router } from '@angular/router';
 import { catchError, switchMap, throwError } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 import { AuthService } from '../services/auth.service';
+import { SubscriptionNoticeService } from '../services/subscription-notice.service';
+import {
+  getSubscriptionExpiredMessage,
+  isSubscriptionError,
+} from '../utils/subscription-http-error.util';
 
 const isAuthEndpoint = (url: string) =>
   url.includes('/auth/login') || url.includes('/auth/refresh');
@@ -39,6 +44,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(cloned).pipe(
     catchError((error: HttpErrorResponse) => {
       const errorCode = error.error?.error ?? error.error?.code;
+
+      if (isSubscriptionError(error)) {
+        const notice = injector.get(SubscriptionNoticeService);
+        // clearAuth first so resetSession() runs before showExpiredNotice — avoids a second
+        // modal when feature subscribers (e.g. dashboard) also handle the same error.
+        authService.clearAuth();
+        notice.showExpiredNotice(getSubscriptionExpiredMessage(error));
+        void router.navigate(['/login'], { replaceUrl: true });
+        return throwError(() => error);
+      }
 
       if (error.status === 403) {
         if (errorCode === 'ORGANIZATION_SUSPENDED' || errorCode === 'ACCOUNT_SUSPENDED') {

@@ -8,6 +8,10 @@
     "MESSAGE": "Access Denied: You don't have permission to view this page.",
     "BACK_TO_DASHBOARD": "Back to Dashboard"
   },
+  "SUBSCRIPTION": {
+    "EXPIRED_TITLE": "Subscription expired",
+    "EXPIRED_MESSAGE": "Your subscription has expired. Please renew to continue."
+  },
   "LAYOUT": {
     "SWITCH_TO_LIGHT_MODE": "Switch to light mode",
     "SWITCH_TO_DARK_MODE": "Switch to dark mode",

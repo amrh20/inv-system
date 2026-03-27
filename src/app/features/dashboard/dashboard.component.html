@@ -1,5 +1,12 @@
 <div class="dashboard-page">
-  @if (isParentOrganizationContext()) {
+  @if (subscriptionBlocked()) {
+    <div class="dashboard-page__subscription-soft px-6 py-10">
+      <app-empty-state
+        [title]="'SUBSCRIPTION.EXPIRED_TITLE' | translate"
+        [message]="'SUBSCRIPTION.EXPIRED_MESSAGE' | translate"
+      />
+    </div>
+  } @else if (isParentOrganizationContext()) {
     <ng-container *ngIf="isAdmin">
     <div>
       @if (orgError(); as orgErr) {

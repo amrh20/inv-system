@@ -128,6 +128,8 @@ export class UsersListComponent implements OnInit {
   readonly pageIndex = signal(1);
   readonly pageSize = signal(20);
   readonly departments = signal<DepartmentRow[]>([]);
+  readonly departmentsLoading = signal(false);
+  private departmentLoadCompleteCallbacks: (() => void)[] = [];
 
   readonly modalOpen = signal(false);
   readonly saving = signal(false);
@@ -196,7 +198,6 @@ export class UsersListComponent implements OnInit {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
-    this.loadDepartments();
     this.load();
   }
 
@@ -264,11 +265,17 @@ export class UsersListComponent implements OnInit {
     this.formEmail = row.email;
     this.formPassword = '';
     this.formRole = row.role;
-    this.formDepartmentId = this.resolveDepartmentId(row);
+    const hadDepartmentId = !!row.departmentId;
+    this.formDepartmentId = row.departmentId ?? '';
     this.formPhone = row.phone ?? '';
     this.formActive = row.isActive !== false;
     this.formError = '';
     this.modalOpen.set(true);
+    this.loadDepartments(() => {
+      if (!hadDepartmentId && row.department?.trim()) {
+        this.formDepartmentId = this.resolveDepartmentId(row);
+      }
+    });
   }
 
   onModalVisible(v: boolean): void {
@@ -550,10 +557,33 @@ export class UsersListComponent implements OnInit {
     this.statusUpdatingIds.set(current.filter((id) => id !== userId));
   }
 
-  private loadDepartments(): void {
+  onDepartmentSelectOpen(open: boolean): void {
+    if (open) {
+      this.loadDepartments();
+    }
+  }
+
+  private loadDepartments(onComplete?: () => void): void {
+    if (onComplete) {
+      this.departmentLoadCompleteCallbacks.push(onComplete);
+    }
+    if (this.departmentsLoading()) {
+      return;
+    }
+    this.departmentsLoading.set(true);
     this.departmentsApi
       .list({ take: 200, isActive: true })
-      .pipe(first())
+      .pipe(
+        first(),
+        finalize(() => {
+          this.departmentsLoading.set(false);
+          const callbacks = [...this.departmentLoadCompleteCallbacks];
+          this.departmentLoadCompleteCallbacks = [];
+          for (const cb of callbacks) {
+            cb();
+          }
+        }),
+      )
       .subscribe({
         next: (res) => this.departments.set(res.departments ?? []),
         error: () => this.departments.set([]),

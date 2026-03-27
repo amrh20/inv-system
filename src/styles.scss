@@ -221,3 +221,17 @@ textarea.ant-input {
   max-height: 60vh;
   overflow: auto;
 }
+
+/*
+ * NG-ZORRO Modal + Angular CDK: the mask (.cdk-overlay-backdrop.ant-modal-mask) is a sibling of
+ * .cdk-global-overlay-wrapper. Ant Design sets .ant-modal-mask and .ant-modal-wrap to z-index 1000,
+ * so paint order can put the dimmer on top of the dialog. Force wrapper above mask (unlayered + !important
+ * wins over @layer cdk-overlay and theme rules).
+ */
+.cdk-overlay-container > .cdk-overlay-backdrop.ant-modal-mask {
+  z-index: 1990 !important;
+}
+
+.cdk-overlay-container > .cdk-global-overlay-wrapper:has(.ant-modal-wrap) {
+  z-index: 2000 !important;
+}
