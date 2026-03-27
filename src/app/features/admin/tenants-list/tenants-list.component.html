@@ -90,8 +90,6 @@
           <th>{{ 'SUPER_ADMIN.COL_PLAN' | translate }}</th>
           <th>{{ 'COMMON.STATUS' | translate }}</th>
           <th>{{ 'COMMON.BRANCHES' | translate }}</th>
-          <th>{{ 'SUPER_ADMIN.COL_USERS' | translate }}</th>
-          <th>{{ 'SUPER_ADMIN.COL_LICENSE' | translate }}</th>
           <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
         </tr>
       </thead>
@@ -150,27 +148,6 @@
             <td>
               <nz-tag>{{ t.branches?.length }} / {{ t.maxBranches }}</nz-tag>
             </td>
-            <td>
-              <div class="tenants-page__users-cell">
-                <lucide-icon [img]="lucideUsers" [size]="14" />
-                <span>{{ userCount(t) }} / {{ t.maxUsers }}</span>
-                <nz-progress
-                  [nzPercent]="userPercent(t)"
-                  nzSize="small"
-                  [nzShowInfo]="false"
-                />
-              </div>
-            </td>
-            <td class="tenants-page__license-cell">
-              <div class="tenants-page__license-row">
-                <span class="tenants-page__license-label">From:</span>
-                <span>{{ formatDate(t.licenseStartDate) }}</span>
-              </div>
-              <div class="tenants-page__license-row">
-                <span class="tenants-page__license-label">Until:</span>
-                <span>{{ licenseEndDisplay(t) }}</span>
-              </div>
-            </td>
             <td nzAlign="right">
               <button
                 nz-button
@@ -191,8 +168,12 @@
                     </li>
                   }
                   @if (isOrganizationRow(t)) {
+                    <li nz-menu-item (click)="openEditOrganization(t)">
+                      <lucide-icon [img]="lucidePencil" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'SUPER_ADMIN.ACTION_EDIT_ORGANIZATION' | translate }}</span>
+                    </li>
                     <li nz-menu-item (click)="openAddHotelUnderOrg(t)">
-                      <lucide-icon [img]="lucidePlus" [size]="14" />
+                      <lucide-icon [img]="lucidePlus" [size]="14" [strokeWidth]="2" />
                       <span>{{ 'SUPER_ADMIN.ACTION_ADD_NEW_HOTEL' | translate }}</span>
                     </li>
                   }
@@ -222,7 +203,7 @@
             </td>
           </tr>
           <tr [nzExpand]="isExpanded(t.id)">
-            <td [attr.colspan]="6">
+            <td [attr.colspan]="5">
               <div class="tenants-page__branches-wrap">
                 <nz-table
                   class="tenants-page__branch-table"
@@ -382,4 +363,10 @@
   [visible]="!!licenseTenant()"
   [tenant]="licenseTenant()"
   (saved)="onLicenseSaved()"
+/>
+<app-edit-organization-modal
+  [visible]="!!editOrganizationTenant()"
+  [tenant]="editOrganizationTenant()"
+  (saved)="onEditOrganizationSaved()"
+  (cancelled)="onEditOrganizationCancelled()"
 />

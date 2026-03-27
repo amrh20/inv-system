@@ -1,0 +1,172 @@
+<nz-modal
+  [nzVisible]="visible()"
+  (nzOnCancel)="dismiss()"
+  [nzTitle]="modalTitle"
+  [nzMaskClosable]="false"
+  [nzFooter]="footerTpl"
+  [nzWidth]="640"
+>
+  <ng-container *nzModalContent>
+    @if (formError) {
+      <nz-alert
+        nzType="error"
+        [nzMessage]="getErrorMessage()"
+        nzShowIcon
+        class="edit-organization-modal__alert"
+      />
+    }
+
+    <nz-spin [nzSpinning]="detailLoading()">
+      <form nz-form nzLayout="vertical" [formGroup]="form">
+        <div class="edit-organization-modal__section">
+          <h4 class="edit-organization-modal__section-title">
+            <lucide-icon [img]="lucideBuilding2" [size]="14" [strokeWidth]="2" />
+            {{ 'SUPER_ADMIN.EDIT_ORG_SECTION_ORGANIZATION' | translate }}
+          </h4>
+          <div formGroupName="organization" nz-row [nzGutter]="16">
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>{{ 'SUPER_ADMIN.WIZARD_ORG_NAME' | translate }}</nz-form-label>
+                <nz-form-control [nzErrorTip]="orgNameErrorTpl">
+                  <ng-template #orgNameErrorTpl let-control>
+                    @if (control.hasError('required')) {
+                      <span>{{ 'SUPER_ADMIN.EDIT_ORG_FIELD_REQUIRED' | translate }}</span>
+                    }
+                  </ng-template>
+                  <input
+                    nz-input
+                    formControlName="name"
+                    [placeholder]="orgNamePlaceholder()"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_SLUG' | translate }}</nz-form-label>
+                <nz-form-control [nzErrorTip]="slugErrorTpl">
+                  <ng-template #slugErrorTpl let-control>
+                    @if (control.hasError('required')) {
+                      <span>{{ 'SUPER_ADMIN.EDIT_ORG_FIELD_REQUIRED' | translate }}</span>
+                    }
+                  </ng-template>
+                  <input
+                    nz-input
+                    formControlName="slug"
+                    [placeholder]="orgSlugPlaceholder()"
+                    class="!font-mono"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_MAX_BRANCHES' | translate }}</nz-form-label>
+                <nz-form-control [nzErrorTip]="maxBrErrorTpl">
+                  <ng-template #maxBrErrorTpl let-control>
+                    @if (control.hasError('required') || control.hasError('min')) {
+                      <span>{{ 'SUPER_ADMIN.EDIT_ORG_MAX_BRANCHES_INVALID' | translate }}</span>
+                    }
+                  </ng-template>
+                  <nz-input-number
+                    formControlName="maxBranches"
+                    [nzMin]="1"
+                    [nzStep]="1"
+                    class="edit-organization-modal__full-width"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+        </div>
+
+        <div class="edit-organization-modal__section">
+          <h4 class="edit-organization-modal__section-title">
+            <lucide-icon [img]="lucideUser" [size]="14" [strokeWidth]="2" />
+            {{ 'SUPER_ADMIN.EDIT_ORG_SECTION_MANAGER' | translate }}
+          </h4>
+          <p class="edit-organization-modal__hint">{{ 'SUPER_ADMIN.EDIT_ORG_MANAGER_HINT' | translate }}</p>
+          <div formGroupName="manager" nz-row [nzGutter]="16">
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ADMIN_FIRST_NAME' | translate }}</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    formControlName="firstName"
+                    [placeholder]="managerFirstNamePlaceholder()"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ADMIN_LAST_NAME' | translate }}</nz-form-label>
+                <nz-form-control>
+                  <input
+                    nz-input
+                    formControlName="lastName"
+                    [placeholder]="managerLastNamePlaceholder()"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ADMIN_EMAIL' | translate }}</nz-form-label>
+                <nz-form-control [nzErrorTip]="emailErrorTpl">
+                  <ng-template #emailErrorTpl let-control>
+                    @if (control.hasError('email')) {
+                      <span>{{ 'SUPER_ADMIN.EDIT_ORG_EMAIL_INVALID' | translate }}</span>
+                    }
+                  </ng-template>
+                  <input
+                    nz-input
+                    type="email"
+                    formControlName="email"
+                    [placeholder]="managerEmailPlaceholder()"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col [nzSpan]="12">
+              <nz-form-item>
+                <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ADMIN_PASSWORD' | translate }}</nz-form-label>
+                <nz-form-control [nzExtra]="pwdExtra" [nzErrorTip]="pwdErrorTpl">
+                  <ng-template #pwdErrorTpl let-control>
+                    @if (control.hasError('passwordMin')) {
+                      <span>{{ 'SUPER_ADMIN.CREATE_PASSWORD_MIN' | translate }}</span>
+                    }
+                  </ng-template>
+                  <ng-template #pwdExtra>
+                    <span class="edit-organization-modal__hint">{{ 'SUPER_ADMIN.EDIT_ORG_PASSWORD_OPTIONAL' | translate }}</span>
+                  </ng-template>
+                  <input
+                    nz-input
+                    type="password"
+                    autocomplete="new-password"
+                    formControlName="password"
+                    [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_PASSWORD_PLACEHOLDER' | translate"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+          </div>
+        </div>
+      </form>
+    </nz-spin>
+  </ng-container>
+  <ng-template #footerTpl>
+    <button nz-button type="button" (click)="dismiss()">{{ 'COMMON.CANCEL' | translate }}</button>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      [nzLoading]="saving()"
+      [disabled]="detailLoading()"
+      (click)="submit()"
+    >
+      {{ 'COMMON.SAVE' | translate }}
+    </button>
+  </ng-template>
+</nz-modal>

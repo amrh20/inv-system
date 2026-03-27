@@ -29,6 +29,7 @@ import {
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import { TranslateService } from '@ngx-translate/core';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { EditOrganizationModalComponent } from '../edit-organization-modal/edit-organization-modal.component';
 import { TenantFormModalComponent } from '../tenant-form-modal/tenant-form-modal.component';
 import { LicenseManagementModalComponent } from '../license-management-modal/license-management-modal.component';
 import type { TenantRow } from '../models/tenant.model';
@@ -52,6 +53,7 @@ import { TenantsService } from '../services/tenants.service';
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
+    EditOrganizationModalComponent,
     TenantFormModalComponent,
     LicenseManagementModalComponent,
   ],
@@ -94,6 +96,8 @@ export class TenantsListComponent implements OnInit {
   /** When set, create modal opens in “add hotel under this org” mode (wizard step 2). */
   readonly branchParentForCreate = signal<TenantRow | null>(null);
   readonly editTenant = signal<TenantRow | null>(null);
+  /** Organization row: edit org + manager (reactive form modal). */
+  readonly editOrganizationTenant = signal<TenantRow | null>(null);
   readonly licenseTenant = signal<TenantRow | null>(null);
 
   ngOnInit(): void {
@@ -363,6 +367,10 @@ export class TenantsListComponent implements OnInit {
     this.editTenant.set(t);
   }
 
+  openEditOrganization(t: TenantRow): void {
+    this.editOrganizationTenant.set(t);
+  }
+
   openLicense(t: TenantRow): void {
     this.licenseTenant.set(t);
   }
@@ -376,6 +384,15 @@ export class TenantsListComponent implements OnInit {
   onEditSaved(): void {
     this.editTenant.set(null);
     this.load();
+  }
+
+  onEditOrganizationSaved(): void {
+    this.editOrganizationTenant.set(null);
+    this.load();
+  }
+
+  onEditOrganizationCancelled(): void {
+    this.editOrganizationTenant.set(null);
   }
 
   onLicenseSaved(): void {

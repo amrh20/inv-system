@@ -11,6 +11,12 @@ export interface TenantRow {
   slug: string;
   parentId?: string | null;
   parentName?: string | null;
+  /** Primary org manager profile (GET tenant detail; used for edit organization). */
+  organizationManager?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+  } | null;
   /** Org-level manager email (list/detail; used for “add hotel under org”). */
   managerEmail?: string | null;
   /** Some APIs expose the org manager email under this key. */

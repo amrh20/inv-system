@@ -90,6 +90,21 @@ export interface TenantLicenseUpdatePayload {
   maxUsers?: number;
 }
 
+/** PATCH /v1/organizations/:id — only include keys that changed (partial organization / manager). */
+export interface TenantOrganizationManagerUpdatePayload {
+  organization?: Partial<{
+    name: string;
+    slug: string;
+    maxBranches: number;
+  }>;
+  manager?: Partial<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+  }>;
+}
+
 export interface TenantsListParams {
   page: number;
   limit: number;
@@ -111,6 +126,8 @@ export class TenantsService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/super-admin/tenants`;
   private readonly adminBase = `${environment.apiUrl}/admin/tenants`;
+  /** Organization update (edit org + manager) — v1 API, not super-admin tenants. */
+  private readonly organizationsV1Base = `${environment.apiUrl}/v1/organizations`;
 
   create(payload: TenantCreatePayload): Observable<TenantRow> {
     return this.http.post<ApiResponse<TenantRow>>(this.base, payload).pipe(
@@ -233,6 +250,14 @@ export class TenantsService {
     return this.http
       .put<ApiResponse<TenantRow>>(`${this.base}/${id}`, data)
       .pipe(map((res) => res.data));
+  }
+
+  updateOrganizationAndManager(
+    id: string,
+    data: TenantOrganizationManagerUpdatePayload,
+  ): Observable<TenantRow> {
+    const url = `${this.organizationsV1Base}/${id}`;
+    return this.http.patch<ApiResponse<TenantRow>>(url, data).pipe(map((res) => res.data as TenantRow));
   }
 
   updateLicense(id: string, licenseData: TenantLicenseUpdatePayload): Observable<TenantRow> {
