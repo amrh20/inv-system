@@ -1,0 +1,35 @@
+@if (subscriptionNotice.expiredPayload(); as data) {
+  <div
+    class="inv-sub-expired"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="inv-sub-expired-title"
+  >
+    <div class="inv-sub-expired__backdrop" (click)="onBackdropClick()" aria-hidden="true"></div>
+    <div class="inv-sub-expired__card" (click)="$event.stopPropagation()">
+      <div class="inv-sub-expired__main">
+        <lucide-icon
+          [img]="lucideAlertTriangle"
+          [size]="22"
+          [strokeWidth]="2"
+          class="inv-sub-expired__icon"
+        />
+        <div class="inv-sub-expired__copy">
+          <h2 id="inv-sub-expired-title" class="inv-sub-expired__title">
+            {{ 'SUBSCRIPTION.EXPIRED_TITLE' | translate }}
+          </h2>
+          @if (data.customMessage) {
+            <p class="inv-sub-expired__text">{{ data.customMessage }}</p>
+          } @else {
+            <p class="inv-sub-expired__text">{{ 'SUBSCRIPTION.EXPIRED_MESSAGE' | translate }}</p>
+          }
+        </div>
+      </div>
+      <div class="inv-sub-expired__footer">
+        <button nz-button nzType="primary" type="button" class="inv-sub-expired__ok" (click)="close()">
+          {{ 'COMMON.OK' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

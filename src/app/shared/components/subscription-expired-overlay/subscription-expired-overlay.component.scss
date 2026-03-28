@@ -1,0 +1,80 @@
+/* Root-level overlay: avoids CDK modal mask stacking bugs on login and elsewhere. */
+:host {
+  display: contents;
+}
+
+.inv-sub-expired {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: auto;
+}
+
+.inv-sub-expired__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.inv-sub-expired__card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 416px;
+  border-radius: var(--radius-brand, 6px);
+  background: #fff;
+  box-shadow:
+    0 3px 6px -4px rgba(0, 0, 0, 0.12),
+    0 6px 16px 0 rgba(0, 0, 0, 0.08),
+    0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  pointer-events: auto;
+}
+
+.inv-sub-expired__main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1.5rem 1.5rem 0.5rem;
+}
+
+.inv-sub-expired__icon {
+  flex-shrink: 0;
+  color: var(--color-brand-warning, #faad14);
+  margin-top: 2px;
+}
+
+.inv-sub-expired__copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.inv-sub-expired__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.inv-sub-expired__text {
+  margin: 0.5rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5715;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.inv-sub-expired__footer {
+  padding: 0.625rem 1rem;
+  text-align: end;
+  border-top: 1px solid var(--border-color-split, #f0f0f0);
+}
+
+.inv-sub-expired__ok {
+  height: 38px;
+  min-height: 38px;
+  border-radius: var(--radius-brand, 6px);
+}

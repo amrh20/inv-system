@@ -144,7 +144,7 @@ export class DepartmentsListComponent implements OnInit {
           ? this.t('DEPARTMENTS.CONFIRM_DEACTIVATE_TITLE')
           : this.t('DEPARTMENTS.CONFIRM_ACTIVATE_TITLE'),
         message: this.t('DEPARTMENTS.CONFIRM_TOGGLE_MESSAGE', { name: row.name }),
-        confirmText: this.t('COMMON.DELETE'),
+        confirmText: this.t('COMMON.CONFIRM'),
         cancelText: this.t('COMMON.CANCEL'),
         confirmDanger: !row.isActive,
       })

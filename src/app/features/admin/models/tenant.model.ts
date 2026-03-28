@@ -36,5 +36,7 @@ export interface TenantRow {
   licenseStartDate: string;
   licenseEndDate: string | null;
   maxUsers: number;
+  /** Super-admin tenants list often returns this; falls back to `_count.users` when absent. */
+  activeUsersCount?: number;
   _count?: { users: number; locations?: number };
 }

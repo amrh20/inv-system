@@ -1,49 +1,45 @@
-import { Injectable, inject } from '@angular/core';
-import { NzModalService } from 'ng-zorro-antd/modal';
-import { TranslateService } from '@ngx-translate/core';
+import { Injectable, signal } from '@angular/core';
+
+export interface SubscriptionExpiredPayload {
+  /** When null, UI shows translated SUBSCRIPTION.EXPIRED_MESSAGE. */
+  customMessage: string | null;
+}
 
 /**
- * Shows subscription-expiry messaging in a modal (no full-page redirect).
- * Dedupes to one modal per session until logout clears the flag.
- * Works on the login route (root injector); high z-index keeps the dialog above the login UI.
+ * Subscription expiry UI via root-level overlay (see app-subscription-expired-overlay).
+ * Avoids NzModal/CDK backdrop stacking issues on the login route.
+ * Dedupes to one notice per session until logout clears the flag.
  */
 @Injectable({ providedIn: 'root' })
 export class SubscriptionNoticeService {
-  /** CDK overlay pane + modal wrap; must be above mask or the dimmer covers the dialog. */
-  private static readonly MODAL_Z_INDEX = 1100;
-  private static readonly MASK_Z_INDEX = SubscriptionNoticeService.MODAL_Z_INDEX - 1;
-
-  private readonly modal = inject(NzModalService);
-  private readonly translate = inject(TranslateService);
-
   private shownThisSession = false;
+
+  private readonly _expiredPayload = signal<SubscriptionExpiredPayload | null>(null);
+  readonly expiredPayload = this._expiredPayload.asReadonly();
 
   resetSession(): void {
     this.shownThisSession = false;
+    this._expiredPayload.set(null);
   }
 
   /**
-   * Opens the subscription notice if not already shown this session.
-   * Safe when the user is not fully authenticated (e.g. blocked at login).
-   * @returns true if a new modal was opened
+   * Shows the overlay if not already shown this session.
+   * @returns true if the overlay was opened
    */
   showExpiredNotice(message?: string | null): boolean {
     if (this.shownThisSession) {
       return false;
     }
     this.shownThisSession = true;
-    const content =
-      message?.trim() || this.translate.instant('SUBSCRIPTION.EXPIRED_MESSAGE');
-    this.modal.warning({
-      nzTitle: this.translate.instant('SUBSCRIPTION.EXPIRED_TITLE'),
-      nzContent: content,
-      nzOkText: this.translate.instant('COMMON.OK'),
-      nzCentered: true,
-      nzMaskClosable: true,
-      nzZIndex: SubscriptionNoticeService.MODAL_Z_INDEX,
-      nzMaskStyle: { 'z-index': String(SubscriptionNoticeService.MASK_Z_INDEX) },
+    const trimmed = message?.trim();
+    this._expiredPayload.set({
+      customMessage: trimmed && trimmed.length > 0 ? trimmed : null,
     });
     return true;
+  }
+
+  dismissExpiredOverlay(): void {
+    this._expiredPayload.set(null);
   }
 
   /**

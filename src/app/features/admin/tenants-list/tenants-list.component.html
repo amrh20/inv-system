@@ -178,10 +178,10 @@
                     </li>
                   }
                   @if (!isOrganizationRow(t)) {
-                    <li nz-menu-item (click)="openLicense(t)">
+                    <!-- <li nz-menu-item (click)="openLicense(t)">
                       <lucide-icon [img]="lucideKeySquare" [size]="14" />
                       <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
-                    </li>
+                    </li> -->
                   }
                   @if (isAdminSuspended(t) || !t.isActive) {
                     <li nz-menu-item (click)="onActivate(t)">
@@ -259,15 +259,24 @@
                           </div>
                         </td>
                         <td>
-                          <div class="tenants-page__users-cell">
-                            <lucide-icon [img]="lucideUsers" [size]="14" />
-                            <span>{{ userCount(branch) }} / {{ branch.maxUsers }}</span>
-                            <nz-progress
-                              [nzPercent]="userPercent(branch)"
-                              nzSize="small"
-                              [nzShowInfo]="false"
-                            />
+                          <div class="d-flex align-items-center">
+                            <i nz-icon nzType="team" class="mr-2 text-muted"></i>
+                            <span [class.text-danger]="userCount(branch) >= branch.maxUsers"
+                                  [nzTooltipTitle]="
+                                    userCount(branch) >= branch.maxUsers
+                                      ? ('USERS.LIMIT_REACHED' | translate)
+                                      : ''
+                                  "
+                                  nz-tooltip>
+                              {{ userCount(branch) }} / {{ branch.maxUsers }}
+                            </span>
                           </div>
+                          <nz-progress
+                            [nzPercent]="userPercent(branch)"
+                            nzSize="small"
+                            [nzStatus]="userCount(branch) >= branch.maxUsers ? 'exception' : 'active'"
+                            [nzShowInfo]="false">
+                          </nz-progress>
                         </td>
                         <td class="tenants-page__license-cell">
                           <div class="tenants-page__license-row">
@@ -303,10 +312,10 @@
                                 </li>
                               }
                               @if (!isOrganizationRow(branch)) {
-                                <li nz-menu-item (click)="openLicense(branch)">
+                                <!-- <li nz-menu-item (click)="openLicense(branch)">
                                   <lucide-icon [img]="lucideKeySquare" [size]="14" />
                                   <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_LICENSE' | translate }}</span>
-                                </li>
+                                </li> -->
                               }
                               @if (isAdminSuspended(branch) || !branch.isActive) {
                                 <li nz-menu-item (click)="onActivate(branch)">

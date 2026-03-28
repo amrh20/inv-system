@@ -10,6 +10,7 @@ import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import {
@@ -50,6 +51,7 @@ import { TenantsService } from '../services/tenants.service';
     NzPaginationModule,
     NzTableModule,
     NzTagModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
@@ -224,7 +226,7 @@ export class TenantsListComponent implements OnInit {
   }
 
   userCount(t: TenantRow): number {
-    return t._count?.users ?? 0;
+    return t.activeUsersCount ?? t._count?.users ?? 0;
   }
 
   userPercent(t: TenantRow): number {
