@@ -105,6 +105,34 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
       if (
         error.status === 401 &&
+        errorCode === 'PERMISSIONS_STALE' &&
+        !req.headers.has('X-Skip-Auth-Retry') &&
+        !isAuthEndpoint(req.url)
+      ) {
+        return authService.refreshToken().pipe(
+          switchMap(() => {
+            const newToken = authService.getAccessToken();
+            if (!newToken) {
+              authService.clearAuth();
+              void router.navigate(['/login']);
+              return throwError(() => error);
+            }
+            const retryReq = req.clone({
+              setHeaders: { Authorization: `Bearer ${newToken}` },
+              headers: req.headers.set('X-Skip-Auth-Retry', 'true'),
+            });
+            return next(retryReq);
+          }),
+          catchError(() => {
+            authService.clearAuth();
+            void router.navigate(['/login']);
+            return throwError(() => error);
+          }),
+        );
+      }
+
+      if (
+        error.status === 401 &&
         !req.headers.has('X-Skip-Auth-Retry') &&
         !isAuthEndpoint(req.url)
       ) {

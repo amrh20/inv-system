@@ -25,21 +25,12 @@ import {
   Truck,
   X,
 } from 'lucide-angular';
-import type { TransferStatus, UserRole } from '../../../core/models/enums';
+import type { TransferStatus } from '../../../core/models/enums';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { TransferDetail } from '../models/transfer.model';
 import { TransferService } from '../services/transfer.service';
-
-const MANAGER_ROLES: UserRole[] = ['DEPT_MANAGER', 'FINANCE_MANAGER', 'ADMIN', 'SUPER_ADMIN'];
-const STOREKEEPER_ROLES: UserRole[] = [
-  'STOREKEEPER',
-  'ADMIN',
-  'FINANCE_MANAGER',
-  'COST_CONTROL',
-  'SUPER_ADMIN',
-];
 
 @Component({
   selector: 'app-transfer-detail',
@@ -87,13 +78,11 @@ export class TransferDetailComponent implements OnInit {
   readonly acting = signal(false);
 
   readonly isManager = computed(() => {
-    const role = this.auth.currentUser()?.role;
-    return role ? MANAGER_ROLES.includes(role) : false;
+    return this.auth.hasPermission('TRANSFER_APPROVE');
   });
 
   readonly isStorekeeper = computed(() => {
-    const role = this.auth.currentUser()?.role;
-    return role ? STOREKEEPER_ROLES.includes(role) : false;
+    return this.auth.hasPermission('TRANSFER_DISPATCH_RECEIVE');
   });
 
   ngOnInit(): void {

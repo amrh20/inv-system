@@ -38,7 +38,7 @@ export class AuthService {
   readonly currentUser = this._currentUser.asReadonly();
   readonly currentTenant = this._currentTenant.asReadonly();
   readonly isAuthenticated = this._isAuthenticated.asReadonly();
-  readonly permissions = computed(() => this.currentUser()?.permissions || []);
+  readonly permissions = computed(() => this.currentUser()?.permissions ?? []);
 
   constructor() {
     this.hydrateFromStorage();
@@ -199,7 +199,10 @@ export class AuthService {
     refreshToken: string;
     currentTenant?: CurrentTenant | null;
   }) {
-    this._currentUser.set(payload.user);
+    this._currentUser.set({
+      ...payload.user,
+      permissions: this.normalizePermissions(payload.user.permissions),
+    });
     this._accessToken.set(payload.accessToken);
     this._refreshToken.set(payload.refreshToken);
     this._currentTenant.set(payload.currentTenant ?? this.resolveCurrentTenant(payload.user));
@@ -229,7 +232,8 @@ export class AuthService {
     if (this.currentUser()?.role === 'SUPER_ADMIN') {
       return true;
     }
-    return this.permissions().includes(key);
+    const permissions = this.permissions();
+    return permissions.includes(key);
   }
 
   /**

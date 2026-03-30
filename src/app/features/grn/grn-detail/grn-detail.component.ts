@@ -17,14 +17,11 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import type { UserRole } from '../../../core/models/enums';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import { environment } from '../../../../environments/environment';
 import type { GrnDetail } from '../models/grn.model';
 import { GrnService } from '../services/grn.service';
-
-const FINANCE_ROLES: UserRole[] = ['FINANCE_MANAGER', 'COST_CONTROL', 'ADMIN', 'SUPER_ADMIN'];
 
 @Component({
   selector: 'app-grn-detail',
@@ -64,8 +61,7 @@ export class GrnDetailComponent implements OnInit {
   readonly acting = signal(false);
 
   readonly isFinance = computed(() => {
-    const role = this.auth.currentUser()?.role;
-    return role ? FINANCE_ROLES.includes(role) : false;
+    return this.auth.hasPermission('GRN_APPROVE_POST');
   });
 
   readonly mappedCount = computed(() => {

@@ -98,12 +98,11 @@ export class SettingsPageComponent implements OnInit {
   }
 
   isAdmin(): boolean {
-    const r = this.role();
-    return r === 'ADMIN' || r === 'SUPER_ADMIN';
+    return this.auth.hasPermission('SETTINGS_MANAGE');
   }
 
   isSuperAdmin(): boolean {
-    return this.role() === 'SUPER_ADMIN';
+    return this.auth.hasPermission('SETTINGS_OPENING_BALANCE_TOGGLE');
   }
 
   userEmail(): string {

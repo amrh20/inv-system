@@ -29,6 +29,8 @@ type NavIcon = typeof LayoutDashboard;
 const NAV_PERMISSIONS = {
   inventoryView: 'INVENTORY_VIEW',
   grnView: 'GRN_VIEW',
+  transferView: 'TRANSFER_VIEW',
+  breakageView: 'BREAKAGE_VIEW',
   reportsView: 'REPORTS_VIEW',
   settingsManage: 'SETTINGS_MANAGE',
   usersCompanyManage: 'USERS_COMPANY_MANAGE',
@@ -119,8 +121,18 @@ const NAV_SECTIONS: readonly NavSection[] = [
             icon: FileInput,
             permission: NAV_PERMISSIONS.grnView,
           },
-          { path: '/transfers', label: 'NAV.TRANSFERS', icon: ArrowRightLeft },
-          { path: '/breakage', label: 'NAV.BREAKAGE_LOSS', icon: AlertTriangle },
+          {
+            path: '/transfers',
+            label: 'NAV.TRANSFERS',
+            icon: ArrowRightLeft,
+            permission: NAV_PERMISSIONS.transferView,
+          },
+          {
+            path: '/breakage',
+            label: 'NAV.BREAKAGE_LOSS',
+            icon: AlertTriangle,
+            permission: NAV_PERMISSIONS.breakageView,
+          },
           { path: '/get-passes', label: 'NAV.GET_PASS_WORKFLOW', icon: Package },
         ],
       },
@@ -179,37 +191,32 @@ const NAV_SECTIONS: readonly NavSection[] = [
 ];
 
 function permissionAllowed(
-  permissions: readonly string[],
   required: string | undefined,
-  isSuperAdmin: boolean,
+  hasPermission: (permission: string) => boolean,
 ): boolean {
   if (!required) {
     return true;
   }
-  if (permissions.includes(required)) {
-    return true;
-  }
-  return isSuperAdmin;
+  return hasPermission(required);
 }
 
 function filterSubmenuChildren<
   T extends { permission?: string; path: string; label: string; icon: NavIcon },
->(children: readonly T[], permissions: readonly string[], isSuperAdmin: boolean): T[] {
-  return children.filter((c) => permissionAllowed(permissions, c.permission, isSuperAdmin));
+>(children: readonly T[], hasPermission: (permission: string) => boolean): T[] {
+  return children.filter((c) => permissionAllowed(c.permission, hasPermission));
 }
 
 function filterNavEntry(
   entry: NavEntry,
-  permissions: readonly string[],
-  isSuperAdmin: boolean,
+  hasPermission: (permission: string) => boolean,
 ): NavEntry | null {
-  if (!permissionAllowed(permissions, entry.permission, isSuperAdmin)) {
+  if (!permissionAllowed(entry.permission, hasPermission)) {
     return null;
   }
   if (entry.kind === 'link') {
     return entry;
   }
-  const children = filterSubmenuChildren(entry.children, permissions, isSuperAdmin);
+  const children = filterSubmenuChildren(entry.children, hasPermission);
   if (!children.length) {
     return null;
   }
@@ -217,9 +224,8 @@ function filterNavEntry(
 }
 
 function filterSections(
-  permissions: readonly string[],
   orgDashboardOnly: boolean,
-  isSuperAdmin: boolean,
+  hasPermission: (permission: string) => boolean,
 ): NavSection[] {
   if (orgDashboardOnly) {
     return [
@@ -238,19 +244,16 @@ function filterSections(
     ];
   }
 
-  const base = NAV_SECTIONS.filter((s) => permissionAllowed(permissions, s.permission, isSuperAdmin))
+  const base = NAV_SECTIONS.filter((s) => permissionAllowed(s.permission, hasPermission))
     .map((section) => ({
       ...section,
       items: section.items
-        .map((i) => filterNavEntry(i, permissions, isSuperAdmin))
+        .map((i) => filterNavEntry(i, hasPermission))
         .filter((i): i is NavEntry => i !== null),
     }))
     .filter((s) => s.items.length > 0);
 
-  if (
-    isSuperAdmin ||
-    permissions.includes(NAV_PERMISSIONS.superAdminPortalAccess)
-  ) {
+  if (hasPermission(NAV_PERMISSIONS.superAdminPortalAccess)) {
     base.push({
       heading: 'NAV.SECTIONS.SUPER_ADMIN',
       items: [
@@ -275,9 +278,8 @@ export class NavigationService {
   /** Menu tree after permission filtering (reacts to `AuthService.permissions`). */
   readonly sections = computed(() =>
     filterSections(
-      this.auth.permissions(),
       this.auth.isParentOrganizationContext(),
-      this.auth.currentUser()?.role === 'SUPER_ADMIN',
+      (permission) => this.auth.hasPermission(permission),
     ),
   );
 

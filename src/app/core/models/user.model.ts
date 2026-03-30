@@ -10,7 +10,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
-  permissions?: string[];
+  permissions: string[];
   department: string | null;
   phone: string | null;
   isActive: boolean;

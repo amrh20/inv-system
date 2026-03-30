@@ -65,6 +65,7 @@ const fmtSARFull = (v: number | undefined | null) =>
   styleUrl: './dashboard.component.scss',
 })
 export class DashboardComponent implements OnInit {
+  private static readonly DASHBOARD_ADMIN_PERMISSION = 'DASHBOARD_ADMIN_VIEW';
   private readonly dashboardApi = inject(DashboardService);
   private readonly auth = inject(AuthService);
   private readonly subscriptionNotice = inject(SubscriptionNoticeService);
@@ -220,7 +221,7 @@ export class DashboardComponent implements OnInit {
   ngOnInit() {
     const user = this.auth.currentUser();
     if (user) {
-      this.isAdmin = user.role === 'ADMIN';
+      this.isAdmin = this.auth.hasPermission(DashboardComponent.DASHBOARD_ADMIN_PERMISSION);
       const full = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
       this.userName = full || user.email || '';
     }

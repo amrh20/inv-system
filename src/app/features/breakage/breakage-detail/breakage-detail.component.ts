@@ -29,7 +29,7 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-angular';
-import type { MovementStatus, UserRole } from '../../../core/models/enums';
+import type { MovementStatus } from '../../../core/models/enums';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
@@ -162,7 +162,7 @@ export class BreakageDetailComponent implements OnInit {
     const d = this.doc();
     const u = this.auth.currentUser();
     if (!d || !u || d.status !== 'DRAFT') return false;
-    return u.role === 'ADMIN' || u.role === 'SUPER_ADMIN' || u.id === d.createdBy;
+    return this.auth.hasPermission('BREAKAGE_CREATE') || u.id === d.createdBy;
   }
 
   canApprove(): boolean {
@@ -174,8 +174,7 @@ export class BreakageDetailComponent implements OnInit {
     const stepNo = approval.currentStep;
     const step = approval.steps?.find((s) => s.stepNumber === stepNo);
     if (!step || step.status !== 'PENDING') return false;
-    const role = u.role as UserRole;
-    return role === 'ADMIN' || role === 'SUPER_ADMIN' || role === (step.requiredRole as UserRole);
+    return this.auth.hasPermission('BREAKAGE_APPROVE_REJECT');
   }
 
   canVoid(): boolean {
@@ -183,7 +182,7 @@ export class BreakageDetailComponent implements OnInit {
     const u = this.auth.currentUser();
     if (!d || !u) return false;
     if (d.status !== 'DRAFT' && d.status !== 'REJECTED') return false;
-    return u.role === 'ADMIN' || u.role === 'SUPER_ADMIN';
+    return this.auth.hasPermission('BREAKAGE_CREATE');
   }
 
   submit(): void {

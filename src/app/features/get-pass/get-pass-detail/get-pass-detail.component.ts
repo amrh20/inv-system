@@ -174,11 +174,6 @@ export class GetPassDetailComponent implements OnInit {
     }
   }
 
-  isAdmin(): boolean {
-    const r = this.auth.currentUser()?.role;
-    return r === 'ADMIN' || r === 'SUPER_ADMIN';
-  }
-
   canSubmit(): boolean {
     const d = this.data();
     return !!d && d.status === 'DRAFT';
@@ -196,29 +191,28 @@ export class GetPassDetailComponent implements OnInit {
 
   canApprove(): boolean {
     const d = this.data();
-    const u = this.auth.currentUser();
-    if (!d || !u) return false;
-    const admin = this.isAdmin();
-    if (d.status === 'PENDING_DEPT') return admin || u.role === 'DEPT_MANAGER';
-    if (d.status === 'PENDING_FINANCE') return admin || u.role === 'FINANCE_MANAGER';
-    if (d.status === 'PENDING_SECURITY') return admin || u.role === 'SECURITY';
+    if (!d) return false;
+    if (d.status === 'PENDING_DEPT' || d.status === 'PENDING_FINANCE') {
+      return this.auth.hasPermission('GET_PASS_APPROVE');
+    }
+    if (d.status === 'PENDING_SECURITY') {
+      return this.auth.hasPermission('GET_PASS_APPROVE_EXIT');
+    }
     return false;
   }
 
   canCheckout(): boolean {
     const d = this.data();
-    const u = this.auth.currentUser();
-    if (!d || !u) return false;
-    return d.status === 'APPROVED' && (this.isAdmin() || u.role === 'SECURITY');
+    if (!d) return false;
+    return d.status === 'APPROVED' && this.auth.hasPermission('GET_PASS_APPROVE_EXIT');
   }
 
   canReturn(): boolean {
     const d = this.data();
-    const u = this.auth.currentUser();
-    if (!d || !u) return false;
+    if (!d) return false;
     if (d.transferType === 'PERMANENT') return false;
     if (!['OUT', 'PARTIALLY_RETURNED'].includes(d.status)) return false;
-    return this.isAdmin() || u.role === 'SECURITY';
+    return this.auth.hasPermission('GET_PASS_APPROVE_RETURN');
   }
 
   canForceClose(): boolean {
