@@ -1,0 +1,111 @@
+<nz-modal
+  [nzVisible]="visible()"
+  (nzOnCancel)="dismiss()"
+  [nzTitle]="modalTitle"
+  [nzMaskClosable]="false"
+  [nzFooter]="footerTpl"
+  [nzWidth]="560"
+>
+  <ng-container *nzModalContent>
+    @if (formError) {
+      <nz-alert
+        nzType="error"
+        [nzMessage]="getErrorMessage()"
+        nzShowIcon
+        class="hotel-admin-modal__alert"
+      />
+    }
+
+    <nz-spin [nzSpinning]="detailLoading()">
+      <form nz-form nzLayout="vertical" [formGroup]="form">
+        <div class="hotel-admin-modal__section-title">
+          <lucide-icon [img]="lucideUser" [size]="14" [strokeWidth]="2" />
+          {{ 'SUPER_ADMIN.MANAGE_ADMIN_SECTION' | translate }}
+        </div>
+        <p class="hotel-admin-modal__hint">{{ 'SUPER_ADMIN.MANAGE_ADMIN_HINT' | translate }}</p>
+        <div nz-row [nzGutter]="16">
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ADMIN_FIRST_NAME' | translate }}</nz-form-label>
+              <nz-form-control>
+                <input
+                  nz-input
+                  formControlName="firstName"
+                  [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_FIRST_PLACEHOLDER' | translate"
+                />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ADMIN_LAST_NAME' | translate }}</nz-form-label>
+              <nz-form-control>
+                <input
+                  nz-input
+                  formControlName="lastName"
+                  [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_LAST_PLACEHOLDER' | translate"
+                />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'SUPER_ADMIN.CREATE_ADMIN_EMAIL' | translate }}</nz-form-label>
+              <nz-form-control [nzErrorTip]="emailErrorTpl">
+                <ng-template #emailErrorTpl let-control>
+                  @if (control.hasError('required')) {
+                    <span>{{ 'SUPER_ADMIN.EDIT_ORG_FIELD_REQUIRED' | translate }}</span>
+                  }
+                  @if (control.hasError('email')) {
+                    <span>{{ 'SUPER_ADMIN.EDIT_ORG_EMAIL_INVALID' | translate }}</span>
+                  }
+                </ng-template>
+                <input
+                  nz-input
+                  type="email"
+                  formControlName="email"
+                  [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_EMAIL_PLACEHOLDER' | translate"
+                />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col [nzSpan]="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ADMIN_PASSWORD' | translate }}</nz-form-label>
+              <nz-form-control [nzExtra]="pwdExtra" [nzErrorTip]="pwdErrorTpl">
+                <ng-template #pwdErrorTpl let-control>
+                  @if (control.hasError('passwordMin')) {
+                    <span>{{ 'SUPER_ADMIN.CREATE_PASSWORD_MIN' | translate }}</span>
+                  }
+                </ng-template>
+                <ng-template #pwdExtra>
+                  <span class="hotel-admin-modal__hint">{{ 'SUPER_ADMIN.EDIT_ORG_PASSWORD_OPTIONAL' | translate }}</span>
+                </ng-template>
+                <input
+                  nz-input
+                  type="password"
+                  autocomplete="new-password"
+                  formControlName="password"
+                  [placeholder]="'SUPER_ADMIN.CREATE_ADMIN_PASSWORD_PLACEHOLDER' | translate"
+                />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+      </form>
+    </nz-spin>
+  </ng-container>
+  <ng-template #footerTpl>
+    <button nz-button type="button" (click)="dismiss()">{{ 'COMMON.CANCEL' | translate }}</button>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      [nzLoading]="saving()"
+      [disabled]="detailLoading()"
+      (click)="submit()"
+    >
+      {{ 'COMMON.SAVE' | translate }}
+    </button>
+  </ng-template>
+</nz-modal>

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { EMPTY, Subject } from 'rxjs';
+import { EMPTY, Subject, Subscription } from 'rxjs';
 import { debounceTime, distinctUntilChanged, finalize, switchMap, tap } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -15,6 +15,7 @@ import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
@@ -58,6 +59,7 @@ const DEFAULT_ORG_SUB_STATUS = 'ACTIVE';
     NzModalModule,
     NzRadioModule,
     NzSelectModule,
+    NzSpinModule,
     NzStepsModule,
     NzSwitchModule,
     NzTagModule,
@@ -100,6 +102,8 @@ export class TenantFormModalComponent {
   readonly lucideEyeOff = EyeOff;
 
   readonly saving = signal(false);
+  /** Hotel edit: GET tenant detail before showing plan/license fields. */
+  readonly detailLoading = signal(false);
   readonly loadingParentTenants = signal(false);
   readonly showPassword = signal(false);
   readonly allTenants = signal<TenantRow[]>([]);
@@ -168,6 +172,7 @@ export class TenantFormModalComponent {
   formError = '';
 
   private editId: string | null = null;
+  private detailSub: Subscription | undefined;
 
   constructor() {
     this.createEmailSearch$
@@ -191,21 +196,46 @@ export class TenantFormModalComponent {
       .subscribe();
 
     effect(() => {
-      if (this.visible()) {
-        this.loadParentTenantOptions();
-        const t = this.tenant();
-        if (t) {
-          this.patchForEdit(t);
-        } else {
-          const branchParent = this.branchParentTenant();
-          if (branchParent) {
-            this.openAsBranch(branchParent);
-          } else {
-            this.resetForm();
-          }
-        }
-      } else {
+      if (!this.visible()) {
+        this.detailSub?.unsubscribe();
+        this.detailSub = undefined;
         this.formError = '';
+        return;
+      }
+
+      this.loadParentTenantOptions();
+      const t = this.tenant();
+      if (t) {
+        this.patchForEdit(t);
+        this.detailLoading.set(true);
+        const requestedId = t.id;
+        this.detailSub?.unsubscribe();
+        this.detailSub = this.api
+          .getTenantById(requestedId)
+          .pipe(finalize(() => this.detailLoading.set(false)))
+          .subscribe({
+            next: (detail) => {
+              if (!this.visible() || this.tenant()?.id !== requestedId) {
+                return;
+              }
+              if (detail) {
+                this.patchForEdit(detail);
+              }
+            },
+            error: () => {
+              if (!this.visible() || this.tenant()?.id !== requestedId) {
+                return;
+              }
+              this.formError = 'SUPER_ADMIN.EDIT_TENANT_LOAD_FAILED';
+            },
+          });
+      } else {
+        const branchParent = this.branchParentTenant();
+        if (branchParent) {
+          this.openAsBranch(branchParent);
+        } else {
+          this.resetForm();
+        }
       }
     });
   }

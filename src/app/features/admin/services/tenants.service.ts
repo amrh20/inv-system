@@ -4,7 +4,7 @@ import { Observable, of, throwError } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import { environment } from '../../../../environments/environment';
-import type { TenantRow } from '../models/tenant.model';
+import type { TenantAdminDto, TenantRow } from '../models/tenant.model';
 
 /** Nested admin for tenant create (e.g. wizard step 2 first hotel). */
 export interface TenantCreateAdminUserPayload {
@@ -90,19 +90,12 @@ export interface TenantLicenseUpdatePayload {
   maxUsers?: number;
 }
 
-/** PATCH /v1/organizations/:id — only include keys that changed (partial organization / manager). */
-export interface TenantOrganizationManagerUpdatePayload {
-  organization?: Partial<{
-    name: string;
-    slug: string;
-    maxBranches: number;
-  }>;
-  manager?: Partial<{
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-  }>;
+/** PUT /super-admin/tenants/:tenantId/admin/:userId */
+export interface TenantAdminUpdatePayload {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  password?: string;
 }
 
 export interface TenantsListParams {
@@ -126,8 +119,6 @@ export class TenantsService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/super-admin/tenants`;
   private readonly adminBase = `${environment.apiUrl}/admin/tenants`;
-  /** Organization update (edit org + manager) — v1 API, not super-admin tenants. */
-  private readonly organizationsV1Base = `${environment.apiUrl}/v1/organizations`;
 
   create(payload: TenantCreatePayload): Observable<TenantRow> {
     return this.http.post<ApiResponse<TenantRow>>(this.base, payload).pipe(
@@ -191,9 +182,58 @@ export class TenantsService {
     );
   }
 
-  /** Single tenant (e.g. org manager email for “add hotel under org”). */
-  getById(id: string): Observable<TenantRow> {
+  /** GET /super-admin/tenants/:id — full tenant detail. */
+  getTenantById(id: string): Observable<TenantRow> {
     return this.http.get<ApiResponse<TenantRow>>(`${this.base}/${id}`).pipe(map((res) => res.data));
+  }
+
+  /** @deprecated Use {@link getTenantById} */
+  getById(id: string): Observable<TenantRow> {
+    return this.getTenantById(id);
+  }
+
+  /**
+   * GET /super-admin/tenants/:tenantId/admin
+   * API may return `data: { admins: [...] }` or a raw array.
+   */
+  getTenantAdmins(tenantId: string): Observable<TenantAdminDto[]> {
+    return this.http
+      .get<
+        ApiResponse<
+          | TenantAdminDto[]
+          | TenantAdminDto
+          | { admins?: TenantAdminDto[] }
+        >
+      >(`${this.base}/${tenantId}/admin`)
+      .pipe(
+        map((res) => {
+          const d = res.data;
+          if (!d) {
+            return [];
+          }
+          if (Array.isArray(d)) {
+            return d;
+          }
+          if (typeof d === 'object' && 'admins' in d && Array.isArray(d.admins)) {
+            return d.admins;
+          }
+          if ('id' in d && typeof (d as TenantAdminDto).id === 'string') {
+            return [d as TenantAdminDto];
+          }
+          return [];
+        }),
+      );
+  }
+
+  /** PUT /super-admin/tenants/:tenantId/admin/:userId */
+  updateTenantAdmin(
+    tenantId: string,
+    userId: string,
+    data: TenantAdminUpdatePayload,
+  ): Observable<TenantAdminDto> {
+    return this.http
+      .put<ApiResponse<TenantAdminDto>>(`${this.base}/${tenantId}/admin/${userId}`, data)
+      .pipe(map((res) => res.data));
   }
 
   list(params: TenantsListParams): Observable<TenantsListResult> {
@@ -250,14 +290,6 @@ export class TenantsService {
     return this.http
       .put<ApiResponse<TenantRow>>(`${this.base}/${id}`, data)
       .pipe(map((res) => res.data));
-  }
-
-  updateOrganizationAndManager(
-    id: string,
-    data: TenantOrganizationManagerUpdatePayload,
-  ): Observable<TenantRow> {
-    const url = `${this.organizationsV1Base}/${id}`;
-    return this.http.patch<ApiResponse<TenantRow>>(url, data).pipe(map((res) => res.data as TenantRow));
   }
 
   updateLicense(id: string, licenseData: TenantLicenseUpdatePayload): Observable<TenantRow> {

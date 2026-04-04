@@ -18,6 +18,7 @@
 
     <div nz-form nzLayout="vertical">
       @if (isEditMode()) {
+        <nz-spin [nzSpinning]="detailLoading()">
         <div class="tenant-form-modal__section">
           <h4 class="tenant-form-modal__section-title">
             <lucide-icon [img]="lucideBuilding2" [size]="14" />
@@ -56,7 +57,7 @@
             </div>
           </div>
           <div nz-row [nzGutter]="16">
-            <div nz-col [nzSpan]="12">
+            <div nz-col [nzSpan]="24">
               <nz-form-item>
                 <nz-form-label>{{ 'SUPER_ADMIN.CREATE_PARENT_TENANT' | translate }}</nz-form-label>
                 <nz-form-control>
@@ -73,33 +74,6 @@
                       <nz-option [nzValue]="tenantOption.id" [nzLabel]="tenantOption.name + ' (' + tenantOption.slug + ')'" />
                     }
                   </nz-select>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-            <div nz-col [nzSpan]="6">
-              <nz-form-item>
-                <nz-form-label>{{ 'SUPER_ADMIN.CREATE_ALLOW_BRANCHES' | translate }}</nz-form-label>
-                <nz-form-control>
-                  <nz-switch
-                    [(ngModel)]="hasBranches"
-                    (ngModelChange)="onHasBranchesChange($event)"
-                    [nzDisabled]="!!parentId"
-                  />
-                </nz-form-control>
-              </nz-form-item>
-            </div>
-            <div nz-col [nzSpan]="6">
-              <nz-form-item>
-                <nz-form-label>{{ 'SUPER_ADMIN.CREATE_MAX_BRANCHES' | translate }}</nz-form-label>
-                <nz-form-control>
-                  <input
-                    nz-input
-                    type="number"
-                    min="0"
-                    [(ngModel)]="maxBranches"
-                    [disabled]="!hasBranches"
-                    [placeholder]="'SUPER_ADMIN.CREATE_MAX_BRANCHES_PLACEHOLDER' | translate"
-                  />
                 </nz-form-control>
               </nz-form-item>
             </div>
@@ -185,6 +159,7 @@
             </div>
           </div>
         </div>
+        </nz-spin>
       }
 
       @else if (isBranchFlow()) {
@@ -855,7 +830,7 @@
         nz-button
         nzType="primary"
         type="button"
-        [disabled]="isDateRangeInvalid"
+        [disabled]="isDateRangeInvalid || detailLoading()"
         [nzLoading]="saving()"
         (click)="submit()"
       >

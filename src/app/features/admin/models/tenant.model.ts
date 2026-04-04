@@ -5,12 +5,30 @@ export type SubscriptionStatus = 'ACTIVE' | 'TRIAL' | 'EXPIRED' | 'SUSPENDED';
 /** Administrative account status (takes priority in UI). */
 export type TenantAdminStatus = 'ACTIVE' | 'SUSPENDED';
 
+/** Primary org/hotel admin from GET /super-admin/tenants/:id (and list enrichment). */
+export interface TenantPrimaryAdmin {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+}
+
+/** Row from GET /super-admin/tenants/:tenantId/admin */
+export interface TenantAdminDto {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+}
+
 export interface TenantRow {
   id: string;
   name: string;
   slug: string;
   parentId?: string | null;
   parentName?: string | null;
+  /** Preferred manager identity from detail API (use for PUT .../admin/:userId). */
+  primaryAdmin?: TenantPrimaryAdmin | null;
   /** Primary org manager profile (GET tenant detail; used for edit organization). */
   organizationManager?: {
     firstName?: string | null;

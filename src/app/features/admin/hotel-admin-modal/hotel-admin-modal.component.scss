@@ -1,0 +1,26 @@
+.hotel-admin-modal {
+  &__alert {
+    margin-bottom: 16px;
+  }
+
+  &__section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #0f172a);
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: var(--text-muted, #64748b);
+    margin: -4px 0 12px;
+    line-height: 1.4;
+  }
+
+  &__full-width {
+    width: 100%;
+  }
+}

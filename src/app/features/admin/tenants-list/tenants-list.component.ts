@@ -31,6 +31,7 @@ import { ConfirmationService } from '../../../core/services/confirmation.service
 import { TranslateService } from '@ngx-translate/core';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { EditOrganizationModalComponent } from '../edit-organization-modal/edit-organization-modal.component';
+import { HotelAdminModalComponent } from '../hotel-admin-modal/hotel-admin-modal.component';
 import { TenantFormModalComponent } from '../tenant-form-modal/tenant-form-modal.component';
 import { LicenseManagementModalComponent } from '../license-management-modal/license-management-modal.component';
 import type { TenantRow } from '../models/tenant.model';
@@ -56,6 +57,7 @@ import { TenantsService } from '../services/tenants.service';
     LucideAngularModule,
     EmptyStateComponent,
     EditOrganizationModalComponent,
+    HotelAdminModalComponent,
     TenantFormModalComponent,
     LicenseManagementModalComponent,
   ],
@@ -101,6 +103,7 @@ export class TenantsListComponent implements OnInit {
   /** Organization row: edit org + manager (reactive form modal). */
   readonly editOrganizationTenant = signal<TenantRow | null>(null);
   readonly licenseTenant = signal<TenantRow | null>(null);
+  readonly manageAdminTenant = signal<TenantRow | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -375,6 +378,19 @@ export class TenantsListComponent implements OnInit {
 
   openLicense(t: TenantRow): void {
     this.licenseTenant.set(t);
+  }
+
+  openManageAdmin(t: TenantRow): void {
+    this.manageAdminTenant.set(t);
+  }
+
+  onManageAdminSaved(): void {
+    this.manageAdminTenant.set(null);
+    this.load();
+  }
+
+  onManageAdminCancelled(): void {
+    this.manageAdminTenant.set(null);
   }
 
   onCreateSaved(): void {

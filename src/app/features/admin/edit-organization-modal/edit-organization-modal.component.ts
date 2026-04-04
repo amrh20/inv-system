@@ -1,5 +1,4 @@
 import { Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -9,7 +8,8 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { Subscription, finalize } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -24,7 +24,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { Building2, User } from 'lucide-angular';
 import { formErrorKeyFromHttp } from '../../../core/utils/http-error.util';
 import type { TenantRow } from '../models/tenant.model';
-import type { TenantOrganizationManagerUpdatePayload } from '../services/tenants.service';
+import type { TenantAdminUpdatePayload, TenantUpdatePayload } from '../services/tenants.service';
 import { TenantsService } from '../services/tenants.service';
 
 function optionalPasswordMinLength(min: number): ValidatorFn {
@@ -103,6 +103,9 @@ export class EditOrganizationModalComponent {
 
   private tenantId: string | null = null;
 
+  /** Target user for PUT .../tenants/:id/admin/:userId (from primaryAdmin or getTenantAdmins). */
+  private primaryAdminUserId: string | null = null;
+
   /** Values last loaded from the server (for partial PATCH + placeholders when inputs are empty). */
   private baseline: {
     organization: { name: string; slug: string; maxBranches: number };
@@ -128,22 +131,27 @@ export class EditOrganizationModalComponent {
       }
 
       this.tenantId = row.id;
+      this.primaryAdminUserId = null;
       this.formError = '';
       this.patchFromTenant(row);
       this.detailLoading.set(true);
       const requestedId = row.id;
       this.detailSub = this.api
-        .getById(requestedId)
+        .getTenantById(requestedId)
         .pipe(finalize(() => this.detailLoading.set(false)))
         .subscribe({
           next: (detail) => {
             if (!this.visible() || this.tenant()?.id !== requestedId) {
               return;
             }
-            if (detail) {
+            if (detail?.id) {
               this.patchFromTenant(detail);
+              if (!this.primaryAdminUserId) {
+                this.tryResolveAdminUserId(requestedId);
+              }
             } else {
               this.patchFromTenant(row);
+              this.tryResolveAdminUserId(requestedId);
             }
           },
           error: () => {
@@ -152,12 +160,37 @@ export class EditOrganizationModalComponent {
             }
             this.formError = 'SUPER_ADMIN.EDIT_ORG_LOAD_FAILED';
             this.patchFromTenant(row);
+            this.tryResolveAdminUserId(requestedId);
           },
         });
     });
   }
 
+  /** When GET detail omits primaryAdmin.id, resolve admin user id for updateTenantAdmin. */
+  private tryResolveAdminUserId(tenantId: string): void {
+    if (this.primaryAdminUserId) {
+      return;
+    }
+    this.api.getTenantAdmins(tenantId).subscribe({
+      next: (admins) => {
+        if (!this.visible() || this.tenantId !== tenantId) {
+          return;
+        }
+        const em = (this.form.getRawValue().manager.email ?? '').trim().toLowerCase();
+        const byEmail = em
+          ? admins.find((a) => (a.email ?? '').trim().toLowerCase() === em)
+          : undefined;
+        const hit = byEmail ?? admins[0];
+        if (hit?.id) {
+          this.primaryAdminUserId = hit.id;
+        }
+      },
+      error: () => {},
+    });
+  }
+
   private resetForm(): void {
+    this.primaryAdminUserId = null;
     this.baseline = null;
     this.form.reset({
       organization: { name: '', slug: '', maxBranches: 1 },
@@ -166,13 +199,20 @@ export class EditOrganizationModalComponent {
   }
 
   private patchFromTenant(t: TenantRow): void {
+    const pa = t.primaryAdmin;
     const mgr = t.organizationManager;
     const email =
+      pa?.email?.trim() ||
       mgr?.email?.trim() ||
       t.managerEmail?.trim() ||
       t.orgManagerEmail?.trim() ||
       t.primaryManagerEmail?.trim() ||
       '';
+    const firstName = pa?.firstName?.trim() || mgr?.firstName?.trim() || '';
+    const lastName = pa?.lastName?.trim() || mgr?.lastName?.trim() || '';
+    if (pa?.id) {
+      this.primaryAdminUserId = pa.id;
+    }
     const maxBr = t.maxBranches != null && t.maxBranches >= 1 ? t.maxBranches : 1;
     this.form.patchValue({
       organization: {
@@ -181,8 +221,8 @@ export class EditOrganizationModalComponent {
         maxBranches: maxBr,
       },
       manager: {
-        firstName: mgr?.firstName?.trim() ?? '',
-        lastName: mgr?.lastName?.trim() ?? '',
+        firstName,
+        lastName,
         email,
         password: '',
       },
@@ -237,61 +277,51 @@ export class EditOrganizationModalComponent {
     return b || this.translate.instant('SUPER_ADMIN.CREATE_ADMIN_EMAIL_PLACEHOLDER');
   }
 
-  private buildPartialPayload(): TenantOrganizationManagerUpdatePayload | null {
+  private buildTenantUpdatePayload(): TenantUpdatePayload | null {
     if (!this.baseline) {
       return null;
     }
-
     const raw = this.form.getRawValue();
-    const org: Partial<{ name: string; slug: string; maxBranches: number }> = {};
     const name = (raw.organization.name ?? '').trim();
     const slug = this.normalizeSlug(raw.organization.slug ?? '');
     const maxBr = Math.max(1, Math.floor(Number(raw.organization.maxBranches) || 1));
     const bOrg = this.baseline.organization;
-
+    const payload: TenantUpdatePayload = {};
     if (name !== bOrg.name) {
-      org.name = name;
+      payload.name = name;
     }
     if (slug !== bOrg.slug) {
-      org.slug = slug;
+      payload.slug = slug;
     }
     if (maxBr !== bOrg.maxBranches) {
-      org.maxBranches = maxBr;
+      payload.maxBranches = maxBr;
     }
+    return Object.keys(payload).length > 0 ? payload : null;
+  }
 
-    const mgr: Partial<{
-      firstName: string;
-      lastName: string;
-      email: string;
-      password: string;
-    }> = {};
+  private buildAdminUpdatePayload(): TenantAdminUpdatePayload | null {
+    if (!this.baseline) {
+      return null;
+    }
+    const raw = this.form.getRawValue();
     const fn = (raw.manager.firstName ?? '').trim();
     const ln = (raw.manager.lastName ?? '').trim();
     const em = (raw.manager.email ?? '').trim();
     const pwd = (raw.manager.password ?? '').trim();
     const bMgr = this.baseline.manager;
-
+    const payload: TenantAdminUpdatePayload = {};
     if (fn !== bMgr.firstName) {
-      mgr.firstName = fn;
+      payload.firstName = fn;
     }
     if (ln !== bMgr.lastName) {
-      mgr.lastName = ln;
+      payload.lastName = ln;
     }
     if (em !== bMgr.email) {
-      mgr.email = em;
+      payload.email = em;
     }
     if (pwd) {
-      mgr.password = pwd;
+      payload.password = pwd;
     }
-
-    const payload: TenantOrganizationManagerUpdatePayload = {};
-    if (Object.keys(org).length > 0) {
-      payload.organization = org;
-    }
-    if (Object.keys(mgr).length > 0) {
-      payload.manager = mgr;
-    }
-
     return Object.keys(payload).length > 0 ? payload : null;
   }
 
@@ -324,28 +354,43 @@ export class EditOrganizationModalComponent {
       return;
     }
 
-    const payload = this.buildPartialPayload();
-    if (!payload) {
+    const tenantPayload = this.buildTenantUpdatePayload();
+    const adminPayload = this.buildAdminUpdatePayload();
+    if (!tenantPayload && !adminPayload) {
       this.message.warning(this.translate.instant('SUPER_ADMIN.EDIT_ORG_NO_CHANGES'));
+      return;
+    }
+    if (adminPayload && !this.primaryAdminUserId) {
+      this.formError = 'SUPER_ADMIN.EDIT_ORG_ADMIN_ID_MISSING';
+      this.message.error(this.getErrorMessage());
       return;
     }
 
     this.saving.set(true);
-    this.api
-      .updateOrganizationAndManager(id, payload)
-      .pipe(
-        finalize(() => this.saving.set(false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => {
-          this.message.success(this.translate.instant('SUPER_ADMIN.EDIT_ORG_UPDATE_SUCCESS'));
-          this.saved.emit();
-        },
-        error: (err) => {
-          this.formError = formErrorKeyFromHttp(err, 'SUPER_ADMIN.EDIT_ORG_UPDATE_FAILED');
-          this.message.error(this.getErrorMessage());
-        },
-      });
+    void this.runOrganizationSave(id, tenantPayload, adminPayload);
+  }
+
+  private async runOrganizationSave(
+    id: string,
+    tenantPayload: TenantUpdatePayload | null,
+    adminPayload: TenantAdminUpdatePayload | null,
+  ): Promise<void> {
+    try {
+      if (tenantPayload) {
+        await firstValueFrom(this.api.updateTenant(id, tenantPayload));
+      }
+      if (adminPayload && this.primaryAdminUserId) {
+        await firstValueFrom(
+          this.api.updateTenantAdmin(id, this.primaryAdminUserId, adminPayload),
+        );
+      }
+      this.message.success(this.translate.instant('SUPER_ADMIN.EDIT_ORG_UPDATE_SUCCESS'));
+      this.saved.emit();
+    } catch (err: unknown) {
+      this.formError = formErrorKeyFromHttp(err, 'SUPER_ADMIN.EDIT_ORG_UPDATE_FAILED');
+      this.message.error(this.getErrorMessage());
+    } finally {
+      this.saving.set(false);
+    }
   }
 }

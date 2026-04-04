@@ -163,8 +163,12 @@
                 <ul nz-menu>
                   @if (!isOrganizationRow(t)) {
                     <li nz-menu-item (click)="openEdit(t)">
-                      <lucide-icon [img]="lucidePencil" [size]="14" />
+                      <lucide-icon [img]="lucidePencil" [size]="14" [strokeWidth]="2" />
                       <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
+                    </li>
+                    <li nz-menu-item (click)="openManageAdmin(t)">
+                      <lucide-icon [img]="lucideUsers" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_ADMIN' | translate }}</span>
                     </li>
                   }
                   @if (isOrganizationRow(t)) {
@@ -302,12 +306,18 @@
                           <nz-dropdown-menu #childActionMenu="nzDropdownMenu">
                             <ul nz-menu>
                               <li nz-menu-item (click)="openEdit(branch)">
-                                <lucide-icon [img]="lucidePencil" [size]="14" />
+                                <lucide-icon [img]="lucidePencil" [size]="14" [strokeWidth]="2" />
                                 <span>{{ 'SUPER_ADMIN.ACTION_EDIT_DETAILS' | translate }}</span>
                               </li>
+                              @if (!isOrganizationRow(branch)) {
+                                <li nz-menu-item (click)="openManageAdmin(branch)">
+                                  <lucide-icon [img]="lucideUsers" [size]="14" [strokeWidth]="2" />
+                                  <span>{{ 'SUPER_ADMIN.ACTION_MANAGE_ADMIN' | translate }}</span>
+                                </li>
+                              }
                               @if (isOrganizationRow(branch)) {
                                 <li nz-menu-item (click)="openAddHotelUnderOrg(branch)">
-                                  <lucide-icon [img]="lucidePlus" [size]="14" />
+                                  <lucide-icon [img]="lucidePlus" [size]="14" [strokeWidth]="2" />
                                   <span>{{ 'SUPER_ADMIN.ACTION_ADD_NEW_HOTEL' | translate }}</span>
                                 </li>
                               }
@@ -378,4 +388,10 @@
   [tenant]="editOrganizationTenant()"
   (saved)="onEditOrganizationSaved()"
   (cancelled)="onEditOrganizationCancelled()"
+/>
+<app-hotel-admin-modal
+  [visible]="!!manageAdminTenant()"
+  [tenant]="manageAdminTenant()"
+  (saved)="onManageAdminSaved()"
+  (cancelled)="onManageAdminCancelled()"
 />
