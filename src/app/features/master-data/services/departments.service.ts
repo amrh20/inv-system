@@ -1,14 +1,18 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
+import { environment } from '../../../../environments/environment';
 import type { DepartmentPayload, DepartmentRow } from '../models/department.model';
+import { BaseCrudService } from '../shared/base-crud.service';
+
+class DepartmentsCrudService extends BaseCrudService<DepartmentRow, DepartmentPayload> {}
 
 @Injectable({ providedIn: 'root' })
 export class DepartmentsService {
-  private readonly http = inject(HttpClient);
+  private readonly httpClient = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/departments`;
+  private readonly baseCrud = new DepartmentsCrudService(this.httpClient, this.base);
 
   list(params?: {
     search?: string;
@@ -16,60 +20,38 @@ export class DepartmentsService {
     take?: number;
     isActive?: boolean;
   }): Observable<{ departments: DepartmentRow[]; total: number }> {
-    let p = new HttpParams();
-    if (params?.search) p = p.set('search', params.search);
-    if (params?.skip != null) p = p.set('skip', String(params.skip));
-    if (params?.take != null) p = p.set('take', String(params.take));
-    if (params?.isActive != null) p = p.set('isActive', String(params.isActive));
-    return this.http.get<ApiResponse<DepartmentRow[]>>(this.base, { params: p }).pipe(
-      map((res) => ({
-        departments: res.success && Array.isArray(res.data) ? res.data : [],
-        total: res.meta?.total ?? 0,
-      })),
-    );
-  }
-
-  getById(id: string): Observable<DepartmentRow> {
-    return this.http.get<ApiResponse<DepartmentRow>>(`${this.base}/${id}`).pipe(
-      map((res) => {
-        if (!res.success || !res.data) throw new Error(res.message || 'Department not found');
-        return res.data;
-      }),
-    );
+    return this.baseCrud.list(params).pipe(map((res) => ({ departments: res.items, total: res.total })));
   }
 
   create(body: DepartmentPayload): Observable<DepartmentRow> {
-    return this.http.post<ApiResponse<DepartmentRow>>(this.base, body).pipe(
-      map((res) => {
-        if (!res.success || !res.data) throw new Error(res.message || 'Create failed');
-        return res.data;
-      }),
-    );
+    return this.baseCrud.create(body);
   }
 
   update(id: string, body: DepartmentPayload): Observable<DepartmentRow> {
-    return this.http.put<ApiResponse<DepartmentRow>>(`${this.base}/${id}`, body).pipe(
-      map((res) => {
-        if (!res.success || !res.data) throw new Error(res.message || 'Update failed');
-        return res.data;
-      }),
-    );
+    return this.baseCrud.update(id, body);
   }
 
   delete(id: string): Observable<void> {
-    return this.http.delete<ApiResponse<null>>(`${this.base}/${id}`).pipe(
-      map((res) => {
-        if (!res.success) throw new Error(res.message || 'Delete failed');
-      }),
-    );
+    return this.baseCrud.delete(id);
   }
 
+  /** Backend flips `isActive` — no body required. */
   toggleActive(id: string): Observable<DepartmentRow> {
-    return this.http.patch<ApiResponse<DepartmentRow>>(`${this.base}/${id}/toggle`, {}).pipe(
-      map((res) => {
-        if (!res.success || !res.data) throw new Error(res.message || 'Toggle failed');
-        return res.data;
-      }),
-    );
+    return this.httpClient
+      .patch<ApiResponse<DepartmentRow>>(`${this.base}/${id}/toggle`, {})
+      .pipe(
+        map((res) => {
+          if (!res.success || !res.data) throw new Error(res.message || 'Toggle failed');
+          return res.data;
+        }),
+      );
+  }
+
+  codeExists(code: string, excludeId?: string): Observable<boolean> {
+    let p = new HttpParams().set('code', code.trim());
+    if (excludeId) p = p.set('excludeId', excludeId);
+    return this.httpClient
+      .get<{ success: boolean; data?: { exists?: boolean } }>(`${this.base}/exists`, { params: p })
+      .pipe(map((res) => !!res.data?.exists));
   }
 }

@@ -13,10 +13,10 @@ export class AppSettingsService {
   getAllowOpeningBalance(): Observable<OpeningBalanceSetting> {
     return this.http.get<ApiResponse<OpeningBalanceSetting>>(`${this.base}/allowOpeningBalance`).pipe(
       map((res) => {
-        if (!res.success || res.data == null) {
-          return { value: null };
+        if (!res.success) {
+          throw new Error(res.message || 'Failed to load opening balance setting');
         }
-        return res.data;
+        return res.data ?? { value: 'LOCKED' };
       }),
     );
   }
@@ -29,8 +29,8 @@ export class AppSettingsService {
     );
   }
 
-  obEnable(reason: string): Observable<void> {
-    return this.http.post<ApiResponse<unknown>>(`${this.base}/ob-enable`, { reason }).pipe(
+  obEnable(): Observable<void> {
+    return this.http.post<ApiResponse<unknown>>(`${this.base}/ob-enable`, {}).pipe(
       map((res) => {
         if (!res.success) throw new Error(res.message || 'Enable failed');
       }),

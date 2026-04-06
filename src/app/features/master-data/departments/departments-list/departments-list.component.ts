@@ -1,13 +1,12 @@
 import { NgClass } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { debounceTime, first } from 'rxjs/operators';
+import { first, map } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDropdownModule } from 'ng-zorro-antd/dropdown';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzTableModule } from 'ng-zorro-antd/table';
@@ -21,6 +20,8 @@ import { EmptyStateComponent } from '../../../../shared/components/empty-state/e
 import { StatusToggleComponent } from '../../../../shared/components/status-toggle/status-toggle.component';
 import { DepartmentFormComponent } from '../department-form/department-form.component';
 import type { DepartmentRow } from '../../models/department.model';
+import { BaseMasterDataController } from '../../shared/base-master-data.controller';
+import { isReferentialIntegrityError } from '../../shared/master-data-error.util';
 import { DepartmentsService } from '../../services/departments.service';
 
 @Component({
@@ -53,6 +54,7 @@ export class DepartmentsListComponent implements OnInit {
   private readonly confirmation = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
+  private readonly message = inject(NzMessageService);
 
   protected readonly canEditBasicData = computed(() => this.auth.hasPermission('BASIC_DATA_EDIT'));
 
@@ -62,59 +64,37 @@ export class DepartmentsListComponent implements OnInit {
   readonly lucideTrash = Trash2;
   readonly lucideEllipsisVertical = EllipsisVertical;
 
-  readonly departments = signal<DepartmentRow[]>([]);
-  readonly total = signal(0);
-  readonly loading = signal(false);
-  readonly listError = signal('');
-
-  readonly searchDraft = signal('');
-  private readonly searchTerm = signal('');
-  private readonly search$ = new Subject<string>();
-
-  readonly pageIndex = signal(1);
-  readonly pageSize = signal(25);
+  private readonly controller = new BaseMasterDataController<DepartmentRow>(
+    this.destroyRef,
+    (params) => this.api.list({
+        search: params.search,
+        skip: params.skip,
+        take: params.take,
+      }).pipe(map((res) => ({ items: res.departments, total: res.total }))),
+    () => this.t('DEPARTMENTS.ERROR_LOAD'),
+    25,
+  );
+  readonly departments = this.controller.rows;
+  readonly total = this.controller.total;
+  readonly loading = this.controller.loading;
+  readonly listError = this.controller.listError;
+  readonly searchDraft = this.controller.searchDraft;
+  readonly pageIndex = this.controller.pageIndex;
+  readonly pageSize = this.controller.pageSize;
 
   readonly formOpen = signal(false);
   readonly formDepartment = signal<DepartmentRow | null>(null);
 
   ngOnInit(): void {
-    this.search$
-      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
-      .subscribe((q) => {
-        this.searchTerm.set(q);
-        this.pageIndex.set(1);
-        this.load();
-      });
-    this.load();
+    this.controller.load();
   }
 
   onSearchChange(value: string): void {
-    this.searchDraft.set(value);
-    this.search$.next(value.trim());
+    this.controller.onSearchChange(value);
   }
 
   load(): void {
-    this.loading.set(true);
-    this.listError.set('');
-    const skip = (this.pageIndex() - 1) * this.pageSize();
-    this.api
-      .list({
-        search: this.searchTerm() || undefined,
-        skip,
-        take: this.pageSize(),
-      })
-      .pipe(first())
-      .subscribe({
-        next: (res) => {
-          this.departments.set(res.departments);
-          this.total.set(res.total);
-          this.loading.set(false);
-        },
-        error: (err: { error?: { message?: string } }) => {
-          this.loading.set(false);
-          this.listError.set(err?.error?.message ?? this.t('DEPARTMENTS.ERROR_LOAD'));
-        },
-      });
+    this.controller.load();
   }
 
   openCreate(): void {
@@ -138,31 +118,38 @@ export class DepartmentsListComponent implements OnInit {
   }
 
   onToggleStatus(row: DepartmentRow): void {
+    const prev = row.isActive;
+    this.departments.update((items) => items.map((d) => (d.id === row.id ? { ...d, isActive: !prev } : d)));
     this.confirmation
       .confirm({
-        title: row.isActive
+        title: prev
           ? this.t('DEPARTMENTS.CONFIRM_DEACTIVATE_TITLE')
           : this.t('DEPARTMENTS.CONFIRM_ACTIVATE_TITLE'),
         message: this.t('DEPARTMENTS.CONFIRM_TOGGLE_MESSAGE', { name: row.name }),
         confirmText: this.t('COMMON.CONFIRM'),
         cancelText: this.t('COMMON.CANCEL'),
-        confirmDanger: !row.isActive,
+        confirmDanger: !prev,
       })
       .pipe(first())
       .subscribe((confirmed) => {
-        if (confirmed) {
-          this.api
-            .toggleActive(row.id)
-            .pipe(first())
-            .subscribe({
-              next: () => this.load(),
-              error: () => this.load(),
-            });
+        if (!confirmed) {
+          this.departments.update((items) => items.map((d) => (d.id === row.id ? { ...d, isActive: prev } : d)));
+          return;
         }
+        this.api
+          .toggleActive(row.id)
+          .pipe(first())
+          .subscribe({
+            error: (err) => {
+              this.departments.update((items) => items.map((d) => (d.id === row.id ? { ...d, isActive: prev } : d)));
+              this.message.error(err?.error?.message ?? this.t('DEPARTMENTS.ERROR_LOAD'));
+            },
+          });
       });
   }
 
   onDeleteClick(row: DepartmentRow): void {
+    if (!this.canDelete(row)) return;
     this.confirmation
       .confirm({
         title: this.t('DEPARTMENTS.CONFIRM_DELETE_TITLE'),
@@ -179,21 +166,29 @@ export class DepartmentsListComponent implements OnInit {
             .pipe(first())
             .subscribe({
               next: () => this.load(),
-              error: () => this.load(),
+              error: (err) => {
+                this.load();
+                if (isReferentialIntegrityError(err) || err?.status === 400 || err?.status === 403) {
+                  this.message.error(this.t('COMMON.RECORD_IN_USE'));
+                  return;
+                }
+                this.message.error(err?.error?.message ?? this.t('DEPARTMENTS.ERROR_DELETE'));
+              },
             });
         }
       });
   }
 
   onPageIndexChange(i: number): void {
-    this.pageIndex.set(i);
-    this.load();
+    this.controller.onPageIndexChange(i);
   }
 
   onPageSizeChange(n: number): void {
-    this.pageSize.set(n);
-    this.pageIndex.set(1);
-    this.load();
+    this.controller.onPageSizeChange(n);
+  }
+
+  canDelete(row: DepartmentRow): boolean {
+    return (row._count?.locations ?? 0) === 0;
   }
 
   private t(key: string, params?: Record<string, unknown>): string {

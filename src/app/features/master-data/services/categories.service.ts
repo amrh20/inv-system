@@ -22,6 +22,7 @@ export class CategoriesService {
     isActive?: boolean;
     departmentId?: string;
     departmentIds?: string;
+    tenantId?: string;
   }): Observable<{ categories: CategoryRow[]; total: number }> {
     let p = new HttpParams();
     if (params?.search) p = p.set('search', params.search);
@@ -30,6 +31,7 @@ export class CategoriesService {
     if (params?.isActive != null) p = p.set('isActive', String(params.isActive));
     if (params?.departmentId) p = p.set('departmentId', params.departmentId);
     if (params?.departmentIds) p = p.set('departmentIds', params.departmentIds);
+    if (params?.tenantId) p = p.set('tenantId', params.tenantId);
     return this.http.get<ApiResponse<CategoryRow[]>>(this.base, { params: p }).pipe(
       map((res) => {
         const data = res.data as unknown;

@@ -108,19 +108,14 @@
               }}
             </p>
           </div>
-          <span
-            class="status-badge"
-            [class.status-error]="obStatus()?.value === 'LOCKED'"
-            [class.status-posted]="obStatus()?.value !== 'LOCKED'"
-          >
-            @if (obStatus()?.value === 'LOCKED') {
-              <lucide-icon [img]="lucideLock" [size]="14" />
-              {{ 'SETTINGS.OB_LOCKED' | translate }}
-            } @else {
-              <lucide-icon [img]="lucideUnlock" [size]="14" />
-              {{ 'SETTINGS.OB_OPEN' | translate }}
-            }
-          </span>
+          <nz-switch
+            [ngModel]="isObOpen()"
+            [nzControl]="true"
+            (click)="onObSwitchClick()"
+            [nzCheckedChildren]="'COMMON.ON' | translate"
+            [nzUnCheckedChildren]="'COMMON.OFF' | translate"
+            [nzDisabled]="!canManageOb() || obSaving() || obLoading()"
+          />
         </div>
 
         @if (obStatus()?.reason) {
@@ -130,48 +125,13 @@
           </p>
         }
 
-        @if (isSuperAdmin()) {
-          <div class="settings-page__stack">
-            <label class="settings-page__label">{{
-              (obStatus()?.value === 'LOCKED' ? 'SETTINGS.OB_REASON_UNLOCK' : 'SETTINGS.OB_REASON_LOCK')
-                | translate
-            }}</label>
-            <textarea
-              nz-input
-              rows="3"
-              [(ngModel)]="obReason"
-              name="obr"
-              [placeholder]="
-                (obStatus()?.value === 'LOCKED' ? 'SETTINGS.OB_PLACEHOLDER_UNLOCK' : 'SETTINGS.OB_PLACEHOLDER_LOCK')
-                  | translate
-              "
-            ></textarea>
-          </div>
+        @if (canManageOb()) {
           @if (obError()) {
             <nz-alert nzType="error" [nzMessage]="obError()" nzShowIcon />
           }
           @if (obSuccess()) {
             <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_OB_SAVED' | translate" nzShowIcon />
           }
-          <div class="settings-page__footer">
-            <button
-              nz-button
-              nzType="primary"
-              nzDanger
-              type="button"
-              [nzLoading]="obSaving()"
-              (click)="toggleOb()"
-              [class.settings-page__btn-unlock]="obStatus()?.value === 'LOCKED'"
-            >
-              @if (obStatus()?.value === 'LOCKED') {
-                <lucide-icon [img]="lucideUnlock" [size]="16" />
-                {{ 'SETTINGS.OB_UNLOCK_BTN' | translate }}
-              } @else {
-                <lucide-icon [img]="lucideLock" [size]="16" />
-                {{ 'SETTINGS.OB_LOCK_BTN' | translate }}
-              }
-            </button>
-          </div>
         } @else {
           <nz-alert nzType="info" [nzMessage]="'SETTINGS.OB_ADMIN_ONLY' | translate" nzShowIcon />
         }
@@ -179,28 +139,30 @@
     </section>
   }
 
-  <section class="settings-page__card">
-    <h2 class="settings-page__h2">
-      <lucide-icon [img]="lucideBuilding" [size]="20" />
-      {{ 'SETTINGS.SYSTEM_TITLE' | translate }}
-    </h2>
-    <div class="settings-page__sys">
-      <div>
-        <span class="settings-page__muted">{{ 'SETTINGS.TENANT' | translate }}</span>
-        <span>{{ tenantLabel() }}</span>
-      </div>
-      <div>
-        <span class="settings-page__muted">{{ 'SETTINGS.USER_ID' | translate }}</span>
-        <span class="settings-page__mono">{{ userIdShort() }}</span>
-      </div>
-      <div>
-        <span class="settings-page__muted">{{ 'SETTINGS.VERSION' | translate }}</span>
-        <span>{{ 'SETTINGS.VERSION_VALUE' | translate }}</span>
-      </div>
-      <div>
-        <span class="settings-page__muted">{{ 'SETTINGS.ENVIRONMENT' | translate }}</span>
-        <span>{{ envLabel() | translate }}</span>
-      </div>
-    </div>
-  </section>
 </div>
+
+<nz-modal
+  [nzVisible]="obLockModalOpen()"
+  [nzTitle]="'SETTINGS.OB_LOCK_CONFIRM_TITLE' | translate"
+  [nzOkText]="'COMMON.CONFIRM' | translate"
+  [nzCancelText]="'COMMON.CANCEL' | translate"
+  [nzOkLoading]="obSaving()"
+  [nzOkDisabled]="!obLockReason().trim()"
+  [nzMaskClosable]="false"
+  (nzOnCancel)="closeObLockModal()"
+  (nzOnOk)="confirmObLock()"
+>
+  <ng-container *nzModalContent>
+    <div class="settings-page__stack">
+      <label class="settings-page__label">{{ 'SETTINGS.OB_REASON_LOCK' | translate }}</label>
+      <textarea
+        nz-input
+        rows="3"
+        [ngModel]="obLockReason()"
+        (ngModelChange)="obLockReason.set($event)"
+        name="obLockReason"
+        [placeholder]="'SETTINGS.OB_REASON_PLACEHOLDER' | translate"
+      ></textarea>
+    </div>
+  </ng-container>
+</nz-modal>

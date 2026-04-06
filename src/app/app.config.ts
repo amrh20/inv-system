@@ -16,6 +16,7 @@ import {
 
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
+import { apiErrorInterceptor } from './core/interceptors/api-error.interceptor';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { en_US, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { registerLocaleData } from '@angular/common';
@@ -27,7 +28,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, apiErrorInterceptor])),
     provideNzI18n(en_US),
     {
       provide: TRANSLATE_HTTP_LOADER_CONFIG,

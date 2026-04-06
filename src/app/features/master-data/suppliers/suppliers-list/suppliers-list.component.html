@@ -71,6 +71,7 @@
         <th nzWidth="140px">{{ 'SUPPLIERS.CONTACT_PERSON' | translate }}</th>
         <th nzWidth="130px">{{ 'SUPPLIERS.PHONE' | translate }}</th>
         <th nzWidth="180px">{{ 'SUPPLIERS.EMAIL' | translate }}</th>
+        <th nzWidth="140px">{{ 'SUPPLIERS.ADDRESS' | translate }}</th>
         <th nzWidth="140px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
         <ng-container *appHasPermission="'BASIC_DATA_EDIT'">
           <th nzWidth="80px" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
@@ -84,6 +85,8 @@
           <td>{{ row.contactPerson || '—' }}</td>
           <td>{{ row.phone || '—' }}</td>
           <td>{{ row.email || '—' }}</td>
+          <td>{{ row.address || '—' }}</td>
+
           <td nzAlign="center">
             <ng-container *appHasPermission="'BASIC_DATA_EDIT'">
               <app-status-toggle

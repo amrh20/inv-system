@@ -1,9 +1,7 @@
 import { NgClass } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { debounceTime, first } from 'rxjs/operators';
+import { map } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDropdownModule } from 'ng-zorro-antd/dropdown';
@@ -18,6 +16,7 @@ import { HasPermissionDirective } from '../../../../core/directives/has-permissi
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { UnitFormComponent } from '../unit-form/unit-form.component';
 import type { UnitRow } from '../../models/unit.model';
+import { BaseMasterDataController } from '../../shared/base-master-data.controller';
 import { UnitsService } from '../../services/units.service';
 
 @Component({
@@ -52,59 +51,38 @@ export class UnitsListComponent implements OnInit {
   readonly lucidePencil = Pencil;
   readonly lucideEllipsisVertical = EllipsisVertical;
 
-  readonly units = signal<UnitRow[]>([]);
-  readonly total = signal(0);
-  readonly loading = signal(false);
-  readonly listError = signal('');
-
-  readonly searchDraft = signal('');
-  private readonly searchTerm = signal('');
-  private readonly search$ = new Subject<string>();
-
-  readonly pageIndex = signal(1);
-  readonly pageSize = signal(25);
+  private readonly controller = new BaseMasterDataController<UnitRow>(
+    this.destroyRef,
+    (params) =>
+      this.api.list({
+        search: params.search,
+        skip: params.skip,
+        take: params.take,
+      }).pipe(map((res) => ({ items: res.units, total: res.total }))),
+    () => this.t('UNITS.ERROR_LOAD'),
+    25,
+  );
+  readonly units = this.controller.rows;
+  readonly total = this.controller.total;
+  readonly loading = this.controller.loading;
+  readonly listError = this.controller.listError;
+  readonly searchDraft = this.controller.searchDraft;
+  readonly pageIndex = this.controller.pageIndex;
+  readonly pageSize = this.controller.pageSize;
 
   readonly formOpen = signal(false);
   readonly formUnit = signal<UnitRow | null>(null);
 
   ngOnInit(): void {
-    this.search$
-      .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
-      .subscribe((q) => {
-        this.searchTerm.set(q);
-        this.pageIndex.set(1);
-        this.load();
-      });
-    this.load();
+    this.controller.load();
   }
 
   onSearchChange(value: string): void {
-    this.searchDraft.set(value);
-    this.search$.next(value.trim());
+    this.controller.onSearchChange(value);
   }
 
   load(): void {
-    this.loading.set(true);
-    this.listError.set('');
-    const skip = (this.pageIndex() - 1) * this.pageSize();
-    this.api
-      .list({
-        search: this.searchTerm() || undefined,
-        skip,
-        take: this.pageSize(),
-      })
-      .pipe(first())
-      .subscribe({
-        next: (res) => {
-          this.units.set(res.units);
-          this.total.set(res.total);
-          this.loading.set(false);
-        },
-        error: (err: { error?: { message?: string } }) => {
-          this.loading.set(false);
-          this.listError.set(err?.error?.message ?? this.t('UNITS.ERROR_LOAD'));
-        },
-      });
+    this.controller.load();
   }
 
   openCreate(): void {
@@ -128,14 +106,11 @@ export class UnitsListComponent implements OnInit {
   }
 
   onPageIndexChange(i: number): void {
-    this.pageIndex.set(i);
-    this.load();
+    this.controller.onPageIndexChange(i);
   }
 
   onPageSizeChange(n: number): void {
-    this.pageSize.set(n);
-    this.pageIndex.set(1);
-    this.load();
+    this.controller.onPageSizeChange(n);
   }
 
   private t(key: string, params?: Record<string, unknown>): string {

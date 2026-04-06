@@ -1,9 +1,8 @@
-import { NgClass } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
-import { debounceTime, first } from 'rxjs/operators';
+import { Subject, forkJoin, of } from 'rxjs';
+import { catchError, debounceTime, first, map, switchMap } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDropdownModule } from 'ng-zorro-antd/dropdown';
@@ -11,6 +10,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
@@ -31,12 +31,13 @@ import { HasPermissionDirective } from '../../../../core/directives/has-permissi
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { ItemMasterLookupsService } from '../../../items/services/item-master-lookups.service';
-import { LocationCategoriesModalComponent } from '../location-categories-modal/location-categories-modal.component';
 import { LocationFormComponent } from '../location-form/location-form.component';
 import type { LocationRow } from '../../models/location.model';
 import { LocationsService } from '../../services/locations.service';
 
 interface GroupedLocations {
+  groupKey: string;
+  isUnassigned: boolean;
   departmentName: string;
   locations: LocationRow[];
 }
@@ -47,7 +48,6 @@ interface GroupedLocations {
   providers: [ConfirmationService],
   imports: [
     FormsModule,
-    NgClass,
     NzAlertModule,
     NzButtonModule,
     NzDropdownModule,
@@ -55,11 +55,11 @@ interface GroupedLocations {
     NzMenuModule,
     NzSelectModule,
     NzSpinModule,
+    NzTagModule,
     NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
-    LocationCategoriesModalComponent,
     LocationFormComponent,
     HasPermissionDirective,
   ],
@@ -97,20 +97,30 @@ export class LocationsListComponent implements OnInit {
 
   readonly formOpen = signal(false);
   readonly formLocation = signal<LocationRow | null>(null);
-  readonly categoriesModalLocation = signal<LocationRow | null>(null);
 
   readonly groupedLocations = computed<GroupedLocations[]>(() => {
     const locs = this.locations();
-    const byDept = new Map<string, LocationRow[]>();
+    const byDept = new Map<string, { isUnassigned: boolean; departmentName: string; locations: LocationRow[] }>();
     for (const loc of locs) {
-      const key = loc.department?.name ?? 'Unassigned';
-      if (!byDept.has(key)) byDept.set(key, []);
-      byDept.get(key)!.push(loc);
+      const groupKey = loc.department?.id ?? '__unassigned__';
+      const departmentName = loc.department?.name ?? '';
+      const isUnassigned = !loc.department;
+      if (!byDept.has(groupKey)) {
+        byDept.set(groupKey, { isUnassigned, departmentName, locations: [] });
+      }
+      byDept.get(groupKey)!.locations.push(loc);
     }
-    const entries = Array.from(byDept.entries()).sort(([a], [b]) =>
-      a === 'Unassigned' ? 1 : b === 'Unassigned' ? -1 : a.localeCompare(b),
-    );
-    return entries.map(([departmentName, locations]) => ({ departmentName, locations }));
+    const entries = Array.from(byDept.entries()).sort(([, a], [, b]) => {
+      if (a.isUnassigned) return 1;
+      if (b.isUnassigned) return -1;
+      return a.departmentName.localeCompare(b.departmentName);
+    });
+    return entries.map(([groupKey, value]) => ({
+      groupKey,
+      isUnassigned: value.isUnassigned,
+      departmentName: value.departmentName,
+      locations: value.locations,
+    }));
   });
 
   ngOnInit(): void {
@@ -150,10 +160,24 @@ export class LocationsListComponent implements OnInit {
         skip: 0,
         take: 500,
       })
-      .pipe(first())
+      .pipe(
+        first(),
+        switchMap((res) => {
+          const rows = res.locations ?? [];
+          if (!rows.length) return of([] as LocationRow[]);
+          return forkJoin(
+            rows.map((loc) =>
+              this.api.getCategories(loc.id).pipe(
+                map((cats) => ({ ...loc, allowedCategories: cats })),
+                catchError(() => of({ ...loc, allowedCategories: [] })),
+              ),
+            ),
+          );
+        }),
+      )
       .subscribe({
-        next: (res) => {
-          this.locations.set(res.locations);
+        next: (locations) => {
+          this.locations.set(locations);
           this.loading.set(false);
         },
         error: (err: { error?: { message?: string } }) => {
@@ -161,6 +185,22 @@ export class LocationsListComponent implements OnInit {
           this.listError.set(err?.error?.message ?? this.t('LOCATIONS.ERROR_LOAD'));
         },
       });
+  }
+
+  categoryNames(loc: LocationRow): string[] {
+    return (loc.allowedCategories ?? []).map((c) => c.name);
+  }
+
+  visibleCategoryNames(loc: LocationRow): string[] {
+    return this.categoryNames(loc).slice(0, 3);
+  }
+
+  hiddenCategoryCount(loc: LocationRow): number {
+    return Math.max(this.categoryNames(loc).length - 3, 0);
+  }
+
+  allCategoriesTooltip(loc: LocationRow): string {
+    return this.categoryNames(loc).join(', ');
   }
 
   openCreate(): void {
@@ -180,19 +220,6 @@ export class LocationsListComponent implements OnInit {
 
   onFormSaved(): void {
     this.closeForm();
-    this.load();
-  }
-
-  openCategoriesModal(loc: LocationRow): void {
-    this.categoriesModalLocation.set(loc);
-  }
-
-  closeCategoriesModal(): void {
-    this.categoriesModalLocation.set(null);
-  }
-
-  onCategoriesSaved(): void {
-    this.closeCategoriesModal();
     this.load();
   }
 

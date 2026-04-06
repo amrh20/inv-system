@@ -4,7 +4,9 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Building, Lock, Loader2, Package, Save, Settings, Unlock, User } from 'lucide-angular';
@@ -24,7 +26,9 @@ import { UsersAdminService } from '../../services/users-admin.service';
     NzAlertModule,
     NzButtonModule,
     NzInputModule,
+    NzModalModule,
     NzSpinModule,
+    NzSwitchModule,
     TranslatePipe,
     LucideAngularModule,
   ],
@@ -36,6 +40,7 @@ export class SettingsPageComponent implements OnInit {
   private readonly usersApi = inject(UsersAdminService);
   private readonly settingsApi = inject(AppSettingsService);
   private readonly message = inject(NzMessageService);
+  private readonly modal = inject(NzModalService);
   private readonly translate = inject(TranslateService);
 
   readonly lucideSettings = Settings;
@@ -65,7 +70,8 @@ export class SettingsPageComponent implements OnInit {
 
   obStatus = signal<OpeningBalanceSetting | null>(null);
   obLoading = signal(true);
-  obReason = '';
+  obLockModalOpen = signal(false);
+  obLockReason = signal('');
   obSaving = signal(false);
   obSuccess = signal(false);
   obError = signal('');
@@ -105,6 +111,10 @@ export class SettingsPageComponent implements OnInit {
     return this.auth.hasPermission('SETTINGS_OPENING_BALANCE_TOGGLE');
   }
 
+  canManageOb(): boolean {
+    return this.isSuperAdmin() || this.role() === 'ADMIN';
+  }
+
   userEmail(): string {
     return this.auth.currentUser()?.email ?? '';
   }
@@ -130,7 +140,7 @@ export class SettingsPageComponent implements OnInit {
           this.obLoading.set(false);
         },
         error: () => {
-          this.obStatus.set({ value: null });
+          this.obStatus.set({ value: 'LOCKED' });
           this.obLoading.set(false);
         },
       });
@@ -198,30 +208,95 @@ export class SettingsPageComponent implements OnInit {
       });
   }
 
-  toggleOb(): void {
-    const st = this.obStatus();
-    const locked = st?.value === 'LOCKED';
-    if (!this.obReason.trim()) {
-      this.obError.set(this.t(locked ? 'SETTINGS.OB_ERR_UNLOCK' : 'SETTINGS.OB_ERR_LOCK'));
+  isObOpen(): boolean {
+    return this.obStatus()?.value === 'OPEN';
+  }
+
+  onObSwitchClick(): void {
+    if (!this.canManageOb() || this.obSaving() || this.obLoading()) {
+      return;
+    }
+    this.obError.set('');
+    if (!this.isObOpen()) {
+      this.confirmEnableOb();
+      return;
+    }
+    this.obLockReason.set('');
+    this.obLockModalOpen.set(true);
+  }
+
+  closeObLockModal(): void {
+    if (this.obSaving()) {
+      return;
+    }
+    this.obLockModalOpen.set(false);
+    this.obLockReason.set('');
+  }
+
+  confirmObLock(): void {
+    const reason = this.obLockReason().trim();
+    if (!reason) {
+      this.obError.set(this.t('SETTINGS.OB_ERR_LOCK'));
       return;
     }
     this.obSaving.set(true);
     this.obError.set('');
     this.obSuccess.set(false);
-    const req = locked ? this.settingsApi.obEnable(this.obReason.trim()) : this.settingsApi.obLock(this.obReason.trim());
-    req.pipe(first()).subscribe({
-      next: () => {
-        this.obSaving.set(false);
-        this.obReason = '';
-        this.obSuccess.set(true);
-        this.message.success(this.t('SETTINGS.MSG_OB_SAVED'));
-        this.loadOb();
-        setTimeout(() => this.obSuccess.set(false), 3000);
-      },
-      error: (err: { error?: { message?: string }; message?: string }) => {
-        this.obSaving.set(false);
-        this.obError.set(err?.error?.message ?? err?.message ?? this.t('SETTINGS.ERR_OB'));
-      },
+    this.settingsApi
+      .obLock(reason)
+      .pipe(first())
+      .subscribe({
+        next: () => {
+          this.obSaving.set(false);
+          this.obLockModalOpen.set(false);
+          this.obLockReason.set('');
+          this.obSuccess.set(true);
+          this.message.success(this.t('SETTINGS.MSG_OB_SAVED'));
+          this.loadOb();
+          setTimeout(() => this.obSuccess.set(false), 3000);
+        },
+        error: (err: { error?: { message?: string; reason?: string }; message?: string }) => {
+          this.obSaving.set(false);
+          this.obError.set(this.extractObError(err));
+        },
+      });
+  }
+
+  private confirmEnableOb(): void {
+    this.modal.confirm({
+      nzTitle: this.t('SETTINGS.OB_ENABLE_CONFIRM_TITLE'),
+      nzContent: this.t('SETTINGS.OB_ENABLE_CONFIRM_MESSAGE'),
+      nzOkText: this.t('SETTINGS.OB_ENABLE_CONFIRM_OK'),
+      nzCancelText: this.t('COMMON.CANCEL'),
+      nzOnOk: () =>
+        new Promise<void>((resolve, reject) => {
+          this.obSaving.set(true);
+          this.obError.set('');
+          this.obSuccess.set(false);
+          this.settingsApi
+            .obEnable()
+            .pipe(first())
+            .subscribe({
+              next: () => {
+                this.obSaving.set(false);
+                this.obSuccess.set(true);
+                this.message.success(this.t('SETTINGS.MSG_OB_SAVED'));
+                this.loadOb();
+                setTimeout(() => this.obSuccess.set(false), 3000);
+                resolve();
+              },
+              error: (err: { error?: { message?: string; reason?: string }; message?: string }) => {
+                this.obSaving.set(false);
+                this.obError.set(this.extractObError(err));
+                reject();
+              },
+            });
+        }),
+      nzMaskClosable: false,
     });
+  }
+
+  private extractObError(err: { error?: { message?: string; reason?: string }; message?: string }): string {
+    return err?.error?.reason ?? err?.error?.message ?? err?.message ?? this.t('SETTINGS.ERR_OB');
   }
 }

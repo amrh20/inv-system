@@ -7,7 +7,7 @@ import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { TranslatePipe } from '@ngx-translate/core';
+import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { UnitsService } from '../../services/units.service';
 import type { UnitPayload, UnitRow } from '../../models/unit.model';
 
@@ -48,8 +48,12 @@ import type { UnitPayload, UnitRow } from '../../models/unit.model';
                       [placeholder]="'UNITS.ABBREVIATION_PLACEHOLDER' | translate"
                       [(ngModel)]="abbreviation"
                       name="abbreviation"
+                      (blur)="onAbbreviationBlur()"
                       required
                     />
+                    @if (abbreviationTaken()) {
+                      <div class="ant-form-item-explain-error">{{ 'UNITS.ABBREVIATION_EXISTS' | translate }}</div>
+                    }
                   </nz-form-control>
                 </nz-form-item>
               </nz-col>
@@ -76,7 +80,7 @@ import type { UnitPayload, UnitRow } from '../../models/unit.model';
           nz-button
           nzType="primary"
           type="button"
-          [disabled]="saving() || !name?.trim() || !abbreviation?.trim()"
+          [disabled]="saving() || abbreviationChecking() || abbreviationTaken() || !name.trim() || !abbreviation.trim()"
           (click)="submit()"
         >
           {{ saving() ? ('COMMON.SAVING' | translate) : ('COMMON.SAVE' | translate) }}
@@ -88,6 +92,7 @@ import type { UnitPayload, UnitRow } from '../../models/unit.model';
 export class UnitFormComponent {
   private readonly api = inject(UnitsService);
   private readonly message = inject(NzMessageService);
+  private readonly translate = inject(TranslateService);
 
   readonly visible = input(false);
   readonly unit = input<UnitRow | null>(null);
@@ -98,6 +103,8 @@ export class UnitFormComponent {
   abbreviation = '';
   description = '';
   readonly saving = signal(false);
+  readonly abbreviationChecking = signal(false);
+  readonly abbreviationTaken = signal(false);
 
   constructor() {
     effect(() => {
@@ -106,6 +113,8 @@ export class UnitFormComponent {
         this.name = u?.name ?? '';
         this.abbreviation = u?.abbreviation ?? '';
         this.description = u?.description ?? '';
+        this.abbreviationTaken.set(false);
+        this.abbreviationChecking.set(false);
       }
     });
   }
@@ -115,7 +124,14 @@ export class UnitFormComponent {
   }
 
   submit(): void {
-    if (!this.name?.trim() || !this.abbreviation?.trim()) return;
+    if (
+      !this.name?.trim() ||
+      !this.abbreviation?.trim() ||
+      this.abbreviationTaken() ||
+      this.abbreviationChecking()
+    ) {
+      return;
+    }
     const payload: UnitPayload = {
       name: this.name.trim(),
       abbreviation: this.abbreviation.trim(),
@@ -133,8 +149,30 @@ export class UnitFormComponent {
       },
       error: (err: { error?: { message?: string } }) => {
         this.saving.set(false);
-        this.message.error(err?.error?.message ?? 'Failed to save unit');
+        this.message.error(err?.error?.message ?? this.translate.instant('UNITS.ERROR_SAVE'));
       },
     });
+  }
+
+  onAbbreviationBlur(): void {
+    const abbreviation = this.abbreviation?.trim();
+    if (!abbreviation) {
+      this.abbreviationTaken.set(false);
+      return;
+    }
+    this.abbreviationChecking.set(true);
+    this.api
+      .abbreviationExists(abbreviation, this.unit()?.id)
+      .pipe(first())
+      .subscribe({
+        next: (exists) => {
+          this.abbreviationTaken.set(exists);
+          this.abbreviationChecking.set(false);
+        },
+        error: () => {
+          this.abbreviationTaken.set(false);
+          this.abbreviationChecking.set(false);
+        },
+      });
   }
 }

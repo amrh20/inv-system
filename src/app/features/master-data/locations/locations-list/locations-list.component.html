@@ -67,16 +67,22 @@
     </div>
   } @else {
     <div class="locations-page__groups">
-      @for (group of groupedLocations(); track group.departmentName) {
+      @for (group of groupedLocations(); track group.groupKey) {
         <div class="locations-page__group">
           <div class="locations-page__group-header">
             <lucide-icon [img]="lucideBuilding" [size]="16" class="locations-page__group-icon" />
-            <h2 class="locations-page__group-title">{{ group.departmentName }}</h2>
+            <h2 class="locations-page__group-title">
+              {{
+                group.isUnassigned
+                  ? ('LOCATIONS.UNASSIGNED_DEPARTMENT' | translate)
+                  : group.departmentName
+              }}
+            </h2>
             <span class="locations-page__group-count">({{ group.locations.length }})</span>
           </div>
           <div class="locations-page__cards">
             @for (loc of group.locations; track loc.id) {
-              <div class="location-card locations-page__card">
+              <div class="location-card locations-page__card" [class.location-card--inactive]="!loc.isActive">
                 <div class="location-card__top">
                   <div class="location-card__main">
                     <div class="location-card__icon-wrap">
@@ -131,18 +137,39 @@
                 @if (loc.description) {
                   <p class="location-card__desc">{{ loc.description }}</p>
                 }
-                <div *appHasPermission="'BASIC_DATA_EDIT'" class="location-card__manage">
-                  <button
-                    nz-button
-                    nzType="default"
-                    type="button"
-                    class="location-card__manage-btn"
-                    (click)="openCategoriesModal(loc)"
-                  >
-                    <lucide-icon [img]="lucideTag" [size]="14" />
-                    {{ 'LOCATIONS.MANAGE_ALLOWED_CATEGORIES' | translate }}
-                  </button>
-                </div>
+                @if (categoryNames(loc).length > 0) {
+                  <div class="location-card__categories">
+                    <div class="location-card__categories-label">
+                      <lucide-icon [img]="lucideTag" [size]="12" />
+                      <span>{{ 'LOCATIONS.ALLOWED_CATEGORIES' | translate }}</span>
+                    </div>
+                    <div class="location-card__categories-list">
+                      @for (categoryName of visibleCategoryNames(loc); track categoryName) {
+                        <span class="location-card__category-chip">{{ categoryName }}</span>
+                      }
+                      @if (hiddenCategoryCount(loc) > 0) {
+                        <span
+                          class="location-card__category-chip location-card__category-chip--more"
+                          [nz-tooltip]="allCategoriesTooltip(loc)"
+                        >
+                          +{{ hiddenCategoryCount(loc) }} {{ 'COMMON.MORE' | translate }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                } @else {
+                  <div class="location-card__categories">
+                    <div class="location-card__categories-label">
+                      <lucide-icon [img]="lucideTag" [size]="12" />
+                      <span>{{ 'LOCATIONS.ALLOWED_CATEGORIES' | translate }}</span>
+                    </div>
+                    <div class="location-card__categories-list">
+                      <span class="location-card__category-chip location-card__category-chip--neutral">
+                        {{ 'LOCATIONS.GENERAL_ALL_CATEGORIES' | translate }}
+                      </span>
+                    </div>
+                  </div>
+                }
                 <div class="location-card__footer">
                   <span class="location-card__stat">
                     <lucide-icon [img]="lucidePackage" [size]="12" />
@@ -152,12 +179,9 @@
                     <lucide-icon [img]="lucideUsers" [size]="12" />
                     {{ loc._count?.locationUsers ?? 0 }} {{ 'LOCATIONS.USERS_COUNT' | translate }}
                   </span>
-                  <span
-                    class="status-badge location-card__status"
-                    [ngClass]="loc.isActive ? 'status-active' : 'status-inactive'"
-                  >
+                  <nz-tag class="location-card__status-tag" [nzColor]="loc.isActive ? 'success' : 'default'">
                     {{ loc.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
-                  </span>
+                  </nz-tag>
                 </div>
               </div>
             }
@@ -173,10 +197,4 @@
   [location]="formLocation()"
   (closed)="closeForm()"
   (saved)="onFormSaved()"
-/>
-
-<app-location-categories-modal
-  [location]="categoriesModalLocation()"
-  (closed)="closeCategoriesModal()"
-  (saved)="onCategoriesSaved()"
 />

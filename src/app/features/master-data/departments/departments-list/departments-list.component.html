@@ -111,7 +111,7 @@
                     <lucide-icon [img]="lucidePencil" [size]="14" />
                     <span>{{ 'DEPARTMENTS.EDIT' | translate }}</span>
                   </li>
-                  <li nz-menu-item nzDanger (click)="onDeleteClick(row)">
+                  <li nz-menu-item nzDanger [nzDisabled]="!canDelete(row)" (click)="onDeleteClick(row)">
                     <lucide-icon [img]="lucideTrash" [size]="14" />
                     <span>{{ 'COMMON.DELETE' | translate }}</span>
                   </li>

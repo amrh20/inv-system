@@ -1,4 +1,5 @@
 import { DecimalPipe, NgClass } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
   computed,
@@ -520,6 +521,15 @@ export class ItemsListComponent implements OnInit {
         },
         error: (err: { error?: { message?: string } }) => {
           this.importLoading.set(false);
+          const error = err as HttpErrorResponse;
+          if (error.status === 403) {
+            const forbiddenMessage =
+              (error.error as { message?: string } | null)?.message ??
+              this.t('ITEMS.ERROR_OB_IMPORT_FORBIDDEN');
+            this.importError.set(forbiddenMessage);
+            this.message.error(forbiddenMessage);
+            return;
+          }
           this.importError.set(err?.error?.message ?? this.t('COMMON.IMPORT_FAILED'));
         },
       });

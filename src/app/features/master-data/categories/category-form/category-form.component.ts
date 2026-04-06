@@ -63,8 +63,8 @@ import type { CategoryPayload, CategoryRow } from '../../models/category.model';
               <nz-form-label>{{ 'COMMON.DEPARTMENT' | translate }}</nz-form-label>
               <nz-form-control>
                 <nz-select
-                  [ngModel]="departmentId"
-                  (ngModelChange)="departmentId = $event"
+                  name="departmentId"
+                  [(ngModel)]="departmentId"
                   [nzPlaceHolder]="'CATEGORIES.SELECT_DEPARTMENT' | translate"
                   nzAllowClear
                 >
@@ -109,15 +109,20 @@ export class CategoryFormComponent {
   departmentId: string | null = null;
   readonly saving = signal(false);
 
+  /** Avoid resetting fields mid-session when the effect re-runs while the modal stays open. */
+  private wasModalOpen = false;
+
   constructor() {
     effect(() => {
-      if (this.visible()) {
-        const c = this.category();
+      const open = this.visible();
+      const c = this.category();
+      if (open && !this.wasModalOpen) {
         this.name = c?.name ?? '';
         this.description = c?.description ?? '';
         this.departmentId = c?.departmentId ?? c?.department?.id ?? null;
         this.loadDepartments();
       }
+      this.wasModalOpen = open;
     });
   }
 
