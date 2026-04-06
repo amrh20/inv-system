@@ -85,11 +85,6 @@ const NAV_SECTIONS: readonly NavSection[] = [
     heading: 'NAV.SECTIONS.INVENTORY',
     permission: NAV_PERMISSIONS.inventoryView,
     items: [
-      { kind: 'link', path: '/items', label: 'NAV.ITEM_MASTER', icon: List },
-      { kind: 'link', path: '/stock', label: 'NAV.STOCK_BALANCES', icon: Package },
-      { kind: 'link', path: '/par-levels', label: 'NAV.PAR_LEVELS', icon: GaugeCircle },
-      { kind: 'link', path: '/movements', label: 'NAV.MOVEMENTS', icon: Truck },
-      { kind: 'link', path: '/ledger', label: 'NAV.LEDGER', icon: BookOpen },
       {
         kind: 'submenu',
         key: 'master-data',
@@ -104,6 +99,12 @@ const NAV_SECTIONS: readonly NavSection[] = [
           { path: '/locations', label: 'NAV.LOCATIONS', icon: MapPin },
         ],
       },
+      { kind: 'link', path: '/items', label: 'NAV.ITEM_MASTER', icon: List },
+      { kind: 'link', path: '/stock', label: 'NAV.STOCK_BALANCES', icon: Package },
+      { kind: 'link', path: '/par-levels', label: 'NAV.PAR_LEVELS', icon: GaugeCircle },
+      { kind: 'link', path: '/movements', label: 'NAV.MOVEMENTS', icon: Truck },
+      { kind: 'link', path: '/ledger', label: 'NAV.LEDGER', icon: BookOpen },
+   
     ],
   },
   {

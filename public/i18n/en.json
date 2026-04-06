@@ -277,7 +277,17 @@
     "CONFIRM_DELETE_MESSAGE": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
     "CONFIRM_DEACTIVATE_TITLE": "Deactivate item",
     "CONFIRM_ACTIVATE_TITLE": "Activate item",
-    "CONFIRM_TOGGLE_MESSAGE": "Are you sure you want to {{action}} \"{{name}}\"?"
+    "CONFIRM_TOGGLE_MESSAGE": "Are you sure you want to {{action}} \"{{name}}\"?",
+    "REQUIREMENTS_WARNING": "To create items, please ensure you have at least one: {{missingLabels}}.",
+    "OPENING_BALANCE_BANNER": "Opening Balance period is not active. Please activate it to start adding items.",
+    "OPENING_BALANCE_LINK_SETTINGS": "Open Opening Balance",
+    "REQUIREMENTS_QUICK_LINKS": "Quick links:",
+    "REQUIREMENT_LABEL": {
+      "UNITS": "Units",
+      "CATEGORIES": "Categories",
+      "VENDORS": "Suppliers",
+      "LOCATIONS": "Locations"
+    }
   },
   "ITEM_FORM": {
     "NEW_ITEM": "New item",
@@ -307,7 +317,20 @@
     "ERROR_SELECT_UNIT_ALL_ROWS": "Please select a unit for all rows.",
     "ERROR_POSITIVE_CONVERSION": "All conversion rates must be positive numbers.",
     "ERROR_IMAGE_UPLOAD": "Image upload failed",
-    "ERROR_SAVE": "Failed to save item."
+    "ERROR_SAVE": "Failed to save item.",
+    "OPENING_QTY": "Opening quantity",
+    "OPENING_QTY_PLACEHOLDER": "0 = no opening balance",
+    "OPENING_COST": "Opening unit cost",
+    "OPENING_COST_PLACEHOLDER": "Required if opening quantity is greater than zero",
+    "OB_FIELDS_HINT": "When opening quantity is greater than zero, an opening balance movement will be created and posted for the default store after the item is saved.",
+    "OB_MOVEMENT_NOTES": "Opening balance from new item",
+    "ERROR_OB_STORE_REQUIRED": "Select a default store to record opening balance.",
+    "ERROR_OB_COST_REQUIRED": "Enter a valid opening unit cost (zero or greater) when opening quantity is greater than zero.",
+    "ERROR_OB_QTY_INVALID": "Opening quantity must be zero or greater.",
+    "ERROR_OB_MOVEMENT_FAILED": "The item was saved, but the opening balance movement could not be completed. You can create an opening balance movement manually from Movements.",
+    "ERROR_OB_POST_CANCELLED": "The item was saved, but the opening balance document was not posted. You can post it later from Movements.",
+    "CONFIRM_OB_POST_TITLE": "Post opening balance",
+    "CONFIRM_OB_POST_MESSAGE": "Post this opening balance document now? Stock ledgers will be updated and this action cannot be undone."
   },
   "MOVEMENTS": {
     "TITLE": "Inventory Movements",

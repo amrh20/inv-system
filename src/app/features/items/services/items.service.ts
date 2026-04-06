@@ -12,6 +12,7 @@ import type {
   ItemsListParams,
   ItemsListResult,
   ItemUnitRow,
+  RequirementsResponse,
 } from '../models/item.model';
 
 @Injectable({ providedIn: 'root' })
@@ -25,6 +26,11 @@ export class ItemsService {
    */
   list(params: ItemsListParams): Observable<ItemsListResult> {
     return this.getItems(params);
+  }
+
+  /** Prerequisites for creating/importing items (`GET /items/check-requirements`). */
+  checkRequirements(): Observable<ApiResponse<RequirementsResponse>> {
+    return this.http.get<ApiResponse<RequirementsResponse>>(`${this.base}/check-requirements`);
   }
 
   getItems(params: ItemsListParams): Observable<ItemsListResult> {

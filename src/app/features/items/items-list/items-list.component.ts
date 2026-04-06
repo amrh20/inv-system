@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, first } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -58,6 +59,8 @@ import { StatusToggleComponent } from '../../../shared/components/status-toggle/
 import { ItemFormComponent } from '../item-form/item-form.component';
 import type {
   CategoryOption,
+  ItemCreationBlockReason,
+  ItemCreationRequirementKey,
   ItemImportPreviewData,
   ItemImportPreviewRow,
   ItemImportResult,
@@ -91,6 +94,7 @@ import { ItemsService } from '../services/items.service';
     NzTagModule,
     NzTooltipModule,
     TranslatePipe,
+    RouterLink,
     LucideAngularModule,
     ItemFormComponent,
     StatusToggleComponent,
@@ -132,6 +136,35 @@ export class ItemsListComponent implements OnInit {
     'ITEMS.STEP_PREVIEW_VALIDATE',
     'ITEMS.STEP_CONFIRM_IMPORT',
   ] as const;
+
+  /** From `GET /items/check-requirements`; disables create/import when false. */
+  readonly requirementsMet = signal(true);
+  /** When `canCreateItem` is false, distinguishes missing master data vs closed Opening Balance period. */
+  readonly blockReason = signal<ItemCreationBlockReason | null>(null);
+  readonly missingData = signal<ItemCreationRequirementKey[]>([]);
+  readonly requirementsLoading = signal(true);
+
+  /** Settings page route (Opening Balance controls). */
+  readonly openingBalanceSettingsPath = '/settings';
+
+  readonly showPrerequisitesBanner = computed(
+    () =>
+      !this.requirementsMet() &&
+      !this.requirementsLoading() &&
+      this.blockReason() !== 'OPENING_BALANCE',
+  );
+
+  readonly showOpeningBalanceBanner = computed(
+    () =>
+      !this.requirementsMet() &&
+      !this.requirementsLoading() &&
+      this.blockReason() === 'OPENING_BALANCE',
+  );
+
+  /** Disables New item + Import when prerequisites or OB block creation. */
+  readonly itemCreationActionsDisabled = computed(
+    () => this.requirementsLoading() || !this.requirementsMet(),
+  );
 
   /** Current page rows — mirrors React `ItemMasterPage` `items` state. */
   readonly itemsList = signal<ItemListRow[]>([]);
@@ -207,8 +240,76 @@ export class ItemsListComponent implements OnInit {
         this.loadItems();
       });
 
+    this.loadRequirements();
     this.loadFilterOptions();
     this.loadItems();
+  }
+
+  /** Comma-separated translated labels for the warning message. */
+  missingLabelsJoined(): string {
+    return this.missingData()
+      .map((k) => this.t(`ITEMS.REQUIREMENT_LABEL.${k.toUpperCase()}`))
+      .join(', ');
+  }
+
+  /** Router paths under `/master-data/*` (redirect to real list pages). */
+  requirementMasterDataPath(key: ItemCreationRequirementKey): string {
+    switch (key) {
+      case 'units':
+        return '/master-data/units';
+      case 'categories':
+        return '/master-data/categories';
+      case 'vendors':
+        return '/master-data/suppliers';
+      case 'locations':
+        return '/master-data/locations';
+      default:
+        return '/';
+    }
+  }
+
+  private loadRequirements(): void {
+    this.requirementsLoading.set(true);
+    this.itemsApi
+      .checkRequirements()
+      .pipe(first(), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.requirementsLoading.set(false);
+          if (!res.success || !res.data) {
+            this.requirementsMet.set(true);
+            this.blockReason.set(null);
+            this.missingData.set([]);
+            return;
+          }
+          const { canCreateItem, requirements: r, blockReason: br } = res.data;
+          this.requirementsMet.set(canCreateItem);
+          this.blockReason.set(br ?? null);
+          const missing: ItemCreationRequirementKey[] = [];
+          if (r.units.count === 0) {
+            missing.push('units');
+          }
+          if (r.categories.count === 0) {
+            missing.push('categories');
+          }
+          if (r.vendors.count === 0) {
+            missing.push('vendors');
+          }
+          if (r.locations.count === 0) {
+            missing.push('locations');
+          }
+          this.missingData.set(missing);
+          if (!canCreateItem && !br && missing.length === 0) {
+            this.blockReason.set('OPENING_BALANCE');
+          }
+        },
+        error: () => {
+          this.requirementsLoading.set(false);
+          this.requirementsMet.set(true);
+          this.blockReason.set(null);
+          this.missingData.set([]);
+        },
+      });
   }
 
   onSearchInput(value: string): void {

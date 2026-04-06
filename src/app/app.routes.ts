@@ -133,6 +133,19 @@ export const routes: Routes = [
         data: { breadcrumb: 'NAV.LEDGER' },
       },
       {
+        path: 'master-data',
+        loadComponent: () =>
+          import('./core/pages/master-data-shell/master-data-shell.component').then(
+            (m) => m.MasterDataShellComponent,
+          ),
+        children: [
+          { path: 'units', pathMatch: 'full', redirectTo: '/units-manage' },
+          { path: 'suppliers', pathMatch: 'full', redirectTo: '/suppliers' },
+          { path: 'categories', pathMatch: 'full', redirectTo: '/categories' },
+          { path: 'locations', pathMatch: 'full', redirectTo: '/locations' },
+        ],
+      },
+      {
         path: 'departments',
         loadComponent: () =>
           import('./features/master-data/departments/departments-list/departments-list.component').then(

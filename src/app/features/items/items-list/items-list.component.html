@@ -16,16 +16,80 @@
         <lucide-icon [img]="lucideDownload" [size]="14" />
         {{ 'COMMON.EXPORT' | translate }}
       </button>
-      <button nz-button nzType="default" type="button" (click)="openImport()">
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        [disabled]="itemCreationActionsDisabled()"
+        (click)="openImport()"
+      >
         <lucide-icon [img]="lucideUpload" [size]="14" />
         {{ 'COMMON.IMPORT_EXCEL' | translate }}
       </button>
-      <button nz-button nzType="primary" type="button" (click)="openCreate()">
+      <button
+        nz-button
+        nzType="primary"
+        type="button"
+        [disabled]="itemCreationActionsDisabled()"
+        (click)="openCreate()"
+      >
         <lucide-icon [img]="lucidePlus" [size]="14" />
         {{ 'ITEMS.NEW_ITEM' | translate }}
       </button>
     </div>
   </div>
+
+  <ng-template #requirementsQuickLinksTpl>
+    <div class="items-requirements-links">
+      <span class="items-requirements-links__intro">{{ 'ITEMS.REQUIREMENTS_QUICK_LINKS' | translate }}</span>
+      @for (key of missingData(); track key) {
+        <a
+          nz-button
+          nzType="link"
+          class="items-requirements-links__link"
+          [routerLink]="requirementMasterDataPath(key)"
+        >
+          {{ ('ITEMS.REQUIREMENT_LABEL.' + key.toUpperCase()) | translate }}
+        </a>
+      }
+    </div>
+  </ng-template>
+
+  <ng-template #openingBalanceQuickLinksTpl>
+    <div class="items-requirements-links">
+      <span class="items-requirements-links__intro">{{ 'ITEMS.REQUIREMENTS_QUICK_LINKS' | translate }}</span>
+      <a
+        nz-button
+        nzType="link"
+        class="items-requirements-links__link"
+        [routerLink]="openingBalanceSettingsPath"
+      >
+        {{ 'ITEMS.OPENING_BALANCE_LINK_SETTINGS' | translate }}
+      </a>
+    </div>
+  </ng-template>
+
+  @if (showPrerequisitesBanner()) {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      class="items-alert items-alert--requirements"
+      [nzMessage]="
+        'ITEMS.REQUIREMENTS_WARNING' | translate: { missingLabels: missingLabelsJoined() }
+      "
+      [nzDescription]="requirementsQuickLinksTpl"
+    />
+  }
+
+  @if (showOpeningBalanceBanner()) {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      class="items-alert items-alert--opening-balance"
+      [nzMessage]="'ITEMS.OPENING_BALANCE_BANNER' | translate"
+      [nzDescription]="openingBalanceQuickLinksTpl"
+    />
+  }
 
   <div class="items-page__filters">
     <nz-input-group [nzPrefix]="searchPrefix" class="filter-search">

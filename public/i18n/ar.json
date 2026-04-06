@@ -269,7 +269,17 @@
     "CONFIRM_DELETE_MESSAGE": "هل أنت متأكد من حذف \"{{name}}\"؟ لا يمكن التراجع عن هذا الإجراء.",
     "CONFIRM_DEACTIVATE_TITLE": "تعطيل الصنف",
     "CONFIRM_ACTIVATE_TITLE": "تفعيل الصنف",
-    "CONFIRM_TOGGLE_MESSAGE": "هل أنت متأكد من {{action}} \"{{name}}\"؟"
+    "CONFIRM_TOGGLE_MESSAGE": "هل أنت متأكد من {{action}} \"{{name}}\"؟",
+    "REQUIREMENTS_WARNING": "لإنشاء أصناف، يجب أن يكون لديك واحد على الأقل مما يلي: {{missingLabels}}.",
+    "OPENING_BALANCE_BANNER": "فترة الرصيد الافتتاحي غير مفعّلة. يُرجى تفعيلها لبدء إضافة الأصناف.",
+    "OPENING_BALANCE_LINK_SETTINGS": "فتح الرصيد الافتتاحي",
+    "REQUIREMENTS_QUICK_LINKS": "انتقل إلى:",
+    "REQUIREMENT_LABEL": {
+      "UNITS": "الوحدات",
+      "CATEGORIES": "التصنيفات",
+      "VENDORS": "الموردين",
+      "LOCATIONS": "المواقع"
+    }
   },
   "ITEM_FORM": {
     "NEW_ITEM": "صنف جديد",
@@ -299,7 +309,20 @@
     "ERROR_SELECT_UNIT_ALL_ROWS": "يرجى اختيار وحدة لكل الصفوف.",
     "ERROR_POSITIVE_CONVERSION": "يجب أن تكون كل معاملات التحويل أرقامًا موجبة.",
     "ERROR_IMAGE_UPLOAD": "فشل رفع الصورة",
-    "ERROR_SAVE": "فشل حفظ الصنف."
+    "ERROR_SAVE": "فشل حفظ الصنف.",
+    "OPENING_QTY": "الكمية الافتتاحية",
+    "OPENING_QTY_PLACEHOLDER": "0 = بدون رصيد افتتاحي",
+    "OPENING_COST": "تكلفة الوحدة الافتتاحية",
+    "OPENING_COST_PLACEHOLDER": "مطلوبة إذا كانت الكمية الافتتاحية أكبر من صفر",
+    "OB_FIELDS_HINT": "عندما تكون الكمية الافتتاحية أكبر من صفر، سيتم إنشاء وترحيل حركة رصيد افتتاحي للمخزن الافتراضي بعد حفظ الصنف.",
+    "OB_MOVEMENT_NOTES": "رصيد افتتاحي من صنف جديد",
+    "ERROR_OB_STORE_REQUIRED": "اختر مخزنًا افتراضيًا لتسجيل الرصيد الافتتاحي.",
+    "ERROR_OB_COST_REQUIRED": "أدخل تكلفة وحدة افتتاحية صالحة (صفر أو أكبر) عندما تكون الكمية الافتتاحية أكبر من صفر.",
+    "ERROR_OB_QTY_INVALID": "يجب أن تكون الكمية الافتتاحية صفرًا أو أكبر.",
+    "ERROR_OB_MOVEMENT_FAILED": "تم حفظ الصنف، لكن لم يكتمل إنشاء أو ترحيل حركة الرصيد الافتتاحي. يمكنك إنشاء حركة رصيد افتتاحي يدويًا من الحركات.",
+    "ERROR_OB_POST_CANCELLED": "تم حفظ الصنف، لكن لم يُرحّل مستند الرصيد الافتتاحي. يمكنك ترحيله لاحقًا من الحركات.",
+    "CONFIRM_OB_POST_TITLE": "ترحيل الرصيد الافتتاحي",
+    "CONFIRM_OB_POST_MESSAGE": "هل تريد ترحيل مستند الرصيد الافتتاحي الآن؟ سيتم تحديث دفاتر المخزون ولا يمكن التراجع عن هذا الإجراء."
   },
   "MOVEMENTS": {
     "TITLE": "حركات المخزون",

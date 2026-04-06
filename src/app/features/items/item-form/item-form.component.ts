@@ -19,6 +19,9 @@ import {
 } from '@angular/forms';
 import { forkJoin, lastValueFrom, of } from 'rxjs';
 import { catchError, first, startWith, switchMap, tap } from 'rxjs/operators';
+import { ConfirmationService } from '../../../core/services/confirmation.service';
+import type { MovementDocumentPayload } from '../../movements/models/movement-document.model';
+import { MovementDocumentsService } from '../../movements/services/movement-documents.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzFormModule } from 'ng-zorro-antd/form';
@@ -86,6 +89,7 @@ function itemUnitsBaseUnitValidator(control: AbstractControl): ValidationErrors 
     LucideAngularModule,
     TranslatePipe,
   ],
+  providers: [ConfirmationService],
   templateUrl: './item-form.component.html',
   styleUrl: './item-form.component.scss',
 })
@@ -95,6 +99,8 @@ export class ItemFormComponent {
   private readonly categoriesApi = inject(CategoriesService);
   private readonly unitsApi = inject(UnitsService);
   private readonly lookups = inject(ItemMasterLookupsService);
+  private readonly movementDocsApi = inject(MovementDocumentsService);
+  private readonly confirmation = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
 
@@ -126,6 +132,8 @@ export class ItemFormComponent {
   suppliers = signal<SupplierOption[]>([]);
   departments = signal<{ id: string; name: string }[]>([]);
   locations = signal<LocationOption[]>([]);
+  /** `null` until loaded (create flow only). */
+  readonly obEligible = signal<{ allowed: boolean; reason?: string } | null>(null);
 
   readonly form: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
@@ -139,6 +147,8 @@ export class ItemFormComponent {
     unitPrice: [null as number | null, [Validators.min(0)]],
     reorderPoint: [null as number | null, [Validators.min(0)]],
     reorderQty: [null as number | null, [Validators.min(0)]],
+    openingQty: [null as number | null],
+    openingCost: [null as number | null],
     isActive: [true],
     itemUnits: this.fb.array<FormGroup>([], { validators: [itemUnitsBaseUnitValidator] }),
   });
@@ -146,6 +156,7 @@ export class ItemFormComponent {
   constructor() {
     effect(() => {
       if (!this.visible()) {
+        this.obEligible.set(null);
         return;
       }
       this.submitError.set('');
@@ -302,6 +313,26 @@ export class ItemFormComponent {
     }
 
     const current = this.item();
+    const openingQty =
+      raw.openingQty != null && raw.openingQty !== '' ? Number(raw.openingQty) : 0;
+    const openingCost =
+      raw.openingCost != null && raw.openingCost !== '' ? Number(raw.openingCost) : null;
+
+    if (!current && this.obEligible()?.allowed && openingQty > 0) {
+      if (openingQty < 0 || Number.isNaN(openingQty)) {
+        this.submitError.set(this.t('ITEM_FORM.ERROR_OB_QTY_INVALID'));
+        return;
+      }
+      if (!raw.defaultStoreId) {
+        this.submitError.set(this.t('ITEM_FORM.ERROR_OB_STORE_REQUIRED'));
+        return;
+      }
+      if (openingCost == null || Number.isNaN(openingCost) || openingCost < 0) {
+        this.submitError.set(this.t('ITEM_FORM.ERROR_OB_COST_REQUIRED'));
+        return;
+      }
+    }
+
     this.saving.set(true);
 
     const req$ = current
@@ -324,6 +355,57 @@ export class ItemFormComponent {
             return;
           }
         }
+
+        if (
+          !current &&
+          saved?.id &&
+          this.obEligible()?.allowed &&
+          openingQty > 0 &&
+          openingCost != null &&
+          !Number.isNaN(openingCost) &&
+          openingCost >= 0
+        ) {
+          const storeId = (raw.defaultStoreId as string) || '';
+          if (!storeId) {
+            this.submitError.set(this.t('ITEM_FORM.ERROR_OB_STORE_REQUIRED'));
+            this.saving.set(false);
+            return;
+          }
+          try {
+            const obPayload = this.buildOpeningBalancePayload(
+              saved.id,
+              storeId,
+              openingQty,
+              openingCost,
+            );
+            const doc = await lastValueFrom(this.movementDocsApi.create(obPayload));
+            const confirmed = await lastValueFrom(
+              this.confirmation
+                .confirm({
+                  title: this.t('ITEM_FORM.CONFIRM_OB_POST_TITLE'),
+                  message: this.t('ITEM_FORM.CONFIRM_OB_POST_MESSAGE'),
+                  confirmText: this.t('MOVEMENTS.POST_DOCUMENT'),
+                  cancelText: this.t('COMMON.CANCEL'),
+                })
+                .pipe(first()),
+            );
+            if (!confirmed) {
+              this.submitError.set(this.t('ITEM_FORM.ERROR_OB_POST_CANCELLED'));
+              this.saving.set(false);
+              return;
+            }
+            await lastValueFrom(this.movementDocsApi.post(doc.id));
+          } catch (e: unknown) {
+            const msg =
+              e && typeof e === 'object' && 'message' in e
+                ? String((e as Error).message)
+                : this.t('ITEM_FORM.ERROR_OB_MOVEMENT_FAILED');
+            this.submitError.set(msg);
+            this.saving.set(false);
+            return;
+          }
+        }
+
         this.saving.set(false);
         this.saved.emit();
       },
@@ -334,7 +416,37 @@ export class ItemFormComponent {
     });
   }
 
+  private buildOpeningBalancePayload(
+    itemId: string,
+    defaultStoreId: string,
+    qty: number,
+    unitCost: number,
+  ): MovementDocumentPayload {
+    const qtyRequested = Number(qty);
+    const cost = Number(unitCost);
+    return {
+      movementType: 'OPENING_BALANCE',
+      documentDate: new Date().toISOString().split('T')[0],
+      sourceLocationId: null,
+      destLocationId: defaultStoreId,
+      referenceNumber: null,
+      department: null,
+      notes: this.t('ITEM_FORM.OB_MOVEMENT_NOTES'),
+      lines: [
+        {
+          itemId,
+          locationId: defaultStoreId,
+          qtyRequested,
+          unitCost: cost,
+          totalValue: qtyRequested * cost,
+          notes: null,
+        },
+      ],
+    };
+  }
+
   private resetForCreate(): void {
+    this.obEligible.set(null);
     this.form.reset({
       name: '',
       barcode: '',
@@ -347,23 +459,37 @@ export class ItemFormComponent {
       unitPrice: null,
       reorderPoint: null,
       reorderQty: null,
+      openingQty: null,
+      openingCost: null,
       isActive: true,
     });
     this.clearItemUnits();
     this.imagePreview.set(null);
     this.loadingLookups.set(true);
-    this.fetchLookups$()
+    forkJoin({
+      lookups: this.fetchLookups$(),
+      obEligible: this.lookups.obEligible().pipe(
+        catchError(() =>
+          of({ allowed: false as const, reason: this.t('ITEMS.ERROR_OB_ELIGIBILITY') }),
+        ),
+      ),
+    })
       .pipe(first())
       .subscribe({
-        next: () => {
+        next: ({ obEligible }) => {
+          this.obEligible.set(obEligible);
           this.loadingLookups.set(false);
           this.addDefaultBaseUnitRowForCreate();
         },
-        error: () => this.loadingLookups.set(false),
+        error: () => {
+          this.loadingLookups.set(false);
+          this.obEligible.set({ allowed: false });
+        },
       });
   }
 
   private patchForEdit(row: ItemListRow | ItemDetail): void {
+    this.obEligible.set(null);
     this.loadingLookups.set(true);
     this.fetchLookups$()
       .pipe(
@@ -381,6 +507,8 @@ export class ItemFormComponent {
             description: row.description ?? '',
             isActive: row.isActive,
             unitPrice: row.unitPrice != null ? Number(row.unitPrice) : null,
+            openingQty: null,
+            openingCost: null,
           });
           this.imagePreview.set(this.itemsApi.resolveAssetUrl(row.imageUrl));
           return;
@@ -397,6 +525,8 @@ export class ItemFormComponent {
           unitPrice: detail.unitPrice != null ? Number(detail.unitPrice) : null,
           reorderPoint: detail.reorderPoint ?? null,
           reorderQty: detail.reorderQty ?? null,
+          openingQty: null,
+          openingCost: null,
           isActive: detail.isActive !== false,
         });
         const cat = this.categories().find((c) => c.id === (detail.categoryId ?? ''));

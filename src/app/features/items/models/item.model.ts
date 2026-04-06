@@ -54,6 +54,25 @@ export interface ItemsListResult {
   total: number;
 }
 
+/** Keys returned when a prerequisite count is zero (`GET /items/check-requirements`). */
+export type ItemCreationRequirementKey = 'units' | 'categories' | 'vendors' | 'locations';
+
+/** Why the backend blocks creating/importing items when `canCreateItem` is false. */
+export type ItemCreationBlockReason = 'MISSING_PREREQUISITES' | 'OPENING_BALANCE';
+
+/** Response `data` from `GET /items/check-requirements` (tenant-scoped prerequisites). */
+export interface RequirementsResponse {
+  canCreateItem: boolean;
+  requirements: {
+    units: { count: number };
+    categories: { count: number };
+    vendors: { count: number };
+    locations: { count: number };
+  };
+  /** Present when `canCreateItem` is false (see backend `GET /items/check-requirements`). */
+  blockReason?: ItemCreationBlockReason;
+}
+
 export interface CategoryOption {
   id: string;
   name: string;

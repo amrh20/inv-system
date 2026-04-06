@@ -4,6 +4,28 @@
   gap: 16px;
 }
 
+.items-alert--requirements,
+.items-alert--opening-balance {
+  margin: 0;
+}
+
+.items-requirements-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 4px;
+}
+
+.items-requirements-links__intro {
+  margin-inline-end: 4px;
+}
+
+.items-requirements-links__link {
+  padding-inline: 4px;
+  height: auto;
+}
+
 .items-page__header {
   display: flex;
   flex-wrap: nowrap;
