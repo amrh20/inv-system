@@ -216,6 +216,8 @@
     "TITLE": "Item Master",
     "TOTAL_ITEMS": "{{count}} items total",
     "TEMPLATE": "Template",
+    "ADD_ITEM": "Add item",
+    "MANUAL_ENTRY": "Manual entry",
     "NEW_ITEM": "New item",
     "ITEM_DETAILS": "Item details",
     "IMPORT_FROM_EXCEL": "Import items from Excel",

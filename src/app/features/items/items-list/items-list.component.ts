@@ -40,6 +40,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  ChevronDown,
   Download,
   EllipsisVertical,
   Eye,
@@ -116,6 +117,7 @@ export class ItemsListComponent implements OnInit {
 
   readonly lucidePackage = Package;
   readonly lucidePlus = Plus;
+  readonly lucideChevronDown = ChevronDown;
   readonly lucideSearch = Search;
   readonly lucideRefresh = RefreshCw;
   readonly lucideDownload = Download;

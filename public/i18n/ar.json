@@ -208,6 +208,8 @@
     "TITLE": "دليل الأصناف",
     "TOTAL_ITEMS": "إجمالي الأصناف: {{count}}",
     "TEMPLATE": "نموذج",
+    "ADD_ITEM": "إضافة صنف",
+    "MANUAL_ENTRY": "إدخال يدوي",
     "NEW_ITEM": "صنف جديد",
     "ITEM_DETAILS": "تفاصيل الصنف",
     "IMPORT_FROM_EXCEL": "استيراد الأصناف من إكسل",

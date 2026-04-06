@@ -7,35 +7,56 @@
       </h1>
       <p class="items-page__meta">{{ 'ITEMS.TOTAL_ITEMS' | translate: { count: total() } }}</p>
     </div>
-    <div class="items-page__actions">
-      <button nz-button nzType="default" type="button" (click)="downloadTemplate()">
-        <lucide-icon [img]="lucideDownload" [size]="14" />
-        {{ 'ITEMS.TEMPLATE' | translate }}
-      </button>
-      <button nz-button nzType="default" type="button" (click)="exportItems()">
-        <lucide-icon [img]="lucideDownload" [size]="14" />
-        {{ 'COMMON.EXPORT' | translate }}
-      </button>
-      <button
-        nz-button
-        nzType="default"
-        type="button"
-        [disabled]="itemCreationActionsDisabled()"
-        (click)="openImport()"
-      >
-        <lucide-icon [img]="lucideUpload" [size]="14" />
-        {{ 'COMMON.IMPORT_EXCEL' | translate }}
-      </button>
-      <button
-        nz-button
-        nzType="primary"
-        type="button"
-        [disabled]="itemCreationActionsDisabled()"
-        (click)="openCreate()"
-      >
-        <lucide-icon [img]="lucidePlus" [size]="14" />
-        {{ 'ITEMS.NEW_ITEM' | translate }}
-      </button>
+    <div class="items-page__header-actions">
+      <div class="items-page__actions items-page__actions--utility">
+        <button nz-button nzType="default" nzGhost type="button" (click)="downloadTemplate()">
+          <lucide-icon [img]="lucideDownload" [size]="14" />
+          {{ 'ITEMS.TEMPLATE' | translate }}
+        </button>
+        <button nz-button nzType="default" nzGhost type="button" (click)="exportItems()">
+          <lucide-icon [img]="lucideDownload" [size]="14" />
+          {{ 'COMMON.EXPORT' | translate }}
+        </button>
+      </div>
+      <div class="items-page__add-split">
+        <nz-dropdown-menu #addItemMenuTpl="nzDropdownMenu">
+          <ul nz-menu>
+            <li nz-menu-item class="items-menu__item" (click)="openCreate()">
+              <lucide-icon [img]="lucidePencil" [size]="14" />
+              <span>{{ 'ITEMS.MANUAL_ENTRY' | translate }}</span>
+            </li>
+            <li nz-menu-item class="items-menu__item" (click)="openImport()">
+              <lucide-icon [img]="lucideUpload" [size]="14" />
+              <span>{{ 'COMMON.IMPORT_EXCEL' | translate }}</span>
+            </li>
+          </ul>
+        </nz-dropdown-menu>
+        <span class="ant-btn-group d-block" >
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="itemCreationActionsDisabled()"
+            (click)="openCreate()"
+          >
+            <lucide-icon [img]="lucidePlus" [size]="14" />
+            {{ 'ITEMS.ADD_ITEM' | translate }}
+          </button>
+          <button
+          style="margin: 0 20px;"
+            nz-button
+            nzType="primary"
+            type="button"
+            nz-dropdown
+            [nzDropdownMenu]="addItemMenuTpl"
+            nzTrigger="click"
+            nzPlacement="bottomRight"
+            [disabled]="itemCreationActionsDisabled()"
+          >
+            <lucide-icon [img]="lucideChevronDown" [size]="14" />
+          </button>
+        </span>
+      </div>
     </div>
   </div>
 
