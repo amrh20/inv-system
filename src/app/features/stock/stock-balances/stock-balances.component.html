@@ -196,23 +196,35 @@
       [nzNoResult]="noResultTpl"
     >
       <ng-template #noResultTpl>
-        <app-empty-state
-          [title]="'STOCK.NO_BALANCES_FOUND' | translate"
-          [message]="'STOCK.EMPTY_HINT' | translate"
-        />
+        <div class="stock-empty">
+          <app-empty-state
+            [title]="'STOCK.NO_RESULTS_TITLE' | translate"
+            [message]="hasFilters() ? ('STOCK.NO_RESULTS_WITH_FILTERS' | translate) : ('STOCK.NO_RESULTS_EMPTY' | translate)"
+          />
+          @if (hasFilters()) {
+            <button nz-button nzType="default" type="button" class="stock-empty__clear" (click)="clearFilters()">
+              <lucide-icon [img]="lucideX" class="stock-page__icon--sm" [strokeWidth]="2" />
+              {{ 'STOCK.CLEAR_FILTERS' | translate }}
+            </button>
+          }
+        </div>
       </ng-template>
       <thead>
         <tr>
-          <th nzWidth="220" nzColumnKey="item" [nzSortFn]="sortItemFn" nzShowSort>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+          <th nzWidth="200" nzColumnKey="item" [nzSortFn]="sortItemFn" nzShowSort>{{ 'COMMON.ITEM_NAME' | translate }}</th>
           <th nzWidth="120" nzColumnKey="barcode" [nzSortFn]="sortBarcodeFn" nzShowSort>{{ 'COMMON.BARCODE' | translate }}</th>
-          <th nzWidth="140" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>{{ 'COMMON.CATEGORY' | translate }}</th>
-          <th nzWidth="160" nzColumnKey="location" [nzSortFn]="sortLocationFn" nzShowSort>
+          <th nzWidth="130" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>{{ 'COMMON.CATEGORY' | translate }}</th>
+          <th nzWidth="140" nzColumnKey="department" [nzSortFn]="sortDepartmentFn" nzShowSort>{{ 'COMMON.DEPARTMENT' | translate }}</th>
+          <th nzWidth="150" nzColumnKey="location" [nzSortFn]="sortLocationFn" nzShowSort>
             <span class="stock-th-loc">
               {{ 'STOCK.LOCATION_STORE' | translate }}
             </span>
           </th>
           <th nzWidth="120" nzAlign="right" nzColumnKey="qty" [nzSortFn]="sortQtyFn" nzShowSort>
             {{ 'STOCK.QTY_ON_HAND' | translate }}
+          </th>
+          <th nzWidth="120" nzAlign="right" nzColumnKey="lineValue" [nzSortFn]="sortTotalValueFn" nzShowSort>
+            {{ 'COMMON.TOTAL_VALUE' | translate }}
           </th>
           <th nzWidth="130" nzAlign="center" nzColumnKey="status">{{ 'STOCK.REORDER_STATUS' | translate }}</th>
         </tr>
@@ -230,12 +242,6 @@
                 }
                 <div class="cell-item__text">
                   <span class="cell-item__name" [title]="row.item?.name ?? ''">{{ row.item?.name ?? '—' }}</span>
-                  @if (row.item?.department?.name) {
-                    <span class="cell-item__dept">
-                      <lucide-icon [img]="lucideBuilding" class="stock-page__icon--xs" />
-                      {{ row.item?.department?.name }}
-                    </span>
-                  }
                 </div>
               </div>
             </td>
@@ -244,14 +250,30 @@
               <span class="cell-category">{{ row.item?.category?.name || ('COMMON.UNCATEGORIZED' | translate) }}</span>
             </td>
             <td>
+              <span class="cell-department">
+                @if (row.item?.department?.name) {
+                  <lucide-icon [img]="lucideBuilding" [size]="12" class="cell-department__icon" [strokeWidth]="2" />
+                  <span class="cell-department__name">{{ row.item?.department?.name }}</span>
+                } @else {
+                  —
+                }
+              </span>
+            </td>
+            <td>
               <span class="cell-loc">
-                <lucide-icon [img]="lucideMapPin" class="stock-page__icon--xs cell-loc__pin" />
+                <lucide-icon [img]="lucideMapPin" [size]="12" class="cell-loc__pin" [strokeWidth]="2" />
                 {{ row.location?.name ?? '—' }}
               </span>
             </td>
-            <td nzAlign="right" [class.cell-qty--out]="rowReorderStatus(row) === 'out_of_stock'" [class.cell-qty--low]="rowReorderStatus(row) === 'low_stock'">
+            <td
+              nzAlign="right"
+              [class.cell-qty--negative]="isNegativeQty(row)"
+              [class.cell-qty--out]="!isNegativeQty(row) && rowReorderStatus(row) === 'out_of_stock'"
+              [class.cell-qty--low]="!isNegativeQty(row) && rowReorderStatus(row) === 'low_stock'"
+            >
               {{ formatQty(row.qtyOnHand) }}
             </td>
+            <td nzAlign="right" class="cell-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(lineValue(row)) }}</td>
             <td nzAlign="center">
               <span
                 class="status-badge"
@@ -266,11 +288,28 @@
     </nz-table>
 
     @if (balances().length > 0) {
-      <div class="stock-page__footer-totals">
-        <span>{{ 'STOCK.PAGE_TOTAL_ROWS' | translate: { count: balances().length } }}</span>
-        <span class="stock-page__footer-qty">{{ formatQty(pageTotals().qty) }}</span>
-        <span class="stock-page__footer-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(pageTotals().value) }}</span>
-      </div>
+      <table class="stock-page__footer-table">
+        <colgroup>
+          <col class="stock-page__col-item" />
+          <col class="stock-page__col-barcode" />
+          <col class="stock-page__col-category" />
+          <col class="stock-page__col-department" />
+          <col class="stock-page__col-location" />
+          <col class="stock-page__col-qty" />
+          <col class="stock-page__col-value" />
+          <col class="stock-page__col-status" />
+        </colgroup>
+        <tbody>
+          <tr class="stock-page__footer-row">
+            <td class="stock-page__footer-label" colspan="5">
+              {{ 'STOCK.PAGE_TOTAL_ROWS' | translate: { count: balances().length } }}
+            </td>
+            <td class="stock-page__footer-qty">{{ formatQty(pageTotals().qty) }}</td>
+            <td class="stock-page__footer-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(pageTotals().value) }}</td>
+            <td class="stock-page__footer-status"></td>
+          </tr>
+        </tbody>
+      </table>
     }
   </div>
 </div>

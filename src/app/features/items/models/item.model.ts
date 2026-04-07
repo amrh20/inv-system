@@ -123,12 +123,31 @@ export interface ItemImportPreviewRow {
   rowNum: number;
   status: 'VALID' | 'ERROR' | string;
   errors?: string[];
+  issues?: ItemImportIssue[];
   data: {
     name?: string;
+    barcode?: string;
     deptName?: string;
+    categoryName?: string;
+    /** Alternate key some APIs use for resolved category label */
+    category?: string;
+    vendorName?: string;
+    vendor?: string;
+    supplierName?: string;
+    baseUnitName?: string;
+    baseUnit?: string;
+    unitName?: string;
+    unitPrice?: number | string;
     storeQuantities?: Record<string, number | string>;
     [key: string]: unknown;
   };
+}
+
+export interface ItemImportIssue {
+  field?: string;
+  message: string;
+  code?: string;
+  severity?: 'error' | 'warning' | string;
 }
 
 export interface ItemImportFailureRow {

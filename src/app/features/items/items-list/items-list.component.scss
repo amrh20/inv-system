@@ -61,7 +61,7 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
@@ -79,6 +79,11 @@
 }
 
 .items-page__add-split {
+  display: inline-flex;
+  align-items: center;
+}
+
+.items-page__add-split-group {
   display: inline-flex;
   align-items: center;
 }
@@ -288,6 +293,10 @@
   font-size: 13px;
 }
 
+.import-ob-phase-alert {
+  margin-top: 12px;
+}
+
 .ob-card {
   margin-top: 12px;
   border: 1px solid #b7eb8f;
@@ -319,6 +328,27 @@
   display: inline-flex;
   align-items: flex-start;
   gap: 8px;
+}
+
+.ob-card--preview {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.ob-card__reason {
+  margin-top: 12px;
+}
+
+.ob-card__reason-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.ob-card__hint--reason {
+  margin-top: 6px;
 }
 
 .file-dropzone {
@@ -423,6 +453,24 @@
   font-weight: 600;
 }
 
+.ob-reason-field {
+  margin-top: 10px;
+  max-width: 520px;
+}
+
+.ob-reason-field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ob-reason-field__hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
 .preview-subline {
   margin: 10px 0 0;
   font-size: 12px;
@@ -436,13 +484,50 @@
 .preview-table-wrap {
   margin-top: 10px;
   max-height: 280px;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid #f0f0f0;
   border-radius: var(--radius-brand);
 }
 
+.preview-table-horizontal-scroll {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.preview-table-horizontal-scroll .ant-table,
+.preview-table-horizontal-scroll .ant-table-container {
+  min-width: max-content;
+}
+
+.preview-filters {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 .preview-row--error td {
   background: #fff1f0;
+}
+
+.cell-error {
+  box-shadow: inset 0 0 0 1px #ff4d4f;
+  background: #fff2f0 !important;
+}
+
+.cell-missing {
+  color: #cf1322;
+  font-style: italic;
+  font-weight: 600;
+}
+
+.preview-store-qty-empty {
+  color: var(--text-tertiary, #8c8c8c);
 }
 
 .preview-status {
@@ -544,4 +629,9 @@
 
 .import-alert {
   margin-top: 12px;
+}
+
+
+:host ::ng-deep .ant-modal {
+  width: 950px !important;
 }

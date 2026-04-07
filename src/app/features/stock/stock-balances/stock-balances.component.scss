@@ -243,6 +243,12 @@
   overflow-x: auto;
 }
 
+:host ::ng-deep .stock-table .ant-table-tbody > tr > td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  vertical-align: middle;
+}
+
 .stock-row--out {
   background: #fef2f2;
 
@@ -293,12 +299,24 @@
   white-space: nowrap;
 }
 
-.cell-item__dept {
-  font-size: 11px;
-  color: rgba(0, 0, 0, 0.35);
+.cell-department {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.cell-department__icon {
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.cell-department__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cell-mono {
@@ -324,7 +342,8 @@
 }
 
 .cell-loc__pin {
-  color: #1677ff;
+  flex-shrink: 0;
+  color: rgba(0, 0, 0, 0.45);
 }
 
 .cell-qty--out {
@@ -337,26 +356,89 @@
   font-weight: 600;
 }
 
-.stock-page__footer-totals {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 16px;
+.cell-qty--negative {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.cell-value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(0, 0, 0, 0.88);
+}
+
+.stock-empty {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  padding: 10px 16px;
+  gap: 16px;
+  padding-block: 8px;
+}
+
+.stock-empty__clear {
+  min-height: 38px;
+}
+
+.stock-page__footer-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
   background: #1f2937;
   color: #fff;
   font-size: 13px;
   font-weight: 600;
 }
 
+.stock-page__footer-row > td {
+  padding: 10px 16px;
+  border: none;
+  vertical-align: middle;
+}
+
+.stock-page__col-item {
+  width: 200px;
+}
+
+.stock-page__col-barcode {
+  width: 120px;
+}
+
+.stock-page__col-category {
+  width: 130px;
+}
+
+.stock-page__col-department {
+  width: 140px;
+}
+
+.stock-page__col-location {
+  width: 150px;
+}
+
+.stock-page__col-qty {
+  width: 120px;
+}
+
+.stock-page__col-value {
+  width: 120px;
+}
+
+.stock-page__col-status {
+  width: 130px;
+}
+
+.stock-page__footer-label {
+  color: #e5e7eb;
+  font-weight: 600;
+}
+
 .stock-page__footer-qty {
-  min-width: 5rem;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .stock-page__footer-value {
-  min-width: 8rem;
   text-align: right;
+  font-variant-numeric: tabular-nums;
   color: #6ee7b7;
 }
-

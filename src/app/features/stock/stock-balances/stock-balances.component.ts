@@ -130,10 +130,11 @@ export class StockBalancesComponent implements OnInit {
 
   readonly hasFilters = computed(() => {
     return !!(
-      this.searchDraft() ||
+      this.searchDraft().trim() ||
       this.departmentId() ||
       this.locationId() ||
-      this.categoryId()
+      this.categoryId() ||
+      this.showZero() !== 'false'
     );
   });
 
@@ -148,11 +149,19 @@ export class StockBalancesComponent implements OnInit {
       sensitivity: 'base',
     });
 
+  readonly sortDepartmentFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
+    (a.item?.department?.name ?? '').localeCompare(b.item?.department?.name ?? '', undefined, {
+      sensitivity: 'base',
+    });
+
   readonly sortLocationFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
     (a.location?.name ?? '').localeCompare(b.location?.name ?? '', undefined, { sensitivity: 'base' });
 
   readonly sortQtyFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
     Number(a.qtyOnHand) - Number(b.qtyOnHand);
+
+  readonly sortTotalValueFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
+    this.lineValue(a) - this.lineValue(b);
 
   ngOnInit(): void {
     this.reload$
@@ -185,6 +194,7 @@ export class StockBalancesComponent implements OnInit {
     this.departmentId.set('');
     this.locationId.set('');
     this.categoryId.set('');
+    this.showZero.set('false');
     this.reload$.next();
   }
 
@@ -272,6 +282,15 @@ export class StockBalancesComponent implements OnInit {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
+  }
+
+  /** Line value = qty × WAC (matches page footer totals). */
+  lineValue(row: StockBalanceRow): number {
+    return Number(row.qtyOnHand ?? 0) * Number(row.wacUnitCost ?? 0);
+  }
+
+  isNegativeQty(row: StockBalanceRow): boolean {
+    return Number(row.qtyOnHand) < 0;
   }
 
   private loadBalances(): void {

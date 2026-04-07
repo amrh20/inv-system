@@ -111,12 +111,14 @@ export class ItemsService {
     rows: unknown[],
     filePath: string,
     asOpeningBalance = false,
+    openingBalanceReason?: string,
   ): Observable<ItemImportResult> {
     return this.http
       .post<ApiResponse<ItemImportResult>>(`${this.base}/import/confirm`, {
         rows,
         filePath,
         asOpeningBalance,
+        openingBalanceReason,
       })
       .pipe(
         map((res) => {
@@ -138,9 +140,13 @@ export class ItemsService {
   }
 
   /** Parse uploaded spreadsheet (`POST /items/import/preview`). */
-  importPreview(file: File): Observable<ItemImportPreviewResponse['data']> {
+  importPreview(
+    file: File,
+    options: { asOpeningBalance: boolean },
+  ): Observable<ItemImportPreviewResponse['data']> {
     const fd = new FormData();
     fd.append('file', file);
+    fd.append('asOpeningBalance', options.asOpeningBalance ? 'true' : 'false');
     return this.http.post<ItemImportPreviewResponse>(`${this.base}/import/preview`, fd).pipe(
       map((res) => {
         if (!res.success || !res.data) {

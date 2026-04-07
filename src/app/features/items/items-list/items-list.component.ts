@@ -18,7 +18,6 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, first } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
-import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzGridModule } from 'ng-zorro-antd/grid';
@@ -62,6 +61,7 @@ import type {
   CategoryOption,
   ItemCreationBlockReason,
   ItemCreationRequirementKey,
+  ItemImportIssue,
   ItemImportPreviewData,
   ItemImportPreviewRow,
   ItemImportResult,
@@ -70,6 +70,25 @@ import type {
 import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
+
+/** Fixed import preview columns (order: Name → … → Unit Price) before dynamic store quantity columns. */
+const IMPORT_PREVIEW_FIXED_COLUMNS: readonly {
+  field: string;
+  labelKey: string;
+  cell: 'text' | 'unitPrice';
+}[] = [
+  { field: 'name', labelKey: 'COMMON.ITEM_NAME', cell: 'text' },
+  { field: 'barcode', labelKey: 'COMMON.BARCODE', cell: 'text' },
+  { field: 'deptName', labelKey: 'ITEMS.PREVIEW_DEPT', cell: 'text' },
+  { field: 'categoryName', labelKey: 'COMMON.CATEGORY', cell: 'text' },
+  { field: 'vendorName', labelKey: 'COMMON.VENDOR', cell: 'text' },
+  { field: 'baseUnitName', labelKey: 'COMMON.BASE_UNIT', cell: 'text' },
+  { field: 'unitPrice', labelKey: 'COMMON.UNIT_PRICE', cell: 'unitPrice' },
+];
+
+type ImportPreviewTableColumn =
+  | { kind: 'fixed'; field: string; labelKey: string; cell: 'text' | 'unitPrice' }
+  | { kind: 'store'; storeColumn: string };
 
 @Component({
   selector: 'app-items-list',
@@ -81,7 +100,6 @@ import { ItemsService } from '../services/items.service';
     NgClass,
     NzAlertModule,
     NzButtonModule,
-    NzCheckboxModule,
     NzDescriptionsModule,
     NzDividerModule,
     NzDropdownModule,
@@ -206,7 +224,44 @@ export class ItemsListComponent implements OnInit {
   readonly obLoading = signal(false);
   readonly importError = signal('');
   readonly obEligible = signal<{ allowed: boolean; reason?: string } | null>(null);
-  readonly asOpeningBalance = signal(false);
+  readonly openingBalanceReason = signal('');
+  /** When API allows OB import, preview/confirm run as opening-balance import (no manual toggle). */
+  readonly importAsOpeningBalance = computed(() => this.obEligible()?.allowed === true);
+  readonly previewFilter = signal<'all' | 'error' | 'valid'>('all');
+  readonly previewRows = computed(() => {
+    const rows = this.importPreviewData()?.preview ?? [];
+    const filter = this.previewFilter();
+    if (filter === 'error') {
+      return rows.filter((row) => row.status === 'ERROR');
+    }
+    if (filter === 'valid') {
+      return rows.filter((row) => row.status === 'VALID');
+    }
+    return rows;
+  });
+
+  /** Fixed data columns + store quantity columns (same order as Excel / API). */
+  readonly importPreviewTableColumns = computed((): ImportPreviewTableColumn[] => {
+    const storeCols = this.importPreviewData()?.storeColumns ?? [];
+    const fixed: ImportPreviewTableColumn[] = IMPORT_PREVIEW_FIXED_COLUMNS.map((c) => ({
+      kind: 'fixed',
+      field: c.field,
+      labelKey: c.labelKey,
+      cell: c.cell,
+    }));
+    const store: ImportPreviewTableColumn[] = storeCols.map((storeColumn) => ({
+      kind: 'store',
+      storeColumn,
+    }));
+    return [...fixed, ...store];
+  });
+
+  readonly disableConfirmImport = computed(() => {
+    const validRows = Number(this.importPreviewData()?.valid) || 0;
+    const obReasonMissing =
+      this.importAsOpeningBalance() && !this.openingBalanceReason().trim();
+    return this.importLoading() || validRows === 0 || obReasonMissing;
+  });
 
   readonly filteredLocations = computed(() => {
     const dept = this.departmentId();
@@ -542,12 +597,10 @@ export class ItemsListComponent implements OnInit {
     this.lookups.obEligible().pipe(first()).subscribe({
       next: (o) => {
         this.obEligible.set(o);
-        this.asOpeningBalance.set(!!o.allowed);
         this.obLoading.set(false);
       },
       error: () => {
         this.obEligible.set({ allowed: false, reason: this.t('ITEMS.ERROR_OB_ELIGIBILITY') });
-        this.asOpeningBalance.set(false);
         this.obLoading.set(false);
       },
     });
@@ -579,7 +632,7 @@ export class ItemsListComponent implements OnInit {
     this.importLoading.set(true);
     this.importError.set('');
     this.itemsApi
-      .importPreview(file)
+      .importPreview(file, { asOpeningBalance: this.importAsOpeningBalance() })
       .pipe(first())
       .subscribe({
         next: (data) => {
@@ -609,10 +662,20 @@ export class ItemsListComponent implements OnInit {
       this.importError.set(this.t('ITEMS.ERROR_NO_VALID_ROWS'));
       return;
     }
+    const obReason = this.openingBalanceReason().trim();
+    if (this.importAsOpeningBalance() && !obReason) {
+      this.importError.set(this.t('ITEMS.ERROR_OB_REASON_REQUIRED'));
+      return;
+    }
     this.importLoading.set(true);
     this.importError.set('');
     this.itemsApi
-      .importItems(prev.preview, prev.filePath, this.asOpeningBalance())
+      .importItems(
+        prev.preview,
+        prev.filePath,
+        this.importAsOpeningBalance(),
+        this.importAsOpeningBalance() ? obReason : undefined,
+      )
       .pipe(first())
       .subscribe({
         next: (result) => {
@@ -647,6 +710,200 @@ export class ItemsListComponent implements OnInit {
 
   importRowStoreCount(row: ItemImportPreviewRow): number {
     return row.data?.storeQuantities ? Object.keys(row.data.storeQuantities).length : 0;
+  }
+
+  hasError(row: ItemImportPreviewRow, fieldName: string): boolean {
+    return this.getIssuesByField(row, fieldName).length > 0;
+  }
+
+  fieldIssueMessage(row: ItemImportPreviewRow, fieldName: string): string {
+    const messages = this.getIssuesByField(row, fieldName)
+      .map((issue) => issue.message)
+      .filter(Boolean);
+    return messages.join(', ');
+  }
+
+  importPreviewColumnTrack(col: ImportPreviewTableColumn): string {
+    return col.kind === 'fixed' ? `f:${col.field}` : `s:${col.storeColumn}`;
+  }
+
+  /** Maps preview row data to cell display; resolves API key aliases (preview vs Excel column naming). */
+  previewImportFieldValue(row: ItemImportPreviewRow, field: string): unknown {
+    const d = row.data as Record<string, unknown>;
+    switch (field) {
+      case 'categoryName':
+        return this.coalesceImportDataValue(d, [
+          'categoryName',
+          'category',
+          'category_name',
+        ]);
+      case 'vendorName':
+        return this.coalesceImportDataValue(d, [
+          'vendorName',
+          'supplierName',
+          'vendor',
+          'supplier',
+          'supplier_name',
+        ]);
+      case 'baseUnitName':
+        return this.coalesceImportDataValue(d, [
+          'baseUnitName',
+          'baseUnit',
+          'unitName',
+          'base_unit_name',
+          'unitAbbreviation',
+        ]);
+      default:
+        return d[field];
+    }
+  }
+
+  /** First non-empty value among keys; unwraps `{ name }` objects when present. */
+  private coalesceImportDataValue(d: Record<string, unknown>, keys: string[]): unknown {
+    for (const key of keys) {
+      const v = d[key];
+      if (v === null || v === undefined) {
+        continue;
+      }
+      if (typeof v === 'string') {
+        if (v.trim().length === 0) {
+          continue;
+        }
+        return v;
+      }
+      if (typeof v === 'object' && v !== null && 'name' in (v as object)) {
+        const n = (v as { name?: unknown }).name;
+        if (n !== null && n !== undefined && String(n).trim() !== '') {
+          return n;
+        }
+        continue;
+      }
+      return v;
+    }
+    return undefined;
+  }
+
+  /** Issue keys that may refer to the same logical column from the API. */
+  private previewImportIssueFields(field: string): string[] {
+    switch (field) {
+      case 'categoryName':
+        return ['categoryName', 'category', 'category_name'];
+      case 'vendorName':
+        return ['vendorName', 'supplierName', 'vendor', 'supplier', 'supplier_name'];
+      case 'baseUnitName':
+        return [
+          'baseUnitName',
+          'baseUnit',
+          'unitName',
+          'base_unit_name',
+          'unitAbbreviation',
+        ];
+      default:
+        return [field];
+    }
+  }
+
+  previewImportHasError(row: ItemImportPreviewRow, field: string): boolean {
+    return this.previewImportIssueFields(field).some((f) => this.getIssuesByField(row, f).length > 0);
+  }
+
+  previewImportFieldIssueMessage(row: ItemImportPreviewRow, field: string): string {
+    const messages = this.previewImportIssueFields(field).flatMap((f) =>
+      this.getIssuesByField(row, f).map((issue) => issue.message).filter(Boolean),
+    );
+    return [...new Set(messages)].join(', ');
+  }
+
+  isMissingValue(value: unknown): boolean {
+    if (value === null || value === undefined) {
+      return true;
+    }
+    if (typeof value === 'string') {
+      return value.trim().length === 0;
+    }
+    return false;
+  }
+
+  setPreviewFilter(filter: 'all' | 'error' | 'valid'): void {
+    this.previewFilter.set(filter);
+  }
+
+  /** Resolves a preview column header (location name) to a location id for storeQuantities keys. */
+  previewStoreLocationIdForColumn(columnName: string): string | null {
+    const trimmed = columnName?.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const locs = this.locations();
+    const byExact = locs.find((l) => l.name === trimmed);
+    if (byExact) {
+      return byExact.id;
+    }
+    const lower = trimmed.toLowerCase();
+    return locs.find((l) => l.name.trim().toLowerCase() === lower)?.id ?? null;
+  }
+
+  previewStoreQty(row: ItemImportPreviewRow, storeColumnName: string): number | string | null {
+    const map = row.data?.storeQuantities;
+    if (!map) {
+      return null;
+    }
+    const id = this.previewStoreLocationIdForColumn(storeColumnName);
+    let qty: unknown = undefined;
+    if (id) {
+      qty = map[id];
+    }
+    if (qty === undefined && storeColumnName) {
+      qty = map[storeColumnName];
+    }
+    if (qty === undefined || qty === null || qty === '') {
+      return null;
+    }
+    return qty as number | string;
+  }
+
+  previewStoreHasError(row: ItemImportPreviewRow, storeColumnName: string): boolean {
+    return this.getIssuesForStorePreviewColumn(row, storeColumnName).length > 0;
+  }
+
+  previewStoreFieldIssueMessage(row: ItemImportPreviewRow, storeColumnName: string): string {
+    return this.getIssuesForStorePreviewColumn(row, storeColumnName)
+      .map((issue) => issue.message)
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  private getIssuesForStorePreviewColumn(
+    row: ItemImportPreviewRow,
+    storeColumnName: string,
+  ): ItemImportIssue[] {
+    const id = this.previewStoreLocationIdForColumn(storeColumnName);
+    const issues = Array.isArray(row.issues) ? row.issues : [];
+    return issues.filter((issue) => {
+      if (!issue.message) {
+        return false;
+      }
+      if (this.issueFieldMatches(issue.field, storeColumnName)) {
+        return true;
+      }
+      if (id) {
+        if (this.issueFieldMatches(issue.field, `storeQuantities.${id}`)) {
+          return true;
+        }
+        if (this.issueFieldMatches(issue.field, id)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }
+
+  previewNumber(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
   }
 
   importFileSizeLabel(file: File | null): string {
@@ -696,5 +953,32 @@ export class ItemsListComponent implements OnInit {
     this.importLoading.set(false);
     this.obLoading.set(false);
     this.importError.set('');
+    this.openingBalanceReason.set('');
+    this.previewFilter.set('all');
+  }
+
+  private getIssuesByField(row: ItemImportPreviewRow, fieldName: string): ItemImportIssue[] {
+    const issues = Array.isArray(row.issues) ? row.issues : [];
+    return issues.filter((issue) => this.issueFieldMatches(issue.field, fieldName) && !!issue.message);
+  }
+
+  private issueFieldMatches(issueField: string | undefined, fieldName: string): boolean {
+    if (!issueField) {
+      return false;
+    }
+    const normalize = (v: string) =>
+      v
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/['"]/g, '')
+        .replace(/\[|\]/g, '.')
+        .replace(/\.{2,}/g, '.');
+
+    const issue = normalize(issueField);
+    const target = normalize(fieldName);
+    if (issue === target) {
+      return true;
+    }
+    return issue.endsWith(`.${target}`);
   }
 }
