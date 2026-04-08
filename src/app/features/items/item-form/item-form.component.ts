@@ -1,5 +1,6 @@
 import {
   Component,
+  computed,
   DestroyRef,
   effect,
   inject,
@@ -17,8 +18,8 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { forkJoin, lastValueFrom, of } from 'rxjs';
-import { catchError, first, startWith, switchMap, tap } from 'rxjs/operators';
+import { forkJoin, lastValueFrom, of, type Observable } from 'rxjs';
+import { catchError, finalize, first, map, startWith, switchMap, tap } from 'rxjs/operators';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { MovementDocumentPayload } from '../../movements/models/movement-document.model';
 import { MovementDocumentsService } from '../../movements/services/movement-documents.service';
@@ -43,11 +44,13 @@ import { UnitsService } from '../services/units.service';
 import type {
   CategoryOption,
   DepartmentOption,
+  ItemCreationRequirementKey,
   ItemDetail,
   ItemListRow,
   ItemPayload,
   ItemUnitRow,
   LocationOption,
+  RequirementsResponse,
   SubcategoryOption,
   SupplierOption,
   UnitOption,
@@ -66,6 +69,31 @@ function itemUnitsBaseUnitValidator(control: AbstractControl): ValidationErrors 
   const unitId = baseRows[0].get('unitId')?.value;
   if (unitId == null || String(unitId).trim() === '') {
     return { baseUnitInvalid: true };
+  }
+  return null;
+}
+
+/** When opening quantity is positive, opening unit cost is required (re-validated when quantity changes). */
+function openingStockCostWhenQtyValidator(control: AbstractControl): ValidationErrors | null {
+  const parent = control.parent;
+  if (!parent) {
+    return null;
+  }
+  const qtyRaw = parent.get('openingQty')?.value;
+  const qtyNum = qtyRaw != null && qtyRaw !== '' ? Number(qtyRaw) : 0;
+  if (Number.isNaN(qtyNum) || qtyNum <= 0) {
+    return null;
+  }
+  const v = control.value;
+  if (v == null || v === '' || (typeof v === 'string' && String(v).trim() === '')) {
+    return { openingStockCostRequired: true };
+  }
+  const num = Number(v);
+  if (Number.isNaN(num)) {
+    return { openingStockCostRequired: true };
+  }
+  if (num < 0) {
+    return { min: true };
   }
   return null;
 }
@@ -127,13 +155,39 @@ export class ItemFormComponent {
   readonly removeImage = signal(false);
 
   categories = signal<CategoryOption[]>([]);
-  subcategories = signal<SubcategoryOption[]>([]);
+  /** Subcategories for the selected category from `GET /categories/:id/subcategories`. */
+  readonly subcategories = signal<SubcategoryOption[]>([]);
+  /** True while subcategories are being fetched for the current category. */
+  readonly subcategoriesLoading = signal(false);
   units = signal<UnitOption[]>([]);
   suppliers = signal<SupplierOption[]>([]);
   departments = signal<{ id: string; name: string }[]>([]);
   locations = signal<LocationOption[]>([]);
-  /** `null` until loaded (create flow only). */
-  readonly obEligible = signal<{ allowed: boolean; reason?: string } | null>(null);
+  /** Create flow: result of `GET /items/check-requirements`; `null` until loaded or when editing. */
+  readonly requirements = signal<RequirementsResponse | null>(null);
+
+  /** Opening balance fields only during setup phase when the API allows item creation with OB. */
+  readonly showOpeningBalanceFields = computed(
+    () => !this.item() && this.requirements()?.canCreateItem === true,
+  );
+
+  /** Create flow: prerequisites missing (not the OB-period lock). */
+  readonly showItemFormPrerequisitesBanner = computed(() => {
+    const req = this.requirements();
+    if (this.item() || !req || req.canCreateItem) {
+      return false;
+    }
+    return req.blockReason !== 'OPENING_BALANCE';
+  });
+
+  /** Create flow: item creation blocked because the opening balance period is closed. */
+  readonly showItemFormOpeningBalanceClosedBanner = computed(() => {
+    const req = this.requirements();
+    if (this.item() || !req || req.canCreateItem) {
+      return false;
+    }
+    return req.blockReason === 'OPENING_BALANCE';
+  });
 
   readonly form: FormGroup = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(255)]],
@@ -145,8 +199,6 @@ export class ItemFormComponent {
     supplierId: [''],
     defaultStoreId: ['', Validators.required],
     unitPrice: [null as number | null, [Validators.min(0)]],
-    reorderPoint: [null as number | null, [Validators.min(0)]],
-    reorderQty: [null as number | null, [Validators.min(0)]],
     openingQty: [null as number | null],
     openingCost: [null as number | null],
     isActive: [true],
@@ -156,7 +208,9 @@ export class ItemFormComponent {
   constructor() {
     effect(() => {
       if (!this.visible()) {
-        this.obEligible.set(null);
+        this.requirements.set(null);
+        this.subcategories.set([]);
+        this.subcategoriesLoading.set(false);
         return;
       }
       this.submitError.set('');
@@ -171,20 +225,39 @@ export class ItemFormComponent {
       }
     });
 
+    effect(() => {
+      const vis = this.visible();
+      if (!vis) {
+        this.syncOpeningBalanceValidators(false);
+        return;
+      }
+      this.syncOpeningBalanceValidators(this.showOpeningBalanceFields());
+    });
+
     this.form
       .get('categoryId')
-      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((catId: string) => {
-        this.form.get('subcategoryId')?.setValue('', { emitEvent: false });
-        const cat = this.categories().find((c) => c.id === catId);
-        this.subcategories.set(cat?.subcategories ?? []);
-      });
+      ?.valueChanges.pipe(
+        takeUntilDestroyed(this.destroyRef),
+        switchMap((catId: string | null) =>
+          this.loadSubcategoriesForCategoryId$(catId, { clearSubcategory: true }),
+        ),
+      )
+      .subscribe();
 
     this.form
       .get('departmentId')
       ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         this.form.get('defaultStoreId')?.setValue('', { emitEvent: false });
+      });
+
+    this.form
+      .get('openingQty')
+      ?.valueChanges.pipe(startWith(this.form.get('openingQty')?.value), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (this.showOpeningBalanceFields()) {
+          this.form.get('openingCost')?.updateValueAndValidity({ emitEvent: false });
+        }
       });
 
     this.form.valueChanges
@@ -205,6 +278,45 @@ export class ItemFormComponent {
       return all;
     }
     return all.filter((l) => !l.departmentId || l.departmentId === deptId);
+  }
+
+  /**
+   * Subcategory select is disabled when no category, while subcategories are loading, or when
+   * the API returned no subcategories. (Disabled via template only.)
+   */
+  isSubcategorySelectDisabled(): boolean {
+    const catId = this.form.get('categoryId')?.value as string | undefined;
+    if (catId == null || String(catId).trim() === '') {
+      return true;
+    }
+    if (this.subcategoriesLoading()) {
+      return true;
+    }
+    return this.subcategories().length === 0;
+  }
+
+  /**
+   * Fetches subcategories for `categoryId`. When `clearSubcategory` is true (user changed category),
+   * resets `subcategoryId` first. Edit flow passes false so the patched value is kept.
+   */
+  private loadSubcategoriesForCategoryId$(
+    catId: string | null,
+    options: { clearSubcategory: boolean },
+  ): Observable<SubcategoryOption[]> {
+    if (options.clearSubcategory) {
+      this.form.get('subcategoryId')?.setValue('', { emitEvent: false });
+    }
+    const id = catId == null || String(catId).trim() === '' ? '' : String(catId).trim();
+    if (!id) {
+      this.subcategories.set([]);
+      this.subcategoriesLoading.set(false);
+      return of([] as SubcategoryOption[]);
+    }
+    this.subcategoriesLoading.set(true);
+    return this.categoriesApi.listSubcategories(id).pipe(
+      tap((subs) => this.subcategories.set(subs)),
+      finalize(() => this.subcategoriesLoading.set(false)),
+    );
   }
 
   addUnitRow(): void {
@@ -302,8 +414,6 @@ export class ItemFormComponent {
       supplierId: raw.supplierId || null,
       defaultStoreId: raw.defaultStoreId || null,
       unitPrice: raw.unitPrice != null && raw.unitPrice !== '' ? Number(raw.unitPrice) : 0,
-      reorderPoint: raw.reorderPoint != null ? Number(raw.reorderPoint) : 0,
-      reorderQty: raw.reorderQty != null ? Number(raw.reorderQty) : 0,
       isActive: raw.isActive !== false,
       itemUnits: itemUnits.length ? itemUnits : undefined,
     };
@@ -318,7 +428,7 @@ export class ItemFormComponent {
     const openingCost =
       raw.openingCost != null && raw.openingCost !== '' ? Number(raw.openingCost) : null;
 
-    if (!current && this.obEligible()?.allowed && openingQty > 0) {
+    if (!current && this.requirements()?.canCreateItem && openingQty > 0) {
       if (openingQty < 0 || Number.isNaN(openingQty)) {
         this.submitError.set(this.t('ITEM_FORM.ERROR_OB_QTY_INVALID'));
         return;
@@ -328,7 +438,7 @@ export class ItemFormComponent {
         return;
       }
       if (openingCost == null || Number.isNaN(openingCost) || openingCost < 0) {
-        this.submitError.set(this.t('ITEM_FORM.ERROR_OB_COST_REQUIRED'));
+        this.submitError.set(this.t('ITEM_FORM.ERROR_OPENING_STOCK_COST_REQUIRED'));
         return;
       }
     }
@@ -359,7 +469,7 @@ export class ItemFormComponent {
         if (
           !current &&
           saved?.id &&
-          this.obEligible()?.allowed &&
+          this.requirements()?.canCreateItem &&
           openingQty > 0 &&
           openingCost != null &&
           !Number.isNaN(openingCost) &&
@@ -446,7 +556,7 @@ export class ItemFormComponent {
   }
 
   private resetForCreate(): void {
-    this.obEligible.set(null);
+    this.requirements.set(null);
     this.form.reset({
       name: '',
       barcode: '',
@@ -457,8 +567,6 @@ export class ItemFormComponent {
       supplierId: '',
       defaultStoreId: '',
       unitPrice: null,
-      reorderPoint: null,
-      reorderQty: null,
       openingQty: null,
       openingCost: null,
       isActive: true,
@@ -468,28 +576,32 @@ export class ItemFormComponent {
     this.loadingLookups.set(true);
     forkJoin({
       lookups: this.fetchLookups$(),
-      obEligible: this.lookups.obEligible().pipe(
-        catchError(() =>
-          of({ allowed: false as const, reason: this.t('ITEMS.ERROR_OB_ELIGIBILITY') }),
-        ),
+      checkRequirements: this.itemsApi.checkRequirements().pipe(
+        map((res) => {
+          if (!res.success || !res.data) {
+            return null;
+          }
+          return this.normalizeRequirementsResponse(res.data);
+        }),
+        catchError(() => of(null)),
       ),
     })
       .pipe(first())
       .subscribe({
-        next: ({ obEligible }) => {
-          this.obEligible.set(obEligible);
+        next: ({ checkRequirements: reqData }) => {
+          this.requirements.set(reqData);
           this.loadingLookups.set(false);
           this.addDefaultBaseUnitRowForCreate();
         },
         error: () => {
           this.loadingLookups.set(false);
-          this.obEligible.set({ allowed: false });
+          this.requirements.set(null);
         },
       });
   }
 
   private patchForEdit(row: ItemListRow | ItemDetail): void {
-    this.obEligible.set(null);
+    this.requirements.set(null);
     this.loadingLookups.set(true);
     this.fetchLookups$()
       .pipe(
@@ -499,44 +611,54 @@ export class ItemFormComponent {
         ),
       )
       .subscribe((detail) => {
+        const itemRow = row;
         this.loadingLookups.set(false);
         if (!detail) {
-          this.form.patchValue({
-            name: row.name,
-            barcode: row.barcode ?? '',
-            description: row.description ?? '',
-            isActive: row.isActive,
-            unitPrice: row.unitPrice != null ? Number(row.unitPrice) : null,
-            openingQty: null,
-            openingCost: null,
-          });
-          this.imagePreview.set(this.itemsApi.resolveAssetUrl(row.imageUrl));
+          this.subcategories.set([]);
+          this.subcategoriesLoading.set(false);
+          this.form.patchValue(
+            {
+              name: itemRow.name,
+              barcode: itemRow.barcode ?? '',
+              description: itemRow.description ?? '',
+              isActive: itemRow.isActive,
+              unitPrice: itemRow.unitPrice != null ? Number(itemRow.unitPrice) : null,
+              openingQty: null,
+              openingCost: null,
+            },
+            { emitEvent: false },
+          );
+          this.imagePreview.set(this.itemsApi.resolveAssetUrl(itemRow.imageUrl));
           return;
         }
-        this.form.patchValue({
-          name: detail.name,
-          barcode: detail.barcode ?? '',
-          description: detail.description ?? '',
-          departmentId: detail.departmentId ?? '',
-          categoryId: detail.categoryId ?? '',
-          subcategoryId: detail.subcategoryId ?? '',
-          supplierId: detail.supplierId ?? '',
-          defaultStoreId: detail.defaultStoreId ?? '',
-          unitPrice: detail.unitPrice != null ? Number(detail.unitPrice) : null,
-          reorderPoint: detail.reorderPoint ?? null,
-          reorderQty: detail.reorderQty ?? null,
-          openingQty: null,
-          openingCost: null,
-          isActive: detail.isActive !== false,
-        });
-        const cat = this.categories().find((c) => c.id === (detail.categoryId ?? ''));
-        this.subcategories.set(cat?.subcategories ?? []);
+        this.form.patchValue(
+          {
+            name: detail.name,
+            barcode: detail.barcode ?? '',
+            description: detail.description ?? '',
+            departmentId: detail.departmentId ?? '',
+            categoryId: detail.categoryId ?? '',
+            subcategoryId: detail.subcategoryId ?? '',
+            supplierId: detail.supplierId ?? '',
+            defaultStoreId: detail.defaultStoreId ?? '',
+            unitPrice: detail.unitPrice != null ? Number(detail.unitPrice) : null,
+            openingQty: null,
+            openingCost: null,
+            isActive: detail.isActive !== false,
+          },
+          { emitEvent: false },
+        );
+        this.loadSubcategoriesForCategoryId$(detail.categoryId ?? '', {
+          clearSubcategory: false,
+        })
+          .pipe(first())
+          .subscribe();
         this.imagePreview.set(this.itemsApi.resolveAssetUrl(detail.imageUrl));
         this.removeImage.set(false);
         this.imageFile.set(null);
         this.clearItemUnits();
         this.itemsApi
-          .getItemUnits(row.id)
+          .getItemUnits(itemRow.id)
           .pipe(first())
           .subscribe((units) => {
             for (const u of units) {
@@ -575,6 +697,65 @@ export class ItemFormComponent {
     }
     this.addUnitRow();
     this.itemUnits.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private syncOpeningBalanceValidators(showOb: boolean): void {
+    const openingQty = this.form.get('openingQty');
+    const openingCost = this.form.get('openingCost');
+    if (!openingQty || !openingCost) {
+      return;
+    }
+    if (showOb) {
+      openingQty.setValidators([Validators.min(0)]);
+      openingCost.setValidators([openingStockCostWhenQtyValidator, Validators.min(0)]);
+    } else {
+      openingQty.clearValidators();
+      openingCost.clearValidators();
+    }
+    openingQty.updateValueAndValidity({ emitEvent: false });
+    openingCost.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private normalizeRequirementsResponse(data: RequirementsResponse): RequirementsResponse {
+    if (data.canCreateItem) {
+      return data;
+    }
+    if (data.blockReason) {
+      return data;
+    }
+    const missing = this.keysWithZeroCount(data.requirements);
+    if (missing.length === 0) {
+      return { ...data, blockReason: 'OPENING_BALANCE' };
+    }
+    return data;
+  }
+
+  private keysWithZeroCount(req: RequirementsResponse['requirements']): ItemCreationRequirementKey[] {
+    const missing: ItemCreationRequirementKey[] = [];
+    if (req.units.count === 0) {
+      missing.push('units');
+    }
+    if (req.categories.count === 0) {
+      missing.push('categories');
+    }
+    if (req.vendors.count === 0) {
+      missing.push('vendors');
+    }
+    if (req.locations.count === 0) {
+      missing.push('locations');
+    }
+    return missing;
+  }
+
+  /** Comma-separated prerequisite labels for the create-blocked banner. */
+  missingRequirementLabelsJoined(): string {
+    const req = this.requirements();
+    if (!req?.requirements) {
+      return '';
+    }
+    return this.keysWithZeroCount(req.requirements)
+      .map((k) => this.t(`ITEMS.REQUIREMENT_LABEL.${k.toUpperCase()}`))
+      .join(', ');
   }
 
   private fetchLookups$() {

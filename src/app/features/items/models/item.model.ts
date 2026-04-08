@@ -175,8 +175,6 @@ export interface ItemPayload {
   supplierId?: string | null;
   defaultStoreId?: string | null;
   unitPrice: number;
-  reorderPoint?: number;
-  reorderQty?: number;
   isActive?: boolean;
   imageUrl?: string | null;
   itemUnits?: ItemUnitRow[];

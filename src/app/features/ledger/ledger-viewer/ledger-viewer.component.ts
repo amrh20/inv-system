@@ -10,6 +10,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { first } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
@@ -54,6 +55,7 @@ const LEDGER_MOVEMENT_TYPES = [
     DatePipe,
     NgClass,
     NzAlertModule,
+    NzButtonModule,
     NzDatePickerModule,
     NzSelectModule,
     NzTableModule,
@@ -67,6 +69,9 @@ const LEDGER_MOVEMENT_TYPES = [
 export class LedgerViewerComponent implements OnInit, OnDestroy {
   readonly ledgerFetchTake = LEDGER_FETCH_TAKE;
   readonly movementTypes = LEDGER_MOVEMENT_TYPES;
+
+  /** Horizontal scroll — column widths sum to ~1280px; extra room for padding/borders. */
+  readonly ledgerTableScroll = { x: '1360px' };
 
   private readonly ledgerApi = inject(LedgerService);
   private readonly itemsApi = inject(ItemsService);
@@ -184,6 +189,31 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
     return d === 'IN' ? 'success' : 'error';
   }
 
+  movementTypeClass(row: LedgerEntryRow): string {
+    switch (row.movementType) {
+      case 'OPENING_BALANCE':
+        return 'ledger-type--opening';
+      case 'RECEIVE':
+        return 'ledger-type--receive';
+      case 'ISSUE':
+        return 'ledger-type--issue';
+      case 'TRANSFER_IN':
+        return 'ledger-type--transfer-in';
+      case 'TRANSFER_OUT':
+        return 'ledger-type--transfer-out';
+      case 'BREAKAGE':
+        return 'ledger-type--breakage';
+      case 'ADJUSTMENT':
+        return 'ledger-type--adjustment';
+      case 'RETURN':
+        return 'ledger-type--return';
+      case 'COUNT_ADJUSTMENT':
+        return 'ledger-type--count-adjustment';
+      default:
+        return 'ledger-type--default';
+    }
+  }
+
   movementTypeHuman(row: LedgerEntryRow): string {
     return this.t(`MOVEMENTS.TYPES.${row.movementType}`);
   }
@@ -196,6 +226,10 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
   formatSignedQtyOut(row: LedgerEntryRow): string {
     const v = Number(row.qtyOut);
     return v > 0 ? `-${v.toLocaleString('en-US', { maximumFractionDigits: 4 })}` : '—';
+  }
+
+  isQtyOutPositive(row: LedgerEntryRow): boolean {
+    return Number(row.qtyOut) > 0;
   }
 
   formatBalance(row: LedgerEntryRow): string {
@@ -218,6 +252,45 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
 
   movementTypeLabel(type: string): string {
     return type ? this.t(`MOVEMENTS.TYPES.${type}`) : '';
+  }
+
+  downloadExcel(): void {
+    const rows = this.entries();
+    const headers = [
+      this.t('COMMON.DATE'),
+      this.t('COMMON.TYPE'),
+      this.t('LEDGER.REF_NO'),
+      this.t('COMMON.ITEM'),
+      this.t('COMMON.LOCATION'),
+      this.t('COMMON.QTY_IN'),
+      this.t('COMMON.QTY_OUT'),
+      this.t('COMMON.UNIT_COST'),
+      this.t('COMMON.TOTAL_VALUE'),
+      this.t('LEDGER.RUNNING_BAL'),
+    ];
+
+    const csvRows = rows.map((row) => [
+      this.formatDateTimeCsv(row.createdAt),
+      this.movementTypeHuman(row),
+      row.referenceNo ?? '',
+      row.item?.name ?? '',
+      row.location?.name ?? '',
+      this.formatSignedQtyIn(row),
+      this.formatSignedQtyOut(row),
+      this.formatUnitCost(row),
+      this.formatTotalValue(row),
+      this.formatBalance(row),
+    ]);
+
+    const csvContent = [headers, ...csvRows].map((line) => line.map((v) => this.escapeCsv(v)).join(',')).join('\r\n');
+    const csvWithBom = `\uFEFF${csvContent}`;
+    const blob = new Blob([csvWithBom], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ledger-${this.formatDate(new Date())}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   private loadLookups(): void {
@@ -246,5 +319,16 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
 
   private t(key: string, params?: Record<string, unknown>): string {
     return this.translate.instant(key, params);
+  }
+
+  private formatDateTimeCsv(value: string): string {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+  }
+
+  private escapeCsv(value: unknown): string {
+    const raw = String(value ?? '');
+    const escaped = raw.replace(/"/g, '""');
+    return /[",\r\n]/.test(escaped) ? `"${escaped}"` : escaped;
   }
 }

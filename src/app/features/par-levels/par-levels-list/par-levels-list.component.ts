@@ -13,11 +13,15 @@ import { FormsModule } from '@angular/forms';
 import { first } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCollapseModule } from 'ng-zorro-antd/collapse';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import {
@@ -27,9 +31,10 @@ import {
   Layers,
   Loader2,
   RefreshCw,
+  RotateCcw,
   Save,
-  Search,
 } from 'lucide-angular';
+import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { DepartmentOption, LocationOption } from '../../items/models/item.model';
 import type { CategoryRow } from '../../master-data/models/category.model';
 import { ItemMasterLookupsService } from '../../items/services/item-master-lookups.service';
@@ -49,14 +54,19 @@ type EditKey = string;
     FormsModule,
     NzAlertModule,
     NzButtonModule,
+    NzCollapseModule,
     NzInputModule,
     NzInputNumberModule,
+    NzModalModule,
     NzSelectModule,
+    NzSpinModule,
     NzTableModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
   ],
+  providers: [ConfirmationService],
   templateUrl: './par-levels-list.component.html',
   styleUrl: './par-levels-list.component.scss',
 })
@@ -65,17 +75,18 @@ export class ParLevelsListComponent implements OnInit {
   private readonly lookups = inject(ItemMasterLookupsService);
   private readonly locationsApi = inject(LocationsService);
   private readonly message = inject(NzMessageService);
+  private readonly confirmation = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
 
   readonly lucideGauge = GaugeCircle;
-  readonly lucideSearch = Search;
-  readonly lucideLoader = Loader2;
   readonly lucideRefresh = RefreshCw;
+  readonly lucideLoader = Loader2;
   readonly lucideSave = Save;
   readonly lucideAlert = AlertTriangle;
   readonly lucideLayers = Layers;
   readonly lucideCheckSquare = CheckSquare;
+  readonly lucideRotateCcw = RotateCcw;
 
   readonly departments = signal<DepartmentOption[]>([]);
   readonly allLocations = signal<LocationOption[]>([]);
@@ -97,6 +108,8 @@ export class ParLevelsListComponent implements OnInit {
   readonly bulkMax = signal<number | null>(null);
   readonly bulkReorder = signal<number | null>(null);
   readonly bulkApplied = signal(false);
+  /** Collapsed by default to save vertical space */
+  readonly bulkPanelOpen = signal(false);
 
   readonly filteredLocations = computed(() => {
     const dept = this.departmentId();
@@ -131,6 +144,23 @@ export class ParLevelsListComponent implements OnInit {
   readonly hasEdits = computed(() => Object.keys(this.edits()).length > 0);
   readonly editsCount = computed(() => Object.keys(this.edits()).length);
 
+  /** True when any row in the current edit set violates min/max/reorder rules */
+  readonly hasValidationErrors = computed(() => {
+    const editMap = this.edits();
+    const rows = this.balances();
+    const rowMap = new Map(rows.map((r) => [`${r.itemId}_${r.locationId}`, r]));
+    for (const [, e] of Object.entries(editMap)) {
+      if (!e?.itemId || !e?.locationId) continue;
+      const base = rowMap.get(`${e.itemId}_${e.locationId}`);
+      const min = e.minQty ?? (base ? Number(base.minQty) || 0 : 0);
+      const max = e.maxQty ?? (base ? Number(base.maxQty) || 0 : 0);
+      const reorder = e.reorderPoint ?? (base ? Number(base.reorderPoint) || 0 : 0);
+      if (max > 0 && min > max) return true;
+      if (max > 0 && reorder > max) return true;
+    }
+    return false;
+  });
+
   readonly lowStockAlertMsg = computed(() =>
     this.translate.instant('PAR_LEVELS.LOW_STOCK_ALERT_MSG', {
       count: this.lowStockItems().length,
@@ -162,8 +192,12 @@ export class ParLevelsListComponent implements OnInit {
           this.locationCategories.set([]);
           this.bulkCategoryId.set('');
           this.filterCategoryId.set('');
+          this.balances.set([]);
+          this.edits.set({});
           return;
         }
+        this.balances.set([]);
+        this.edits.set({});
         this.locationsApi
           .getCategories(locId)
           .pipe(first(), takeUntilDestroyed(this.destroyRef))
@@ -171,6 +205,7 @@ export class ParLevelsListComponent implements OnInit {
             next: (cats) => this.locationCategories.set(cats),
             error: () => this.locationCategories.set([]),
           });
+        this.loadParLevels();
       },
       { allowSignalWrites: true },
     );
@@ -189,7 +224,12 @@ export class ParLevelsListComponent implements OnInit {
     this.filterCategoryId.set('');
   }
 
-  loadParLevels(): void {
+  /** Reload par levels for the current location (e.g. manual refresh). */
+  refreshParLevels(): void {
+    this.loadParLevels();
+  }
+
+  private loadParLevels(): void {
     const locId = this.locationId();
     if (!locId) return;
     this.loading.set(true);
@@ -249,8 +289,50 @@ export class ParLevelsListComponent implements OnInit {
     return Number(bal[field]) || 0;
   }
 
-  hasEdit(bal: ParLevelRow): boolean {
-    return `${bal.itemId}_${bal.locationId}` in this.edits();
+  /** Merged min/max/reorder for a row (edits overlay server values). */
+  getEffectiveTriple(bal: ParLevelRow): { min: number; max: number; reorder: number } {
+    const key = `${bal.itemId}_${bal.locationId}`;
+    const e = this.edits()[key];
+    const min = e?.minQty ?? (Number(bal.minQty) || 0);
+    const max = e?.maxQty ?? (Number(bal.maxQty) || 0);
+    const reorder = e?.reorderPoint ?? (Number(bal.reorderPoint) || 0);
+    return { min, max, reorder };
+  }
+
+  isFieldDirty(
+    bal: ParLevelRow,
+    field: 'minQty' | 'maxQty' | 'reorderPoint',
+  ): boolean {
+    const key = `${bal.itemId}_${bal.locationId}`;
+    return this.edits()[key]?.[field] !== undefined;
+  }
+
+  fieldInvalid(
+    bal: ParLevelRow,
+    field: 'minQty' | 'maxQty' | 'reorderPoint',
+  ): boolean {
+    const { min, max, reorder } = this.getEffectiveTriple(bal);
+    if (max <= 0) return false;
+    switch (field) {
+      case 'minQty':
+        return min > max;
+      case 'reorderPoint':
+        return reorder > max;
+      case 'maxQty':
+        return min > max || reorder > max;
+      default:
+        return false;
+    }
+  }
+
+  validationTooltip(
+    bal: ParLevelRow,
+    field: 'minQty' | 'maxQty' | 'reorderPoint',
+  ): string {
+    if (!this.fieldInvalid(bal, field)) return '';
+    if (field === 'minQty') return this.t('PAR_LEVELS.VALIDATION_MIN_GT_MAX');
+    if (field === 'reorderPoint') return this.t('PAR_LEVELS.VALIDATION_REORDER_GT_MAX');
+    return this.t('PAR_LEVELS.VALIDATION_MAX_INCONSISTENT');
   }
 
   rowStatus(bal: ParLevelRow): 'low' | 'overstock' | 'ok' {
@@ -300,6 +382,7 @@ export class ParLevelsListComponent implements OnInit {
   }
 
   handleSave(): void {
+    if (this.hasValidationErrors()) return;
     const editMap = this.edits();
     const rows = this.balances();
     const rowMap = new Map(rows.map((r) => [`${r.itemId}_${r.locationId}`, r]));
@@ -341,6 +424,21 @@ export class ParLevelsListComponent implements OnInit {
 
   clearFilterCategory(): void {
     this.filterCategoryId.set('');
+  }
+
+  handleResetEdits(): void {
+    this.confirmation
+      .confirm({
+        title: this.t('PAR_LEVELS.RESET_EDITS_TITLE'),
+        message: this.t('PAR_LEVELS.RESET_EDITS_MESSAGE'),
+        confirmText: this.t('PAR_LEVELS.DISCARD_CHANGES'),
+        cancelText: this.t('COMMON.CANCEL'),
+        confirmDanger: true,
+      })
+      .pipe(first(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((ok) => {
+        if (ok) this.edits.set({});
+      });
   }
 
   private loadFilterOptions(): void {

@@ -1,4 +1,7 @@
-<div class="par-levels-page">
+<div
+  class="par-levels-page"
+  [class.par-levels-page--unsaved]="hasEdits()"
+>
   <div class="par-levels-page__header">
     <div>
       <h1 class="par-levels-page__title">
@@ -20,7 +23,7 @@
   }
 
   <div class="par-levels-page__filters">
-    <nz-select
+    <!-- <nz-select
       class="par-levels-page__select"
       [ngModel]="departmentId()"
       (ngModelChange)="onDepartmentChange($event ?? '')"
@@ -30,7 +33,7 @@
       @for (d of departments(); track d.id) {
         <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
       }
-    </nz-select>
+    </nz-select> -->
 
     <nz-select
       class="par-levels-page__select"
@@ -58,91 +61,84 @@
     </nz-select>
 
     <div class="par-levels-page__actions">
-      <button
-        nz-button
-        nzType="primary"
-        type="button"
-        [disabled]="!locationId() || loading()"
-        (click)="loadParLevels()"
-      >
-        @if (loading()) {
-          <lucide-icon [img]="lucideLoader" class="par-levels-page__icon par-levels-page__icon--spin" [strokeWidth]="2" />
-        } @else {
-          <lucide-icon [img]="lucideSearch" class="par-levels-page__icon" [strokeWidth]="2" />
-        }
-        {{ 'PAR_LEVELS.LOAD' | translate }}
-      </button>
-      @if (hasEdits()) {
+      @if (locationId()) {
         <button
           nz-button
+          nzType="default"
           type="button"
-          class="par-levels-page__save"
-          [disabled]="saving()"
-          (click)="handleSave()"
+          class="par-levels-page__refresh"
+          [disabled]="loading()"
+          (click)="refreshParLevels()"
+          nz-tooltip
+          [nzTooltipTitle]="'COMMON.REFRESH' | translate"
         >
-          @if (saving()) {
+          @if (loading()) {
             <lucide-icon [img]="lucideLoader" class="par-levels-page__icon par-levels-page__icon--spin" [strokeWidth]="2" />
           } @else {
-            <lucide-icon [img]="lucideSave" class="par-levels-page__icon" [strokeWidth]="2" />
+            <lucide-icon [img]="lucideRefresh" class="par-levels-page__icon" [strokeWidth]="2" />
           }
-          {{ 'COMMON.SAVE' | translate }} ({{ editsCount() }})
         </button>
       }
     </div>
   </div>
 
   @if (balances().length > 0) {
-    <div class="par-levels-page__bulk">
-      <div class="par-levels-page__bulk-header">
-        <lucide-icon [img]="lucideLayers" class="par-levels-page__icon" [strokeWidth]="2" />
-        <span>{{ 'PAR_LEVELS.BULK_SET_TITLE' | translate }}</span>
-      </div>
-      <div class="par-levels-page__bulk-row">
-        <nz-select
-          class="par-levels-page__bulk-cat"
-          [ngModel]="bulkCategoryId()"
-          (ngModelChange)="bulkCategoryId.set($event ?? '')"
-          [nzPlaceHolder]="'PAR_LEVELS.SELECT_CATEGORY' | translate"
-          nzAllowClear
-        >
-          @for (c of categoryOptions(); track c.id) {
-            <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
-          }
-        </nz-select>
-        <nz-input-number
-          class="par-levels-page__bulk-input"
-          [ngModel]="bulkMin()"
-          (ngModelChange)="bulkMin.set($event)"
-          [nzMin]="0"
-          [nzPlaceHolder]="'PAR_LEVELS.MIN_QTY' | translate"
-        />
-        <nz-input-number
-          class="par-levels-page__bulk-input"
-          [ngModel]="bulkMax()"
-          (ngModelChange)="bulkMax.set($event)"
-          [nzMin]="0"
-          [nzPlaceHolder]="'PAR_LEVELS.MAX_QTY' | translate"
-        />
-        <nz-input-number
-          class="par-levels-page__bulk-input"
-          [ngModel]="bulkReorder()"
-          (ngModelChange)="bulkReorder.set($event)"
-          [nzMin]="0"
-          [nzPlaceHolder]="'PAR_LEVELS.REORDER_POINT' | translate"
-        />
-        <button
-          nz-button
-          type="button"
-          [disabled]="!bulkCategoryId() || (bulkMin() === null && bulkMax() === null && bulkReorder() === null)"
-          [ngClass]="{ 'par-levels-page__bulk-btn--applied': bulkApplied() }"
-          (click)="handleBulkApply()"
-        >
-          <lucide-icon [img]="lucideCheckSquare" class="par-levels-page__icon" [strokeWidth]="2" />
-          {{ bulkApplied() ? ('PAR_LEVELS.BULK_APPLIED' | translate) : ('PAR_LEVELS.BULK_APPLY' | translate) }}
-        </button>
-      </div>
-      <p class="par-levels-page__bulk-hint">{{ 'PAR_LEVELS.BULK_HINT' | translate }}</p>
-    </div>
+    <nz-collapse [nzBordered]="false" [nzGhost]="true" class="par-levels-page__bulk-collapse">
+      <nz-collapse-panel
+        [nzHeader]="'PAR_LEVELS.BULK_SET_TITLE' | translate"
+        [nzActive]="bulkPanelOpen()"
+        (nzActiveChange)="bulkPanelOpen.set($event)"
+        [nzShowArrow]="true"
+      >
+        <div class="par-levels-page__bulk-inner">
+          <div class="par-levels-page__bulk-row">
+            <nz-select
+              class="par-levels-page__bulk-cat"
+              [ngModel]="bulkCategoryId()"
+              (ngModelChange)="bulkCategoryId.set($event ?? '')"
+              [nzPlaceHolder]="'PAR_LEVELS.SELECT_CATEGORY' | translate"
+              nzAllowClear
+            >
+              @for (c of categoryOptions(); track c.id) {
+                <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+              }
+            </nz-select>
+            <nz-input-number
+              class="par-levels-page__bulk-input"
+              [ngModel]="bulkMin()"
+              (ngModelChange)="bulkMin.set($event)"
+              [nzMin]="0"
+              [nzPlaceHolder]="'PAR_LEVELS.MIN_QTY' | translate"
+            />
+            <nz-input-number
+              class="par-levels-page__bulk-input"
+              [ngModel]="bulkMax()"
+              (ngModelChange)="bulkMax.set($event)"
+              [nzMin]="0"
+              [nzPlaceHolder]="'PAR_LEVELS.MAX_QTY' | translate"
+            />
+            <nz-input-number
+              class="par-levels-page__bulk-input"
+              [ngModel]="bulkReorder()"
+              (ngModelChange)="bulkReorder.set($event)"
+              [nzMin]="0"
+              [nzPlaceHolder]="'PAR_LEVELS.REORDER_POINT' | translate"
+            />
+            <button
+              nz-button
+              type="button"
+              [disabled]="!bulkCategoryId() || (bulkMin() === null && bulkMax() === null && bulkReorder() === null)"
+              [ngClass]="{ 'par-levels-page__bulk-btn--applied': bulkApplied() }"
+              (click)="handleBulkApply()"
+            >
+              <lucide-icon [img]="lucideCheckSquare" class="par-levels-page__icon" [strokeWidth]="2" />
+              {{ bulkApplied() ? ('PAR_LEVELS.BULK_APPLIED' | translate) : ('PAR_LEVELS.BULK_APPLY' | translate) }}
+            </button>
+          </div>
+          <p class="par-levels-page__bulk-hint">{{ 'PAR_LEVELS.BULK_HINT' | translate }}</p>
+        </div>
+      </nz-collapse-panel>
+    </nz-collapse>
   }
 
   @if (filteredBalances().length > 0) {
@@ -160,26 +156,25 @@
         [nzData]="filteredBalances()"
         [nzLoading]="loading()"
         [nzShowPagination]="false"
-        nzSize="middle"
+        nzSize="small"
         class="par-levels-table"
       >
         <thead>
           <tr>
-            <th nzWidth="50px">#</th>
-            <th nzWidth="200px">{{ 'COMMON.ITEM_NAME' | translate }}</th>
-            <th nzWidth="120px">{{ 'COMMON.CATEGORY' | translate }}</th>
-            <th nzWidth="90px" nzAlign="right">{{ 'STOCK.QTY_ON_HAND' | translate }}</th>
-            <th nzWidth="100px" nzAlign="right">{{ 'PAR_LEVELS.MIN_QTY' | translate }}</th>
-            <th nzWidth="100px" nzAlign="right">{{ 'PAR_LEVELS.MAX_QTY' | translate }}</th>
-            <th nzWidth="120px" nzAlign="right">{{ 'PAR_LEVELS.REORDER_POINT' | translate }}</th>
-            <th nzWidth="100px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+            <th nzWidth="44px">#</th>
+            <th nzWidth="180px">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+            <th nzWidth="110px">{{ 'COMMON.CATEGORY' | translate }}</th>
+            <th nzWidth="72px" nzAlign="right">{{ 'STOCK.QTY_ON_HAND' | translate }}</th>
+            <th nzWidth="88px" nzAlign="right">{{ 'PAR_LEVELS.MIN_QTY' | translate }}</th>
+            <th nzWidth="88px" nzAlign="right">{{ 'PAR_LEVELS.MAX_QTY' | translate }}</th>
+            <th nzWidth="100px" nzAlign="right">{{ 'PAR_LEVELS.REORDER_POINT' | translate }}</th>
+            <th nzWidth="92px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
           </tr>
         </thead>
         <tbody>
           @for (bal of st.data; track bal.itemId + '-' + bal.locationId; let i = $index) {
             <tr
               [ngClass]="{
-                'par-levels-row--edited': hasEdit(bal),
                 'par-levels-row--low': rowStatus(bal) === 'low',
                 'par-levels-row--overstock': rowStatus(bal) === 'overstock'
               }"
@@ -187,38 +182,59 @@
               <td class="par-levels-cell--muted">{{ i + 1 }}</td>
               <td>
                 <span class="par-levels-cell__name">{{ bal.item?.name ?? bal.itemId }}</span>
-                @if (hasEdit(bal)) {
-                  <span class="par-levels-cell__edited">• {{ 'PAR_LEVELS.EDITED' | translate }}</span>
-                }
               </td>
               <td class="par-levels-cell--muted">{{ bal.item?.category?.name ?? '—' }}</td>
               <td nzAlign="right" class="par-levels-cell--mono">{{ bal.qtyOnHand }}</td>
-              <td nzAlign="right">
-                <nz-input-number
-                  class="par-levels-input--sm"
-                  [ngModel]="getEditValue(bal, 'minQty')"
-                  (ngModelChange)="handleEdit(bal.itemId, bal.locationId, 'minQty', $event)"
-                  [nzMin]="0"
-                  [nzStep]="1"
-                />
+              <td nzAlign="right" class="par-levels-cell--input">
+                <span
+                  class="par-levels-input-wrap"
+                  [class.par-levels-input-wrap--invalid]="fieldInvalid(bal, 'minQty')"
+                  nz-tooltip
+                  [nzTooltipTitle]="validationTooltip(bal, 'minQty')"
+                >
+                  <nz-input-number
+                    class="par-levels-input--sm"
+                    [ngClass]="{ 'par-levels-input--dirty': isFieldDirty(bal, 'minQty') }"
+                    [ngModel]="getEditValue(bal, 'minQty')"
+                    (ngModelChange)="handleEdit(bal.itemId, bal.locationId, 'minQty', $event)"
+                    [nzMin]="0"
+                    [nzStep]="1"
+                  />
+                </span>
               </td>
-              <td nzAlign="right">
-                <nz-input-number
-                  class="par-levels-input--sm"
-                  [ngModel]="getEditValue(bal, 'maxQty')"
-                  (ngModelChange)="handleEdit(bal.itemId, bal.locationId, 'maxQty', $event)"
-                  [nzMin]="0"
-                  [nzStep]="1"
-                />
+              <td nzAlign="right" class="par-levels-cell--input">
+                <span
+                  class="par-levels-input-wrap"
+                  [class.par-levels-input-wrap--invalid]="fieldInvalid(bal, 'maxQty')"
+                  nz-tooltip
+                  [nzTooltipTitle]="validationTooltip(bal, 'maxQty')"
+                >
+                  <nz-input-number
+                    class="par-levels-input--sm"
+                    [ngClass]="{ 'par-levels-input--dirty': isFieldDirty(bal, 'maxQty') }"
+                    [ngModel]="getEditValue(bal, 'maxQty')"
+                    (ngModelChange)="handleEdit(bal.itemId, bal.locationId, 'maxQty', $event)"
+                    [nzMin]="0"
+                    [nzStep]="1"
+                  />
+                </span>
               </td>
-              <td nzAlign="right">
-                <nz-input-number
-                  class="par-levels-input--sm"
-                  [ngModel]="getEditValue(bal, 'reorderPoint')"
-                  (ngModelChange)="handleEdit(bal.itemId, bal.locationId, 'reorderPoint', $event)"
-                  [nzMin]="0"
-                  [nzStep]="1"
-                />
+              <td nzAlign="right" class="par-levels-cell--input">
+                <span
+                  class="par-levels-input-wrap"
+                  [class.par-levels-input-wrap--invalid]="fieldInvalid(bal, 'reorderPoint')"
+                  nz-tooltip
+                  [nzTooltipTitle]="validationTooltip(bal, 'reorderPoint')"
+                >
+                  <nz-input-number
+                    class="par-levels-input--sm"
+                    [ngClass]="{ 'par-levels-input--dirty': isFieldDirty(bal, 'reorderPoint') }"
+                    [ngModel]="getEditValue(bal, 'reorderPoint')"
+                    (ngModelChange)="handleEdit(bal.itemId, bal.locationId, 'reorderPoint', $event)"
+                    [nzMin]="0"
+                    [nzStep]="1"
+                  />
+                </span>
               </td>
               <td nzAlign="center">
                 @switch (rowStatus(bal)) {
@@ -243,12 +259,70 @@
     </div>
   }
 
-  @if (!loading() && balances().length === 0 && locationId()) {
+  @if (!loading() && balances().length > 0 && filteredBalances().length === 0 && filterCategoryId()) {
+    <div class="par-levels-page__empty par-levels-page__empty--filter">
+      <app-empty-state
+        [title]="'PAR_LEVELS.FILTER_EMPTY_TITLE' | translate"
+        [message]="'PAR_LEVELS.FILTER_EMPTY_MESSAGE' | translate: { name: categoryName() }"
+      />
+      <button nz-button nzType="primary" type="button" class="par-levels-page__empty-clear" (click)="clearFilterCategory()">
+        {{ 'PAR_LEVELS.CLEAR_CATEGORY_FILTER' | translate }}
+      </button>
+    </div>
+  }
+
+  @if (locationId() && loading() && balances().length === 0) {
+    <div class="par-levels-page__loading" role="status" [attr.aria-label]="'PAR_LEVELS.LOADING_PAR_LEVELS' | translate">
+      <nz-spin nzSimple [nzSize]="'large'" />
+      <p class="par-levels-page__loading-text">{{ 'PAR_LEVELS.LOADING_PAR_LEVELS' | translate }}</p>
+    </div>
+  }
+
+  @if (!locationId()) {
+    <div class="par-levels-page__empty">
+      <app-empty-state
+        [title]="'PAR_LEVELS.SELECT_LOCATION_TITLE' | translate"
+        [message]="'PAR_LEVELS.SELECT_LOCATION_HINT' | translate"
+      />
+    </div>
+  } @else if (!loading() && balances().length === 0) {
     <div class="par-levels-page__empty">
       <app-empty-state
         [title]="'PAR_LEVELS.NO_BALANCES' | translate"
-        [message]="'PAR_LEVELS.NO_BALANCES_HINT' | translate"
+        [message]="'PAR_LEVELS.NO_BALANCES_AFTER_LOAD_HINT' | translate"
       />
+    </div>
+  }
+
+  @if (hasEdits()) {
+    <div class="par-levels-page__unsaved-bar" role="region" [attr.aria-label]="'PAR_LEVELS.UNSAVED_BAR_LABEL' | translate">
+      <div class="par-levels-page__unsaved-text">
+        {{ 'PAR_LEVELS.UNSAVED_CHANGES' | translate: { count: editsCount() } }}
+        @if (hasValidationErrors()) {
+          <span class="par-levels-page__unsaved-error">{{ 'PAR_LEVELS.FIX_VALIDATION_TO_SAVE' | translate }}</span>
+        }
+      </div>
+      <div class="par-levels-page__unsaved-actions">
+        <button nz-button type="button" (click)="handleResetEdits()">
+          <lucide-icon [img]="lucideRotateCcw" class="par-levels-page__icon" [strokeWidth]="2" />
+          {{ 'PAR_LEVELS.RESET' | translate }}
+        </button>
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          class="par-levels-page__save"
+          [disabled]="saving() || hasValidationErrors()"
+          (click)="handleSave()"
+        >
+          @if (saving()) {
+            <lucide-icon [img]="lucideLoader" class="par-levels-page__icon par-levels-page__icon--spin" [strokeWidth]="2" />
+          } @else {
+            <lucide-icon [img]="lucideSave" class="par-levels-page__icon" [strokeWidth]="2" />
+          }
+          {{ 'COMMON.SAVE' | translate }}
+        </button>
+      </div>
     </div>
   }
 </div>

@@ -76,8 +76,22 @@ export const routes: Routes = [
       {
         path: 'inventory',
         loadComponent: () =>
-          import('./features/inventory/inventory.component').then((m) => m.InventoryComponent),
-        data: { breadcrumb: 'NAV.INVENTORY' },
+          import('./features/inventory/inventory-layout.component').then((m) => m.InventoryLayoutComponent),
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('./features/inventory/inventory.component').then((m) => m.InventoryComponent),
+            data: { breadcrumb: 'NAV.INVENTORY' },
+          },
+          {
+            path: 'items/import',
+            loadComponent: () =>
+              import('./features/items/item-import/item-import.component').then((m) => m.ItemImportComponent),
+            data: { breadcrumb: 'NAV.ITEM_IMPORT' },
+          },
+        ],
       },
       {
         path: 'stock',

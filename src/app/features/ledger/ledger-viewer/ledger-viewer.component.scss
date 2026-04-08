@@ -2,6 +2,14 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
+}
+
+/** Lets the table shrink inside flex layouts; horizontal scroll comes from `[nzScroll]`. */
+.ledger-page__table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .ledger-page__header {
@@ -83,6 +91,10 @@
   flex: 0 0 auto;
 }
 
+.ledger-page__export-btn {
+  align-self: flex-start;
+}
+
 .ledger-page__hint {
   margin: 12px 0 0;
   font-size: 13px;
@@ -119,7 +131,14 @@
 .ledger-page__tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  min-height: 28px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
 }
 
 .ledger-page__tag-icon {
@@ -129,6 +148,11 @@
 
 .ledger-page__num {
   text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+th.ledger-page__num,
+td.ledger-page__num {
   font-variant-numeric: tabular-nums;
 }
 
@@ -161,4 +185,64 @@
 
 .ledger-page__item {
   font-weight: 500;
+}
+
+.ledger-type--opening {
+  color: #166534;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.ledger-type--receive {
+  color: #1e40af;
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.ledger-type--issue {
+  color: #9a3412;
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+
+.ledger-type--transfer-in {
+  color: #4338ca;
+  background: #e0e7ff;
+  border-color: #a5b4fc;
+}
+
+.ledger-type--transfer-out {
+  color: #6d28d9;
+  background: #ede9fe;
+  border-color: #c4b5fd;
+}
+
+.ledger-type--breakage {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.ledger-type--adjustment {
+  color: #1f2937;
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.ledger-type--return {
+  color: #0f766e;
+  background: #ccfbf1;
+  border-color: #5eead4;
+}
+
+.ledger-type--count-adjustment {
+  color: #854d0e;
+  background: #fef9c3;
+  border-color: #fde047;
+}
+
+.ledger-type--default {
+  color: #334155;
+  background: #e2e8f0;
+  border-color: #cbd5e1;
 }

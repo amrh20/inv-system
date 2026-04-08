@@ -1,0 +1,413 @@
+<div class="item-import-page">
+  <div class="item-import-page__header">
+    <a nz-button nzType="text" class="item-import-page__back" routerLink="/items">
+      <lucide-icon [img]="lucideArrowLeft" [size]="18" [strokeWidth]="2" />
+      {{ 'ITEMS.BACK_TO_ITEM_MASTER' | translate }}
+    </a>
+    <div class="item-import-page__title-row">
+      <lucide-icon [img]="lucideFileSpreadsheet" [size]="26" [strokeWidth]="2" class="item-import-page__title-icon" />
+      <div>
+        <h1 class="item-import-page__title">{{ 'ITEMS.IMPORT_FROM_EXCEL' | translate }}</h1>
+        <p class="item-import-page__meta">{{ 'ITEMS.IMPORT_PAGE_SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #requirementsQuickLinksTpl>
+    <div class="item-import-requirements-links">
+      <span class="item-import-requirements-links__intro">{{ 'ITEMS.REQUIREMENTS_QUICK_LINKS' | translate }}</span>
+      @for (key of missingData(); track key) {
+        <a
+          nz-button
+          nzType="link"
+          class="item-import-requirements-links__link"
+          [routerLink]="requirementMasterDataPath(key)"
+        >
+          {{ ('ITEMS.REQUIREMENT_LABEL.' + key.toUpperCase()) | translate }}
+        </a>
+      }
+    </div>
+  </ng-template>
+
+  <ng-template #openingBalanceQuickLinksTpl>
+    <div class="item-import-requirements-links">
+      <span class="item-import-requirements-links__intro">{{ 'ITEMS.REQUIREMENTS_QUICK_LINKS' | translate }}</span>
+      <a
+        nz-button
+        nzType="link"
+        class="item-import-requirements-links__link"
+        [routerLink]="openingBalanceSettingsPath"
+      >
+        {{ 'ITEMS.OPENING_BALANCE_LINK_SETTINGS' | translate }}
+      </a>
+    </div>
+  </ng-template>
+
+  @if (showPrerequisitesBanner()) {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      class="item-import-alert item-import-alert--requirements"
+      [nzMessage]="
+        'ITEMS.REQUIREMENTS_WARNING' | translate: { missingLabels: missingLabelsJoined() }
+      "
+      [nzDescription]="requirementsQuickLinksTpl"
+    />
+  }
+
+  @if (showOpeningBalanceBanner()) {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      class="item-import-alert item-import-alert--opening-balance"
+      [nzMessage]="'ITEMS.OPENING_BALANCE_BANNER' | translate"
+      [nzDescription]="openingBalanceQuickLinksTpl"
+    />
+  }
+
+  <nz-steps [nzCurrent]="importStep()" nzSize="small" class="item-import-page__steps">
+    <nz-step [nzTitle]="'ITEMS.STEP_UPLOAD_FILE' | translate" />
+    <nz-step [nzTitle]="'ITEMS.STEP_PREVIEW_VALIDATE' | translate" />
+    <nz-step [nzTitle]="'ITEMS.STEP_CONFIRM_IMPORT' | translate" />
+  </nz-steps>
+
+  <div class="item-import-page__body">
+    @if (importStep() === 0) {
+      <div class="item-import-panel">
+        <div class="import-info-card">
+          <p class="import-info-card__title">{{ 'ITEMS.EXPECTED_COLUMNS_TITLE' | translate }}</p>
+          <p class="import-info-card__body">{{ 'ITEMS.EXPECTED_COLUMNS_VALUE' | translate }}</p>
+          <p class="import-info-card__hint">{{ 'ITEMS.IMPORT_HINT' | translate }}</p>
+        </div>
+        @if (obLoading()) {
+          <div class="ob-loading">
+            <lucide-icon [img]="lucideLoader" [size]="14" [strokeWidth]="2" class="spin" />
+            {{ 'ITEMS.CHECKING_OB_ELIGIBILITY' | translate }}
+          </div>
+        } @else if (obEligible()?.allowed) {
+          <nz-alert
+            nzType="info"
+            nzShowIcon
+            class="import-ob-phase-alert"
+            [nzMessage]="'ITEMS.OPENING_BALANCE_MODE_BADGE' | translate"
+            [nzDescription]="'ITEMS.IMPORT_AS_OPENING_BALANCE_HINT' | translate"
+          />
+        } @else if (obEligible()) {
+          <div class="ob-card ob-card--locked">
+            <div class="ob-card__title">{{ 'ITEMS.OPENING_BALANCE_LOCKED' | translate }}</div>
+            <div class="ob-card__hint">
+              {{ obEligible()?.reason || ('ITEMS.OPENING_BALANCE_NOT_AVAILABLE' | translate) }}
+            </div>
+          </div>
+        }
+        <div
+          class="file-dropzone"
+          [ngClass]="{ 'file-dropzone--selected': !!importFile(), 'file-dropzone--disabled': importBlocked() }"
+          (click)="!importBlocked() && triggerImportFileSelection()"
+        >
+          @if (importFile(); as f) {
+            <lucide-icon [img]="lucideCheckCircle" [size]="36" [strokeWidth]="2" class="file-dropzone__icon file-dropzone__icon--ok" />
+            <p class="file-dropzone__title">{{ f.name }}</p>
+            <p class="file-dropzone__hint">
+              {{ importFileSizeLabel(f) }} - {{ 'ITEMS.CLICK_TO_CHANGE_FILE' | translate }}
+            </p>
+          } @else {
+            <lucide-icon [img]="lucideUpload" [size]="36" [strokeWidth]="2" class="file-dropzone__icon" />
+            <p class="file-dropzone__title">{{ 'ITEMS.CLICK_TO_SELECT_FILE' | translate }}</p>
+            <p class="file-dropzone__hint">{{ 'ITEMS.FILE_FORMAT_HINT' | translate }}</p>
+          }
+        </div>
+        <input
+          #importFileInput
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          class="hidden-file-input"
+          [disabled]="importBlocked()"
+          (change)="onImportFile($event)"
+        />
+
+        <div class="item-import-page__footer-actions">
+          <button nz-button type="button" routerLink="/items">{{ 'COMMON.CANCEL' | translate }}</button>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="!importFile() || importLoading() || importBlocked()"
+            (click)="runImportPreview()"
+          >
+            @if (importLoading()) {
+              <lucide-icon [img]="lucideLoader" [size]="14" [strokeWidth]="2" class="spin" />
+              {{ 'ITEMS.PROCESSING' | translate }}
+            } @else {
+              <lucide-icon [img]="lucideArrowRight" [size]="14" [strokeWidth]="2" />
+              {{ 'ITEMS.PARSE_FILE' | translate }}
+            }
+          </button>
+        </div>
+      </div>
+    } @else if (importStep() === 1) {
+      @if (importPreviewData(); as preview) {
+        <div class="item-import-panel item-import-panel--grow">
+          <div class="import-preview-grid">
+            <div class="preview-stat">
+              <div class="preview-stat__value">{{ preview.total ?? 0 }}</div>
+              <div class="preview-stat__label">{{ 'ITEMS.PREVIEW_TOTAL_ROWS' | translate }}</div>
+            </div>
+            <div class="preview-stat preview-stat--valid">
+              <div class="preview-stat__value">{{ preview.valid ?? 0 }}</div>
+              <div class="preview-stat__label">{{ 'ITEMS.PREVIEW_VALID' | translate }}</div>
+            </div>
+            <div class="preview-stat preview-stat--invalid">
+              <div class="preview-stat__value">{{ preview.invalid ?? 0 }}</div>
+              <div class="preview-stat__label">{{ 'ITEMS.PREVIEW_ERRORS' | translate }}</div>
+            </div>
+          </div>
+
+          @if (importAsOpeningBalance()) {
+            <div class="ob-card ob-card--preview">
+              <label class="ob-card__reason-label" for="ob-import-reason-preview">{{
+                'ITEMS.OB_IMPORT_REASON_LABEL' | translate
+              }}</label>
+              <textarea
+                id="ob-import-reason-preview"
+                nz-input
+                rows="3"
+                [ngModel]="openingBalanceReason()"
+                (ngModelChange)="openingBalanceReason.set($event)"
+                [placeholder]="'ITEMS.OB_IMPORT_REASON_PLACEHOLDER' | translate"
+              ></textarea>
+              <span class="ob-card__hint ob-card__hint--reason">{{ 'ITEMS.OB_IMPORT_REASON_HINT' | translate }}</span>
+            </div>
+          }
+
+          @if ((preview.storeColumns?.length ?? 0) > 0) {
+            <p class="preview-subline">
+              <strong>{{ 'ITEMS.STORE_COLUMNS_DETECTED' | translate }}</strong>
+              {{ preview.storeColumns?.join(', ') }}
+            </p>
+          }
+          @if ((preview.unknownColumns?.length ?? 0) > 0) {
+            <p class="preview-subline preview-subline--warn">
+              {{ 'ITEMS.UNKNOWN_COLUMNS_IGNORED' | translate: { columns: preview.unknownColumns?.join(', ') } }}
+            </p>
+          }
+
+          <div class="preview-table-panel">
+            <div class="preview-filters">
+              <button
+                nz-button
+                nzSize="small"
+                [nzType]="previewFilter() === 'all' ? 'primary' : 'default'"
+                type="button"
+                (click)="setPreviewFilter('all')"
+              >
+                {{ 'ITEMS.PREVIEW_FILTER_ALL' | translate }}
+              </button>
+              <button
+                nz-button
+                nzSize="small"
+                [nzType]="previewFilter() === 'error' ? 'primary' : 'default'"
+                type="button"
+                (click)="setPreviewFilter('error')"
+              >
+                {{ 'ITEMS.PREVIEW_FILTER_ERRORS' | translate }}
+              </button>
+              <button
+                nz-button
+                nzSize="small"
+                [nzType]="previewFilter() === 'valid' ? 'primary' : 'default'"
+                type="button"
+                (click)="setPreviewFilter('valid')"
+              >
+                {{ 'ITEMS.PREVIEW_FILTER_VALID' | translate }}
+              </button>
+            </div>
+            <div class="preview-table-outer">
+              <nz-table
+                class="preview-nz-table"
+                [nzData]="previewRows()"
+                [nzFrontPagination]="false"
+                [nzShowPagination]="false"
+                nzSize="small"
+                nzTableLayout="fixed"
+                [nzScroll]="previewTableScroll"
+              >
+                <thead>
+                  <tr>
+                    <th nzWidth="64">{{ 'ITEMS.PREVIEW_ROW' | translate }}</th>
+                    @for (col of importPreviewTableColumns(); track importPreviewColumnTrack(col)) {
+                      @if (col.kind === 'fixed') {
+                        <th [nzAlign]="col.cell === 'unitPrice' ? 'right' : null">{{ col.labelKey | translate }}</th>
+                      } @else {
+                        <th nzAlign="right">{{ col.storeColumn }}</th>
+                      }
+                    }
+                    <th nzWidth="100" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+                    <th nzWidth="220">{{ 'ITEMS.PREVIEW_ISSUES' | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of previewRows(); track row.rowNum) {
+                    <tr [ngClass]="{ 'preview-row--error': row.status === 'ERROR' }">
+                      <td>{{ row.rowNum }}</td>
+                      @for (col of importPreviewTableColumns(); track importPreviewColumnTrack(col)) {
+                        @if (col.kind === 'fixed') {
+                          @switch (col.cell) {
+                            @case ('unitPrice') {
+                              <td
+                                nzAlign="right"
+                                nz-tooltip
+                                [nzTooltipTitle]="previewImportFieldIssueMessage(row, col.field)"
+                                [ngClass]="{ 'cell-error': previewImportHasError(row, col.field) }"
+                                [attr.title]="previewImportFieldIssueMessage(row, col.field)"
+                              >
+                                @let unitPriceVal = previewImportFieldValue(row, col.field);
+                                @if (isMissingValue(unitPriceVal)) {
+                                  <span class="cell-missing">{{ 'ITEMS.MISSING_VALUE_PLACEHOLDER' | translate }}</span>
+                                } @else {
+                                  @let parsedUnitPrice = previewNumber(unitPriceVal);
+                                  @if (parsedUnitPrice !== null) {
+                                    {{ parsedUnitPrice | number: '1.0-2' }}
+                                  } @else {
+                                    {{ unitPriceVal }}
+                                  }
+                                }
+                              </td>
+                            }
+                            @default {
+                              <td
+                                nz-tooltip
+                                [nzTooltipTitle]="previewImportFieldIssueMessage(row, col.field)"
+                                [ngClass]="{ 'cell-error': previewImportHasError(row, col.field) }"
+                                [attr.title]="previewImportFieldIssueMessage(row, col.field)"
+                              >
+                                @if (isMissingValue(previewImportFieldValue(row, col.field))) {
+                                  <span class="cell-missing">{{ 'ITEMS.MISSING_VALUE_PLACEHOLDER' | translate }}</span>
+                                } @else {
+                                  {{ previewImportFieldValue(row, col.field) }}
+                                }
+                              </td>
+                            }
+                          }
+                        } @else {
+                          <td
+                            nzAlign="right"
+                            nz-tooltip
+                            [nzTooltipTitle]="previewStoreFieldIssueMessage(row, col.storeColumn)"
+                            [ngClass]="{ 'cell-error': previewStoreHasError(row, col.storeColumn) }"
+                            [attr.title]="previewStoreFieldIssueMessage(row, col.storeColumn)"
+                          >
+                            @let storeQty = previewStoreQty(row, col.storeColumn);
+                            @if (storeQty === null || storeQty === undefined || storeQty === '') {
+                              <span class="preview-store-qty-empty">{{ 'ITEMS.PREVIEW_STORE_QTY_EMPTY' | translate }}</span>
+                            } @else {
+                              @if (previewNumber(storeQty); as parsedStoreQty) {
+                                {{ parsedStoreQty | number: '1.0-2' }}
+                              } @else {
+                                {{ storeQty }}
+                              }
+                            }
+                          </td>
+                        }
+                      }
+                      <td nzAlign="center">
+                        @if (row.status === 'VALID') {
+                          <span class="preview-status preview-status--valid">{{ 'ITEMS.PREVIEW_STATUS_VALID' | translate }}</span>
+                        } @else {
+                          <span class="preview-status preview-status--error">{{ 'ITEMS.PREVIEW_STATUS_ERROR' | translate }}</span>
+                        }
+                      </td>
+                      <td class="preview-issues-cell">{{ rowIssuesSummary(row) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </nz-table>
+            </div>
+          </div>
+          @if ((preview.invalid ?? 0) > 0) {
+            <div class="preview-warning">
+              <lucide-icon [img]="lucideAlertCircle" [size]="14" [strokeWidth]="2" />
+              {{ 'ITEMS.INVALID_ROWS_WARNING' | translate: { invalid: preview.invalid ?? 0, valid: preview.valid ?? 0 } }}
+            </div>
+          }
+
+          <div class="item-import-page__footer-actions">
+            <button nz-button type="button" (click)="goBackImportStep()">
+              <lucide-icon [img]="lucideArrowLeft" [size]="14" [strokeWidth]="2" />
+              {{ 'COMMON.BACK' | translate }}
+            </button>
+            <button
+              nz-button
+              nzType="primary"
+              type="button"
+              [disabled]="disableConfirmImport()"
+              (click)="confirmImport()"
+            >
+              @if (importLoading()) {
+                <lucide-icon [img]="lucideLoader" [size]="14" [strokeWidth]="2" class="spin" />
+                {{ 'ITEMS.PROCESSING' | translate }}
+              } @else {
+                <lucide-icon [img]="lucideCheckCircle" [size]="14" [strokeWidth]="2" />
+                {{ 'ITEMS.CONFIRM_IMPORT_ROWS' | translate: { count: importPreviewData()?.valid ?? 0 } }}
+              }
+            </button>
+          </div>
+        </div>
+      }
+    } @else if (importStep() === 2) {
+      @if (importResult(); as result) {
+        <div class="item-import-panel item-import-panel--result">
+          <div class="import-result">
+            <lucide-icon [img]="lucideCheckCircle" [size]="56" [strokeWidth]="2" class="import-result__icon" />
+            <h2 class="import-result__title">{{ 'ITEMS.IMPORT_COMPLETE' | translate }}</h2>
+            <div class="import-preview-grid">
+              <div class="preview-stat preview-stat--valid">
+                <div class="preview-stat__value">{{ result.inserted }}</div>
+                <div class="preview-stat__label">{{ 'ITEMS.RESULT_INSERTED' | translate }}</div>
+              </div>
+              <div class="preview-stat">
+                <div class="preview-stat__value">{{ result.updated }}</div>
+                <div class="preview-stat__label">{{ 'ITEMS.RESULT_UPDATED' | translate }}</div>
+              </div>
+              <div class="preview-stat preview-stat--invalid">
+                <div class="preview-stat__value">{{ result.failed }}</div>
+                <div class="preview-stat__label">{{ 'ITEMS.RESULT_FAILED' | translate }}</div>
+              </div>
+            </div>
+            @if ((result.obCount ?? 0) > 0) {
+              <div class="result-ob-card">
+                <p class="result-ob-card__title">
+                  <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+                  {{ 'ITEMS.OB_DOCUMENTS_POSTED' | translate: { count: result.obCount ?? 0 } }}
+                </p>
+                <p class="result-ob-card__docs">
+                  {{ 'ITEMS.OB_DOCUMENTS_LIST' | translate: { docs: result.obDocuments?.join(', ') || '-' } }}
+                </p>
+              </div>
+            }
+            @if ((result.failures?.length ?? 0) > 0) {
+              <div class="result-failures">
+                <p class="result-failures__title">{{ 'ITEMS.FAILED_ROWS' | translate }}</p>
+                @for (f of result.failures ?? []; track f.rowNum) {
+                  <div class="result-failures__row">
+                    {{ 'ITEMS.FAILED_ROW_ITEM' | translate: { rowNum: f.rowNum, errors: f.errors?.join(', ') || '-' } }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+          <div class="item-import-page__footer-actions">
+            <button nz-button nzType="primary" type="button" (click)="doneNavigateToItems()">
+              <lucide-icon [img]="lucideCheckCircle" [size]="14" [strokeWidth]="2" />
+              {{ 'COMMON.DONE' | translate }}
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  @if (importError()) {
+    <nz-alert nzType="error" [nzMessage]="importError()" nzShowIcon class="import-alert" />
+  }
+</div>

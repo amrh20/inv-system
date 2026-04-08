@@ -3,6 +3,8 @@ $sider-bg: linear-gradient(to bottom, #0f172a, #1e293b);
 $sider-text: #cbd5e1;
 $sider-active-bg: var(--brand-primary, #6366f1);
 $sider-active-glow: 0 4px 12px rgba(99, 102, 241, 0.4);
+$sider-main-border: rgba(255, 255, 255, 0.1);
+$sider-nested-guide: rgba(255, 255, 255, 0.08);
 
 .main-shell {
   min-height: 100vh;
@@ -116,8 +118,46 @@ $sider-active-glow: 0 4px 12px rgba(99, 102, 241, 0.4);
     background: transparent !important;
   }
 
+  /* Top-level rows only: light outline (not nested submenu items). */
+  .ant-menu-item-group > .ant-menu-item-group-list > .ant-menu-item,
+  .ant-menu-item-group > .ant-menu-item-group-list > .ant-menu-submenu > .ant-menu-submenu-title {
+    border: 1px solid $sider-main-border !important;
+  }
+
+  .main-shell__menu.ant-menu-inline-collapsed > .ant-menu-item,
+  .main-shell__menu.ant-menu-inline-collapsed > .ant-menu-submenu > .ant-menu-submenu-title {
+    border: 1px solid $sider-main-border !important;
+  }
+
+  .ant-menu-item-group > .ant-menu-item-group-list > .ant-menu-item.ant-menu-item-selected,
+  .ant-menu-item-group > .ant-menu-item-group-list > .ant-menu-submenu-selected > .ant-menu-submenu-title {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
+
+  .main-shell__menu.ant-menu-inline-collapsed > .ant-menu-item.ant-menu-item-selected,
+  .main-shell__menu.ant-menu-inline-collapsed
+    > .ant-menu-submenu.ant-menu-submenu-selected
+    > .ant-menu-submenu-title {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
+
+  /* Nested items: indent + subtle guide so hierarchy reads clearly. */
+  .ant-menu-sub.ant-menu-inline {
+    margin-inline-start: 0.5rem !important;
+    padding-inline-start: 0.625rem !important;
+    border-inline-start: 1px solid $sider-nested-guide;
+    border-end-start-radius: 6px;
+    border-end-end-radius: 6px;
+  }
+
   .ant-menu-sub .ant-menu-item {
     margin-inline-start: 0 !important;
+    font-size: 0.8125rem !important;
+    color: #94a3b8 !important;
+
+    &.ant-menu-item-selected {
+      color: #fff !important;
+    }
   }
 
   .ant-menu-item-group-title {
@@ -162,7 +202,7 @@ $sider-active-glow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
 .menu-item-row--nested {
-  padding-inline-start: 6px;
+  padding-inline-start: 0.125rem;
 }
 
 .menu-lucide {
@@ -532,4 +572,8 @@ $sider-active-glow: 0 4px 12px rgba(99, 102, 241, 0.4);
 
 .main-shell--dark :host ::ng-deep .ant-breadcrumb > span:last-child {
   color: rgba(255, 255, 255, 0.85);
+}
+
+:host ::ng-deep .ant-menu-item {
+  border-bottom: 1px solid rgb(49 49 49 / 65%);
 }

@@ -22,11 +22,46 @@
             </ng-template>
             <div class="form-body">
             <div nz-row [nzGutter]="16">
+              @if (showItemFormPrerequisitesBanner()) {
+                <div nz-col nzSpan="24">
+                  <nz-alert
+                    nzType="warning"
+                    nzShowIcon
+                    class="item-form-alert"
+                    [nzMessage]="
+                      'ITEMS.REQUIREMENTS_WARNING' | translate: { missingLabels: missingRequirementLabelsJoined() }
+                    "
+                  />
+                </div>
+              }
+              @if (showItemFormOpeningBalanceClosedBanner()) {
+                <div nz-col nzSpan="24">
+                  <nz-alert
+                    nzType="warning"
+                    nzShowIcon
+                    class="item-form-alert"
+                    [nzMessage]="'ITEMS.OPENING_BALANCE_BANNER' | translate"
+                  />
+                </div>
+              }
               <div nz-col nzSpan="24">
                 <nz-form-item>
                   <nz-form-label nzRequired>{{ 'COMMON.ITEM_NAME' | translate }}</nz-form-label>
                   <nz-form-control [nzErrorTip]="'ITEM_FORM.ERROR_NAME_REQUIRED' | translate">
                     <input nz-input formControlName="name" [placeholder]="'ITEM_FORM.ITEM_NAME_PLACEHOLDER' | translate" />
+                  </nz-form-control>
+                </nz-form-item>
+              </div>
+              <div nz-col nzSpan="24">
+                <nz-form-item class="form-description">
+                  <nz-form-label>{{ 'COMMON.DESCRIPTION' | translate }}</nz-form-label>
+                  <nz-form-control>
+                    <textarea
+                      nz-input
+                      formControlName="description"
+                      rows="4"
+                      [placeholder]="'COMMON.OPTIONAL' | translate"
+                    ></textarea>
                   </nz-form-control>
                 </nz-form-item>
               </div>
@@ -71,8 +106,14 @@
                     <nz-select
                       formControlName="subcategoryId"
                       nzAllowClear
-                      [nzPlaceHolder]="'ITEM_FORM.SELECT_SUBCATEGORY' | translate"
-                      [nzDisabled]="!subcategories().length"
+                      [nzPlaceHolder]="
+                        (subcategoriesLoading()
+                          ? 'ITEM_FORM.LOADING_SUBCATEGORIES'
+                          : 'ITEM_FORM.SELECT_SUBCATEGORY'
+                        ) | translate
+                      "
+                      [nzDisabled]="isSubcategorySelectDisabled()"
+                      [nzLoading]="subcategoriesLoading()"
                     >
                       @for (s of subcategories(); track s.id) {
                         <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
@@ -105,7 +146,7 @@
                   </nz-form-control>
                 </nz-form-item>
               </div>
-              <div nz-col nzSpan="12">
+              <div nz-col nzSpan="24">
                 <nz-form-item>
                   <nz-form-label nzRequired>{{ 'ITEM_FORM.DEFAULT_STORE' | translate }}</nz-form-label>
                   <nz-form-control [nzErrorTip]="'COMMON.REQUIRED' | translate">
@@ -121,85 +162,49 @@
                   </nz-form-control>
                 </nz-form-item>
               </div>
-              @if (!item() && obEligible(); as ob) {
-                @if (!ob.allowed) {
-                  <div nz-col nzSpan="24">
-                    <nz-alert
-                      nzType="warning"
-                      nzShowIcon
-                      [nzMessage]="ob.reason || ('ITEMS.OPENING_BALANCE_NOT_AVAILABLE' | translate)"
-                    />
-                  </div>
-                }
-                @if (ob.allowed) {
-                  <div nz-col nzSpan="12">
-                    <nz-form-item>
-                      <nz-form-label>{{ 'ITEM_FORM.OPENING_QTY' | translate }}</nz-form-label>
-                      <nz-form-control>
-                        <nz-input-number
-                          formControlName="openingQty"
-                          [nzMin]="0"
-                          [nzStep]="0.01"
-                          [nzPrecision]="4"
-                          [nzPlaceHolder]="'ITEM_FORM.OPENING_QTY_PLACEHOLDER' | translate"
-                          class="w-100"
-                        />
-                      </nz-form-control>
-                    </nz-form-item>
-                  </div>
-                  <div nz-col nzSpan="12">
-                    <nz-form-item>
-                      <nz-form-label>{{ 'ITEM_FORM.OPENING_COST' | translate }}</nz-form-label>
-                      <nz-form-control>
-                        <nz-input-number
-                          formControlName="openingCost"
-                          [nzMin]="0"
-                          [nzStep]="0.01"
-                          [nzPlaceHolder]="'ITEM_FORM.OPENING_COST_PLACEHOLDER' | translate"
-                          class="w-100"
-                        />
-                      </nz-form-control>
-                    </nz-form-item>
-                  </div>
-                  <div nz-col nzSpan="24">
-                    <p class="ob-hint">{{ 'ITEM_FORM.OB_FIELDS_HINT' | translate }}</p>
-                  </div>
-                }
+              @if (showOpeningBalanceFields()) {
+                <div nz-col nzSpan="12">
+                  <nz-form-item>
+                    <nz-form-label>{{ 'ITEM_FORM.OPENING_QTY' | translate }}</nz-form-label>
+                    <nz-form-control>
+                      <nz-input-number
+                        formControlName="openingQty"
+                        [nzMin]="0"
+                        [nzStep]="0.01"
+                        [nzPrecision]="4"
+                        [nzPlaceHolder]="'ITEM_FORM.OPENING_QTY_PLACEHOLDER' | translate"
+                        class="w-100"
+                      />
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col nzSpan="12">
+                  <nz-form-item>
+                    <nz-form-label [nzRequired]="(form.get('openingQty')?.value ?? 0) > 0">
+                      {{ 'ITEM_FORM.OPENING_COST' | translate }}
+                    </nz-form-label>
+                    <nz-form-control [nzErrorTip]="openingCostErrorTpl">
+                      <nz-input-number
+                        formControlName="openingCost"
+                        [nzMin]="0"
+                        [nzStep]="0.01"
+                        [nzPlaceHolder]="'ITEM_FORM.OPENING_COST_PLACEHOLDER' | translate"
+                        class="w-100"
+                      />
+                      <ng-template #openingCostErrorTpl let-control>
+                        @if (control.hasError('openingStockCostRequired')) {
+                          {{ 'ITEM_FORM.ERROR_OPENING_STOCK_COST_REQUIRED' | translate }}
+                        } @else if (control.hasError('min')) {
+                          {{ 'ITEM_FORM.ERROR_OB_COST_REQUIRED' | translate }}
+                        }
+                      </ng-template>
+                    </nz-form-control>
+                  </nz-form-item>
+                </div>
+                <div nz-col nzSpan="24">
+                  <p class="ob-hint">{{ 'ITEM_FORM.OB_FIELDS_HINT' | translate }}</p>
+                </div>
               }
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label>{{ 'ITEM_FORM.REORDER_POINT' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <nz-input-number
-                      formControlName="reorderPoint"
-                      [nzMin]="0"
-                      [nzPlaceHolder]="'ITEM_FORM.REORDER_POINT_PLACEHOLDER' | translate"
-                      class="w-100"
-                    />
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label>{{ 'ITEM_FORM.REORDER_QTY' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <nz-input-number
-                      formControlName="reorderQty"
-                      [nzMin]="0"
-                      [nzPlaceHolder]="'ITEM_FORM.REORDER_QTY_PLACEHOLDER' | translate"
-                      class="w-100"
-                    />
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="24">
-                <nz-form-item>
-                  <nz-form-label>{{ 'COMMON.DESCRIPTION' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <textarea nz-input formControlName="description" rows="3" [placeholder]="'COMMON.OPTIONAL' | translate"></textarea>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
               @if (item()) {
                 <div nz-col nzSpan="24">
                   <label nz-checkbox formControlName="isActive">{{ 'COMMON.ACTIVE' | translate }}</label>

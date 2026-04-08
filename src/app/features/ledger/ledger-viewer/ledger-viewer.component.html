@@ -4,6 +4,9 @@
       <h1 class="ledger-page__title">{{ 'LEDGER.TITLE' | translate }}</h1>
       <p class="ledger-page__meta">{{ 'LEDGER.SUBTITLE' | translate }}</p>
     </div>
+    <button nz-button nzType="default" class="ledger-page__export-btn" (click)="downloadExcel()">
+      {{ 'COMMON.EXPORT_EXCEL' | translate }}
+    </button>
   </div>
 
   <div class="ledger-page__filters">
@@ -95,11 +98,14 @@
     </div>
   }
 
+  <div class="ledger-page__table-wrap">
   <nz-table
     #ledgerTable
     [nzData]="entries()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
+    [nzScroll]="ledgerTableScroll"
     [nzShowPagination]="true"
     [nzPageSize]="25"
     [nzPageSizeOptions]="[10, 25, 50, 100]"
@@ -132,18 +138,22 @@
           <td>{{ row.createdAt | date: 'medium' }}</td>
           <td>
             <span
-              class="status-badge ledger-page__tag"
-              [ngClass]="'status-' + rowTypeStatusClass(row)"
+              class="ledger-page__tag"
+              [ngClass]="movementTypeClass(row)"
             >
               <lucide-icon [img]="rowTypeIcon(row)" class="ledger-page__tag-icon" />
-              {{ movementTypeHuman(row) }}
+              <span class="mx-2 d-inline-block">
+                {{ movementTypeHuman(row) }}
+              </span>
             </span>
           </td>
           <td class="ledger-page__ref">{{ row.referenceNo || '—' }}</td>
           <td class="ledger-page__item">{{ row.item?.name ?? '—' }}</td>
           <td class="ledger-page__loc">{{ row.location?.name ?? '—' }}</td>
           <td class="ledger-page__num ledger-page__num--in">{{ formatSignedQtyIn(row) }}</td>
-          <td class="ledger-page__num ledger-page__num--out">{{ formatSignedQtyOut(row) }}</td>
+          <td class="ledger-page__num" [ngClass]="{ 'ledger-page__num--out': isQtyOutPositive(row) }">
+            {{ formatSignedQtyOut(row) }}
+          </td>
           <td class="ledger-page__num">{{ formatUnitCost(row) }}</td>
           <td class="ledger-page__num">{{ formatTotalValue(row) }}</td>
           <td class="ledger-page__num ledger-page__num--bal">{{ formatBalance(row) }}</td>
@@ -151,4 +161,5 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>

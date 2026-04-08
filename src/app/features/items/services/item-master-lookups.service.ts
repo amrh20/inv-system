@@ -14,6 +14,8 @@ export class ItemMasterLookupsService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
 
+  /** Categories and subcategories are loaded via `CategoriesService` (items feature), not this service. */
+
   listDepartments(params?: { take?: number; isActive?: boolean }): Observable<DepartmentOption[]> {
     return this.getList<DepartmentOption>(`${this.apiUrl}/departments`, params);
   }
