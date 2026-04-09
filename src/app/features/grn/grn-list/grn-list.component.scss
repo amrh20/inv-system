@@ -43,6 +43,9 @@
 }
 
 .grn-list__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 0;
   background: transparent;
   padding: 8px 12px;
@@ -61,6 +64,55 @@
   &:hover:not(&--active) {
     color: rgba(0, 0, 0, 0.65);
   }
+}
+
+.grn-list__tab-label {
+  line-height: 1.2;
+}
+
+.grn-list__tab-count {
+  min-width: 22px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-brand, 6px);
+}
+
+.grn-list__tab--active .grn-list__tab-count {
+  color: var(--color-brand-primary, #1d4ed8);
+  background: rgba(29, 78, 216, 0.12);
+}
+
+.grn-list__actions-cell {
+  white-space: nowrap;
+}
+
+.grn-list__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.grn-list__link-btn {
+  padding-inline: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.grn-list__rejection {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grn-list__link-icon {
+  margin-inline-end: 6px;
+  flex-shrink: 0;
 }
 
 .grn-list__row {

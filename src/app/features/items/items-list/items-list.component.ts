@@ -24,7 +24,6 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import type { NzTableSortFn } from 'ng-zorro-antd/table';
 import { LucideAngularModule } from 'lucide-angular';
 import {
-  ChevronDown,
   Download,
   EllipsisVertical,
   Eye,
@@ -39,11 +38,11 @@ import {
 } from 'lucide-angular';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import { StatusToggleComponent } from '../../../shared/components/status-toggle/status-toggle.component';
-import { ItemFormComponent } from '../item-form/item-form.component';
 import type {
   CategoryOption,
   ItemCreationBlockReason,
   ItemCreationRequirementKey,
+  ItemDetail,
   ItemListRow,
 } from '../models/item.model';
 import { CategoriesService } from '../services/categories.service';
@@ -75,7 +74,6 @@ import { ItemsService } from '../services/items.service';
     TranslatePipe,
     RouterLink,
     LucideAngularModule,
-    ItemFormComponent,
     StatusToggleComponent,
   ],
   templateUrl: './items-list.component.html',
@@ -93,7 +91,6 @@ export class ItemsListComponent implements OnInit {
 
   readonly lucidePackage = Package;
   readonly lucidePlus = Plus;
-  readonly lucideChevronDown = ChevronDown;
   readonly lucideSearch = Search;
   readonly lucideRefresh = RefreshCw;
   readonly lucideDownload = Download;
@@ -106,8 +103,10 @@ export class ItemsListComponent implements OnInit {
 
   /** From `GET /items/check-requirements`; disables create/import when false. */
   readonly requirementsMet = signal(true);
-  /** When `canCreateItem` is false, distinguishes missing master data vs closed Opening Balance period. */
+  /** When `canCreateItem` is false, missing master data (`MISSING_PREREQUISITES`). */
   readonly blockReason = signal<ItemCreationBlockReason | null>(null);
+  /** `true` while OB setup is active (`isOpeningBalanceAllowed` from check-requirements). */
+  readonly openingBalanceSetupActive = signal(false);
   readonly missingData = signal<ItemCreationRequirementKey[]>([]);
   readonly requirementsLoading = signal(true);
 
@@ -115,17 +114,15 @@ export class ItemsListComponent implements OnInit {
   readonly openingBalanceSettingsPath = '/settings';
 
   readonly showPrerequisitesBanner = computed(
-    () =>
-      !this.requirementsMet() &&
-      !this.requirementsLoading() &&
-      this.blockReason() !== 'OPENING_BALANCE',
+    () => !this.requirementsMet() && !this.requirementsLoading(),
   );
 
+  /** Setup-phase notice while OB is active; hidden after finalize (`isOpeningBalanceAllowed === false`). */
   readonly showOpeningBalanceBanner = computed(
     () =>
-      !this.requirementsMet() &&
+      this.requirementsMet() &&
       !this.requirementsLoading() &&
-      this.blockReason() === 'OPENING_BALANCE',
+      this.openingBalanceSetupActive(),
   );
 
   /** Disables New item + Import when prerequisites or OB block creation. */
@@ -156,11 +153,17 @@ export class ItemsListComponent implements OnInit {
   readonly departments = signal<{ id: string; name: string }[]>([]);
   readonly locations = signal<{ id: string; name: string; departmentId: string | null }[]>([]);
 
-  readonly formOpen = signal(false);
-  readonly formItem = signal<ItemListRow | null>(null);
-
   readonly viewOpen = signal(false);
+  /** List row: fallback while detail loads or if `GET /items/:id` fails. */
   readonly viewItem = signal<ItemListRow | null>(null);
+  readonly viewItemDetail = signal<ItemDetail | null>(null);
+  readonly viewDetailLoading = signal(false);
+  private viewDetailRequestGen = 0;
+
+  /** Prefer `GET /items/:id` payload (includes subcategory when API provides it). */
+  readonly viewDisplay = computed<ItemListRow | null>(
+    () => this.viewItemDetail() ?? this.viewItem(),
+  );
 
   readonly filteredLocations = computed(() => {
     const dept = this.departmentId();
@@ -236,11 +239,13 @@ export class ItemsListComponent implements OnInit {
             this.requirementsMet.set(true);
             this.blockReason.set(null);
             this.missingData.set([]);
+            this.openingBalanceSetupActive.set(false);
             return;
           }
-          const { canCreateItem, requirements: r, blockReason: br } = res.data;
+          const { canCreateItem, requirements: r, blockReason: br, isOpeningBalanceAllowed } = res.data;
           this.requirementsMet.set(canCreateItem);
           this.blockReason.set(br ?? null);
+          this.openingBalanceSetupActive.set(isOpeningBalanceAllowed === true);
           const missing: ItemCreationRequirementKey[] = [];
           if (r.units.count === 0) {
             missing.push('units');
@@ -248,22 +253,17 @@ export class ItemsListComponent implements OnInit {
           if (r.categories.count === 0) {
             missing.push('categories');
           }
-          if (r.vendors.count === 0) {
-            missing.push('vendors');
-          }
           if (r.locations.count === 0) {
             missing.push('locations');
           }
           this.missingData.set(missing);
-          if (!canCreateItem && !br && missing.length === 0) {
-            this.blockReason.set('OPENING_BALANCE');
-          }
         },
         error: () => {
           this.requirementsLoading.set(false);
           this.requirementsMet.set(true);
           this.blockReason.set(null);
           this.missingData.set([]);
+          this.openingBalanceSetupActive.set(false);
         },
       });
   }
@@ -334,34 +334,42 @@ export class ItemsListComponent implements OnInit {
   }
 
   openCreate(): void {
-    this.formItem.set(null);
-    this.formOpen.set(true);
-  }
-
-  openEdit(row: ItemListRow): void {
-    this.formItem.set(row);
-    this.formOpen.set(true);
-  }
-
-  closeForm(): void {
-    this.formOpen.set(false);
-    this.formItem.set(null);
-  }
-
-  onFormSaved(): void {
-    this.closeForm();
-    this.message.success(this.t('ITEMS.SUCCESS_SAVED'));
-    this.loadItems();
+    void this.router.navigate(['/items/new']);
   }
 
   openView(row: ItemListRow): void {
+    const gen = ++this.viewDetailRequestGen;
     this.viewItem.set(row);
+    this.viewItemDetail.set(null);
     this.viewOpen.set(true);
+    this.viewDetailLoading.set(true);
+    this.itemsApi
+      .getItemById(row.id)
+      .pipe(first(), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detail) => {
+          if (gen !== this.viewDetailRequestGen) {
+            return;
+          }
+          this.viewItemDetail.set(detail);
+          this.viewDetailLoading.set(false);
+        },
+        error: () => {
+          if (gen !== this.viewDetailRequestGen) {
+            return;
+          }
+          this.viewDetailLoading.set(false);
+          this.message.error(this.t('ITEMS.ERROR_LOAD'));
+        },
+      });
   }
 
   closeView(): void {
+    this.viewDetailRequestGen += 1;
     this.viewOpen.set(false);
     this.viewItem.set(null);
+    this.viewItemDetail.set(null);
+    this.viewDetailLoading.set(false);
   }
 
   deleteItem(row: ItemListRow): void {

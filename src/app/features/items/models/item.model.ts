@@ -18,6 +18,8 @@ export interface ItemListRow {
   imageUrl: string | null;
   department?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
+  /** Populated on item detail (`GET /items/:id`) when API includes nested subcategory. */
+  subcategory?: { id: string; name: string } | null;
   supplier?: { id: string; name: string } | null;
   itemUnits?: Array<{
     unitType: string;
@@ -62,6 +64,7 @@ export type ItemCreationBlockReason = 'MISSING_PREREQUISITES' | 'OPENING_BALANCE
 
 /** Response `data` from `GET /items/check-requirements` (tenant-scoped prerequisites). */
 export interface RequirementsResponse {
+  /** True when units, categories, and locations all have at least one row (tenant-scoped). */
   canCreateItem: boolean;
   requirements: {
     units: { count: number };
@@ -71,6 +74,11 @@ export interface RequirementsResponse {
   };
   /** Present when `canCreateItem` is false (see backend `GET /items/check-requirements`). */
   blockReason?: ItemCreationBlockReason;
+  /**
+   * Tenant OB toggle / finalize state (`settingService.isOpeningBalanceAllowed`).
+   * When true, OB setup is active and operational transactions (GRN, Get Pass) are blocked until finalize.
+   */
+  isOpeningBalanceAllowed: boolean;
 }
 
 export interface CategoryOption {

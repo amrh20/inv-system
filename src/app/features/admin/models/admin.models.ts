@@ -72,3 +72,43 @@ export interface OpeningBalanceSetting {
   reason?: string | null;
   updatedAt?: string | null;
 }
+
+/** Persisted when POST /settings/ob-finalize succeeds. */
+export interface OpeningBalanceSnapshotSummary {
+  totalItemsCount: number | null;
+  totalOpeningValue: number | null;
+  finalizedAt: string;
+  finalizedBy: string;
+  currencyCode?: string;
+}
+
+/** GET /settings/inventory-status */
+export interface InventoryStatusResponse {
+  isOpeningBalanceAllowed: boolean;
+  reason?: string | null;
+  lockedAt?: string | null;
+  allowOpeningBalance: {
+    value: string | null;
+    reason?: string | null;
+    updatedAt?: string | null;
+  };
+  snapshotSummary: OpeningBalanceSnapshotSummary | null;
+}
+
+/** Structured validation payload for OB_FINALIZE_VALIDATION_FAILED (400). */
+export interface ObFinalizeValidationDetails {
+  invalidCostBalances?: Array<{
+    itemId: string;
+    itemName: string;
+    storeName: string;
+    currentQty: number;
+  }>;
+  itemsMissingBaseUnit?: Array<{ itemId: string; itemName: string }>;
+  draftOBMovements?: Array<{ docNo: string; itemId: string }>;
+}
+
+export interface ObFinalizeSuccessPayload {
+  finalized: boolean;
+  settings: { allowOpeningBalance: string; isOpeningBalanceAllowed: string };
+  snapshotSummary: OpeningBalanceSnapshotSummary;
+}

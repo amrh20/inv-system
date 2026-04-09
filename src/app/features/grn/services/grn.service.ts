@@ -4,6 +4,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import type {
+  GrnCreateLinePayload,
   GrnDetail,
   GrnImportPreviewData,
   GrnListApiPayload,
@@ -18,9 +19,11 @@ export class GrnService {
   /**
    * List GRNs — backend returns `{ data: { data: rows[], total } }` (React `GrnListPage`).
    */
-  list(params?: { status?: string }): Observable<{ grns: GrnListRow[]; total: number }> {
+  list(params?: { status?: string; page?: number; limit?: number }): Observable<{ grns: GrnListRow[]; total: number }> {
     let p = new HttpParams();
     if (params?.status) p = p.set('status', params.status);
+    if (params?.page != null) p = p.set('page', String(params.page));
+    if (params?.limit != null) p = p.set('limit', String(params.limit));
     return this.http.get<ApiResponse<GrnListApiPayload | GrnListRow[]>>(this.base, { params: p }).pipe(
       map((res) => {
         const payload = res.data;
@@ -80,6 +83,58 @@ export class GrnService {
       map((res) => {
         if (!res.success) {
           throw new Error(res.message || 'Action failed');
+        }
+      }),
+    );
+  }
+
+  /** PATCH /grn/:id/status — VALIDATED → APPROVED | REJECTED (Cost Control / Admin). */
+  updateStatus(
+    id: string,
+    body: { status: 'APPROVED' | 'REJECTED'; reason?: string },
+  ): Observable<void> {
+    return this.http.patch<ApiResponse<unknown>>(`${this.base}/${id}/status`, body).pipe(
+      map((res) => {
+        if (!res.success) {
+          throw new Error(res.message || 'Status update failed');
+        }
+      }),
+    );
+  }
+
+  /**
+   * PATCH /grn/:id — `lines` replaces all lines only when GRN status is REJECTED; optional `notes`.
+   */
+  patch(
+    id: string,
+    body: { notes?: string | null; lines?: GrnCreateLinePayload[] },
+  ): Observable<GrnDetail> {
+    return this.http.patch<ApiResponse<GrnDetail>>(`${this.base}/${id}`, body).pipe(
+      map((res) => {
+        if (!res.success || !res.data) {
+          throw new Error(res.message || 'Update failed');
+        }
+        return res.data;
+      }),
+    );
+  }
+
+  /** POST /grn/:id/resubmit — REJECTED → VALIDATED (storekeeper) or APPROVED (cost control / admin). */
+  resubmit(id: string): Observable<void> {
+    return this.http.post<ApiResponse<unknown>>(`${this.base}/${id}/resubmit`, {}).pipe(
+      map((res) => {
+        if (!res.success) {
+          throw new Error(res.message || 'Resubmit failed');
+        }
+      }),
+    );
+  }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<ApiResponse<unknown>>(`${this.base}/${id}`).pipe(
+      map((res) => {
+        if (!res.success) {
+          throw new Error(res.message || 'Delete failed');
         }
       }),
     );

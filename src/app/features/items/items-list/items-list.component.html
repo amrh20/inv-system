@@ -1,5 +1,5 @@
 <div class="items-page">
-  <div class="items-page__header">
+  <div class="items-page__header d-flex justify-content-between gap-2">
     <div>
       <h1 class="items-page__title">
         <lucide-icon [img]="lucidePackage" [size]="22" class="title-icon" />
@@ -7,56 +7,60 @@
       </h1>
       <p class="items-page__meta">{{ 'ITEMS.TOTAL_ITEMS' | translate: { count: total() } }}</p>
     </div>
-    <div class="items-page__header-actions">
-      <div class="items-page__add-split">
-        <nz-dropdown-menu #addItemMenuTpl="nzDropdownMenu">
-          <ul nz-menu>
-            <li
-              nz-menu-item
-              class="items-menu__item"
-              [nzDisabled]="itemCreationActionsDisabled()"
-              (click)="goToImportPage()"
-            >
-              <lucide-icon [img]="lucideUpload" [size]="14" />
-              <span>{{ 'ITEMS.IMPORT_FROM_EXCEL_ACTION' | translate }}</span>
-            </li>
-            <li nz-menu-item class="items-menu__item" (click)="downloadTemplate()">
-              <lucide-icon [img]="lucideDownload" [size]="14" />
-              <span>{{ 'ITEMS.DOWNLOAD_TEMPLATE' | translate }}</span>
-            </li>
-            <li nz-menu-item class="items-menu__item" (click)="exportItems()">
-              <lucide-icon [img]="lucideDownload" [size]="14" />
-              <span>{{ 'ITEMS.EXPORT_DATA_EXCEL' | translate }}</span>
-            </li>
-          </ul>
-        </nz-dropdown-menu>
-        <span class="ant-btn-group items-page__add-split-group">
-          <button
+    <div class="items-page__filters-toolbar">
+      <nz-dropdown-menu #itemsToolsMenuTpl="nzDropdownMenu">
+        <ul nz-menu>
+          <li nz-menu-item class="items-menu__item" (click)="downloadTemplate()">
+            <lucide-icon [img]="lucideDownload" [size]="14" [strokeWidth]="2" />
+            <span>{{ 'ITEMS.DOWNLOAD_TEMPLATE' | translate }}</span>
+          </li>
+          <li nz-menu-item class="items-menu__item" (click)="exportItems()">
+            <lucide-icon [img]="lucideDownload" [size]="14" [strokeWidth]="2" />
+            <span>{{ 'ITEMS.EXPORT_DATA_EXCEL' | translate }}</span>
+          </li>
+        </ul>
+      </nz-dropdown-menu>
+
+      <span nz-button-group class="items-page__toolbar-group">
+        <button
           nz-button
           nzType="primary"
           type="button"
-          nz-dropdown
-          [nzDropdownMenu]="addItemMenuTpl"
-          nzTrigger="click"
-          nzPlacement="bottomRight"
+          class="items-page__toolbar-btn"
           [disabled]="itemCreationActionsDisabled()"
+          (click)="openCreate()"
+        >
+          <lucide-icon [img]="lucidePlus" [size]="16" [strokeWidth]="2" />
+          {{ 'ITEMS.ADD_ITEM' | translate }}
+        </button>
+        <button
+          nz-button
+          nzType="default"
+          type="button"
+          class="items-page__toolbar-btn"
+          [disabled]="itemCreationActionsDisabled()"
+          (click)="goToImportPage()"
           style="margin: 0 20px;"
         >
-          <lucide-icon [img]="lucideChevronDown" [size]="14" />
+          <lucide-icon [img]="lucideUpload" [size]="16" [strokeWidth]="2" />
+          {{ 'ITEMS.IMPORT_FROM_EXCEL_ACTION' | translate }}
         </button>
-          <button
-            nz-button
-            nzType="primary"
-            type="button"
-            [disabled]="itemCreationActionsDisabled()"
-            (click)="openCreate()"
-          >
-            <lucide-icon [img]="lucidePlus" [size]="14" />
-            {{ 'ITEMS.ADD_ITEM' | translate }}
-          </button>
-        
-        </span>
-      </div>
+      </span>
+
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        class="items-page__toolbar-btn items-page__toolbar-btn--icon"
+        nz-dropdown
+        [nzDropdownMenu]="itemsToolsMenuTpl"
+        nzTrigger="click"
+        nzPlacement="bottomRight"
+        nz-tooltip
+        [nzTooltipTitle]="'ITEMS.TOOLS_MENU' | translate"
+      >
+        <lucide-icon [img]="lucideDownload" [size]="16" [strokeWidth]="2" />
+      </button>
     </div>
   </div>
 
@@ -113,83 +117,87 @@
   }
 
   <div class="items-page__filters">
-    <nz-input-group [nzPrefix]="searchPrefix" class="filter-search">
-      <input
-        type="text"
-        nz-input
-        [placeholder]="'COMMON.SEARCH_BY_NAME_OR_BARCODE' | translate"
-        [ngModel]="searchDraft()"
-        (ngModelChange)="onSearchInput($event)"
-      />
-    </nz-input-group>
-    <ng-template #searchPrefix>
-      <lucide-icon [img]="lucideSearch" [size]="14" class="input-prefix-icon" />
-    </ng-template>
+    <div class="items-page__filters-fields">
+      <nz-input-group [nzPrefix]="searchPrefix" class="filter-search">
+        <input
+          type="text"
+          nz-input
+          [placeholder]="'COMMON.SEARCH_BY_NAME_OR_BARCODE' | translate"
+          [ngModel]="searchDraft()"
+          (ngModelChange)="onSearchInput($event)"
+        />
+      </nz-input-group>
+      <ng-template #searchPrefix>
+        <lucide-icon [img]="lucideSearch" [size]="14" [strokeWidth]="2" class="input-prefix-icon" />
+      </ng-template>
 
-    <nz-select
-      class="filter-select"
-      [nzPlaceHolder]="'COMMON.DEPARTMENT' | translate"
-      [ngModel]="departmentId()"
-      (ngModelChange)="departmentId.set($event); onDepartmentChange()"
-      nzAllowClear
-    >
-      @for (d of departments(); track d.id) {
-        <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+      <nz-select
+        class="filter-select"
+        [nzPlaceHolder]="'COMMON.DEPARTMENT' | translate"
+        [ngModel]="departmentId()"
+        (ngModelChange)="departmentId.set($event); onDepartmentChange()"
+        nzAllowClear
+      >
+        @for (d of departments(); track d.id) {
+          <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+        }
+      </nz-select>
+
+      <nz-select
+        class="filter-select"
+        [nzPlaceHolder]="'COMMON.STORE' | translate"
+        [ngModel]="locationId()"
+        (ngModelChange)="locationId.set($event); onFilterChange()"
+        nzAllowClear
+      >
+        @for (l of filteredLocations(); track l.id) {
+          <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+        }
+      </nz-select>
+
+      <nz-select
+        class="filter-select"
+        [nzPlaceHolder]="'COMMON.CATEGORY' | translate"
+        [ngModel]="categoryId()"
+        (ngModelChange)="categoryId.set($event); onFilterChange()"
+        nzAllowClear
+      >
+        @for (c of categories(); track c.id) {
+          <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+        }
+      </nz-select>
+
+      <nz-select
+        class="filter-select filter-select--sm"
+        [ngModel]="activeFilter()"
+        (ngModelChange)="activeFilter.set($event); onFilterChange()"
+      >
+        <nz-option nzValue="true" [nzLabel]="'COMMON.ACTIVE_ONLY' | translate" />
+        <nz-option nzValue="false" [nzLabel]="'COMMON.INACTIVE_ONLY' | translate" />
+        <nz-option nzValue="all" [nzLabel]="'COMMON.ALL_STATUSES' | translate" />
+      </nz-select>
+
+      @if (searchDraft() || categoryId() || departmentId() || locationId()) {
+        <button nz-button nzType="link" type="button" (click)="clearFilters()">
+          <lucide-icon [img]="lucideX" [size]="12" [strokeWidth]="2" />
+          {{ 'COMMON.CLEAR' | translate }}
+        </button>
       }
-    </nz-select>
 
-    <nz-select
-      class="filter-select"
-      [nzPlaceHolder]="'COMMON.STORE' | translate"
-      [ngModel]="locationId()"
-      (ngModelChange)="locationId.set($event); onFilterChange()"
-      nzAllowClear
-    >
-      @for (l of filteredLocations(); track l.id) {
-        <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
-      }
-    </nz-select>
-
-    <nz-select
-      class="filter-select"
-      [nzPlaceHolder]="'COMMON.CATEGORY' | translate"
-      [ngModel]="categoryId()"
-      (ngModelChange)="categoryId.set($event); onFilterChange()"
-      nzAllowClear
-    >
-      @for (c of categories(); track c.id) {
-        <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
-      }
-    </nz-select>
-
-    <nz-select
-      class="filter-select filter-select--sm"
-      [ngModel]="activeFilter()"
-      (ngModelChange)="activeFilter.set($event); onFilterChange()"
-    >
-      <nz-option nzValue="true" [nzLabel]="'COMMON.ACTIVE_ONLY' | translate" />
-      <nz-option nzValue="false" [nzLabel]="'COMMON.INACTIVE_ONLY' | translate" />
-      <nz-option nzValue="all" [nzLabel]="'COMMON.ALL_STATUSES' | translate" />
-    </nz-select>
-
-    @if (searchDraft() || categoryId() || departmentId() || locationId()) {
-      <button nz-button nzType="link" type="button" (click)="clearFilters()">
-        <lucide-icon [img]="lucideX" [size]="12" />
-        {{ 'COMMON.CLEAR' | translate }}
+      <button
+        nz-button
+        nzType="text"
+        type="button"
+        class="filter-refresh"
+        (click)="loadItems()"
+        nz-tooltip
+        [nzTooltipTitle]="'COMMON.REFRESH' | translate"
+      >
+        <lucide-icon [img]="lucideRefresh" [size]="16" [strokeWidth]="2" [class.spin]="loading()" />
       </button>
-    }
+    </div>
 
-    <button
-      nz-button
-      nzType="text"
-      type="button"
-      class="filter-refresh"
-      (click)="loadItems()"
-      nz-tooltip
-      [nzTooltipTitle]="'COMMON.REFRESH' | translate"
-    >
-      <lucide-icon [img]="lucideRefresh" [size]="16" [class.spin]="loading()" />
-    </button>
+   
   </div>
 
   @if (listError()) {
@@ -225,7 +233,10 @@
         <th nzWidth="120" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>
           {{ 'COMMON.CATEGORY' | translate }}
         </th>
-        <th nzWidth="120">{{ 'COMMON.VENDOR' | translate }}</th>
+
+      
+
+        <th nzWidth="120">{{ 'COMMON.SUPPLIER' | translate }}</th>
         <th nzWidth="140">{{ 'COMMON.BASE_UNIT' | translate }}</th>
         <th nzWidth="100" nzAlign="right" nzColumnKey="unitPrice" [nzSortFn]="sortPriceFn" nzShowSort>
           {{ 'COMMON.UNIT_PRICE' | translate }}
@@ -292,7 +303,11 @@
                   <lucide-icon [img]="lucideEye" [size]="14" />
                   <span>{{ 'COMMON.VIEW_DETAILS' | translate }}</span>
                 </li>
-                <li nz-menu-item class="items-menu__item" (click)="openEdit(row)">
+                <li
+                  nz-menu-item
+                  class="items-menu__item"
+                  [routerLink]="['/items', row.id, 'edit']"
+                >
                   <lucide-icon [img]="lucidePencil" [size]="14" />
                   <span>{{ 'COMMON.EDIT_ITEM' | translate }}</span>
                 </li>
@@ -309,13 +324,6 @@
   </nz-table>
 </div>
 
-<app-item-form
-  [visible]="formOpen()"
-  [item]="formItem()"
-  (closed)="closeForm()"
-  (saved)="onFormSaved()"
-/>
-
 <nz-modal
   [nzVisible]="viewOpen()"
   [nzTitle]="'ITEMS.ITEM_DETAILS' | translate"
@@ -324,24 +332,29 @@
   nzWidth="560"
 >
   <ng-container *nzModalContent>
-    @if (viewItem(); as v) {
-      <nz-descriptions nzBordered [nzColumn]="1" nzSize="small">
-        <nz-descriptions-item [nzTitle]="'COMMON.NAME' | translate">{{ v.name }}</nz-descriptions-item>
-        <nz-descriptions-item [nzTitle]="'COMMON.BARCODE' | translate">{{ v.barcode || '—' }}</nz-descriptions-item>
-        <nz-descriptions-item [nzTitle]="'COMMON.CATEGORY' | translate">{{ v.category?.name || '—' }}</nz-descriptions-item>
-        <nz-descriptions-item [nzTitle]="'COMMON.VENDOR' | translate">{{ v.supplier?.name || '—' }}</nz-descriptions-item>
-        <nz-descriptions-item [nzTitle]="'COMMON.BASE_UNIT' | translate">{{ baseUnitLabel(v) }}</nz-descriptions-item>
-        <nz-descriptions-item [nzTitle]="'COMMON.UNIT_PRICE' | translate">{{ formatPrice(v) }}</nz-descriptions-item>
-        <nz-descriptions-item [nzTitle]="'COMMON.TOTAL_QTY' | translate">{{ totalQty(v) | number: '1.0-0' }}</nz-descriptions-item>
-        <nz-descriptions-item [nzTitle]="'COMMON.STATUS' | translate">
-          <span
-            class="status-badge"
-            [ngClass]="v.isActive ? 'status-active' : 'status-inactive'"
-          >
-            {{ v.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
-          </span>
-        </nz-descriptions-item>
-      </nz-descriptions>
+    @if (viewDisplay(); as v) {
+      <nz-spin [nzSpinning]="viewDetailLoading()">
+        <nz-descriptions nzBordered [nzColumn]="1" nzSize="small">
+          <nz-descriptions-item [nzTitle]="'COMMON.NAME' | translate">{{ v.name }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.BARCODE' | translate">{{ v.barcode || '—' }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.CATEGORY' | translate">{{ v.category?.name || '—' }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.SUBCATEGORY' | translate">{{
+            v.subcategory?.name || '—'
+          }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.SUPPLIER' | translate">{{ v.supplier?.name || '—' }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.BASE_UNIT' | translate">{{ baseUnitLabel(v) }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.UNIT_PRICE' | translate">{{ formatPrice(v) }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.TOTAL_QTY' | translate">{{ totalQty(v) | number: '1.0-0' }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.STATUS' | translate">
+            <span
+              class="status-badge"
+              [ngClass]="v.isActive ? 'status-active' : 'status-inactive'"
+            >
+              {{ v.isActive ? ('COMMON.ACTIVE' | translate) : ('COMMON.INACTIVE' | translate) }}
+            </span>
+          </nz-descriptions-item>
+        </nz-descriptions>
+      </nz-spin>
     }
   </ng-container>
 </nz-modal>

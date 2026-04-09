@@ -11,10 +11,25 @@
       <button nz-button nzType="default" type="button" (click)="load()">
         <lucide-icon [img]="lucideRefresh" [size]="16" [class.gp-list__spin]="loading()" [strokeWidth]="2" />
       </button>
-      <button nz-button nzType="primary" type="button" (click)="goNew()">
-        <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
-        {{ 'GET_PASS.LIST.NEW' | translate }}
-      </button>
+      <span
+        nz-tooltip
+        [nzTooltipTitle]="
+          requirements()?.isOpeningBalanceAllowed === true
+            ? ('TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED' | translate)
+            : null
+        "
+      >
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          [disabled]="requirements()?.isOpeningBalanceAllowed === true"
+          (click)="goNew()"
+        >
+          <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
+          {{ 'GET_PASS.LIST.NEW' | translate }}
+        </button>
+      </span>
     </div>
   </div>
 

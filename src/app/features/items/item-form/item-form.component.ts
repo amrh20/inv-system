@@ -4,22 +4,20 @@ import {
   DestroyRef,
   effect,
   inject,
-  input,
-  output,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
-  FormArray,
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { forkJoin, lastValueFrom, of, type Observable } from 'rxjs';
-import { catchError, finalize, first, map, startWith, switchMap, tap } from 'rxjs/operators';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { forkJoin, lastValueFrom, merge, of, type Observable } from 'rxjs';
+import { catchError, distinctUntilChanged, filter, finalize, first, map, startWith, switchMap, tap } from 'rxjs/operators';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { MovementDocumentPayload } from '../../movements/models/movement-document.model';
 import { MovementDocumentsService } from '../../movements/services/movement-documents.service';
@@ -29,21 +27,20 @@ import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzGridModule } from 'ng-zorro-antd/grid';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
-import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
-import { NzTabsModule } from 'ng-zorro-antd/tabs';
+import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { AlertCircle, ImageIcon, Loader2, Package, Ruler, Save, X } from 'lucide-angular';
+import { AlertCircle, ArrowLeft, ImageIcon, Loader2, Package, Save } from 'lucide-angular';
 import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
 import { UnitsService } from '../services/units.service';
 import type {
   CategoryOption,
-  DepartmentOption,
   ItemCreationRequirementKey,
   ItemDetail,
   ItemListRow,
@@ -55,23 +52,6 @@ import type {
   SupplierOption,
   UnitOption,
 } from '../models/item.model';
-
-/** Exactly one row must have unitType BASE with a non-empty unitId. */
-function itemUnitsBaseUnitValidator(control: AbstractControl): ValidationErrors | null {
-  const arr = control as FormArray<FormGroup>;
-  if (!arr?.controls?.length) {
-    return { baseUnitInvalid: true };
-  }
-  const baseRows = arr.controls.filter((g) => g.get('unitType')?.value === 'BASE');
-  if (baseRows.length !== 1) {
-    return { baseUnitInvalid: true };
-  }
-  const unitId = baseRows[0].get('unitId')?.value;
-  if (unitId == null || String(unitId).trim() === '') {
-    return { baseUnitInvalid: true };
-  }
-  return null;
-}
 
 /** When opening quantity is positive, opening unit cost is required (re-validated when quantity changes). */
 function openingStockCostWhenQtyValidator(control: AbstractControl): ValidationErrors | null {
@@ -103,8 +83,8 @@ function openingStockCostWhenQtyValidator(control: AbstractControl): ValidationE
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    NzModalModule,
-    NzTabsModule,
+    RouterLink,
+    NzDividerModule,
     NzFormModule,
     NzInputModule,
     NzInputNumberModule,
@@ -122,6 +102,9 @@ function openingStockCostWhenQtyValidator(control: AbstractControl): ValidationE
   styleUrl: './item-form.component.scss',
 })
 export class ItemFormComponent {
+  /** Incremented on each route-driven reload so stale HTTP callbacks are ignored. */
+  private dataLoadGen = 0;
+
   private readonly fb = inject(FormBuilder);
   private readonly itemsApi = inject(ItemsService);
   private readonly categoriesApi = inject(CategoriesService);
@@ -131,17 +114,27 @@ export class ItemFormComponent {
   private readonly confirmation = inject(ConfirmationService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
+  private readonly router = inject(Router);
+  private readonly message = inject(NzMessageService);
 
-  /** Item to edit; omit or null for create. */
-  readonly item = input<ItemListRow | ItemDetail | null>(null);
-  readonly visible = input(false);
-  readonly closed = output<void>();
-  readonly saved = output<void>();
+  /**
+   * Item id for `/items/:id/edit`. Derived from the router URL so it stays in sync with
+   * `GET ${apiUrl}/items/:id` (same id segment as in the API path).
+   */
+  readonly editItemId = toSignal(
+    merge(
+      of(null).pipe(map(() => this.parseEditItemIdFromUrl())),
+      this.router.events.pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        map(() => this.parseEditItemIdFromUrl()),
+      ),
+    ).pipe(distinctUntilChanged()),
+    { initialValue: this.parseEditItemIdFromUrl() },
+  );
 
-  readonly lucideX = X;
+  readonly lucideArrowLeft = ArrowLeft;
   readonly lucidePackage = Package;
   readonly lucideImage = ImageIcon;
-  readonly lucideRuler = Ruler;
   readonly lucideSave = Save;
   readonly lucideLoader = Loader2;
   readonly lucideAlert = AlertCircle;
@@ -149,44 +142,53 @@ export class ItemFormComponent {
   readonly loadingLookups = signal(true);
   readonly saving = signal(false);
   readonly submitError = signal('');
-  readonly activeTab = signal(0);
   readonly imagePreview = signal<string | null>(null);
   readonly imageFile = signal<File | null>(null);
   readonly removeImage = signal(false);
 
+  /** PURCHASE / ISSUE rows from the API; merged back on save so they are not dropped. */
+  readonly extraItemUnitsSnapshot = signal<ItemUnitRow[]>([]);
+
   categories = signal<CategoryOption[]>([]);
-  /** Subcategories for the selected category from `GET /categories/:id/subcategories`. */
   readonly subcategories = signal<SubcategoryOption[]>([]);
-  /** True while subcategories are being fetched for the current category. */
   readonly subcategoriesLoading = signal(false);
   units = signal<UnitOption[]>([]);
   suppliers = signal<SupplierOption[]>([]);
   departments = signal<{ id: string; name: string }[]>([]);
   locations = signal<LocationOption[]>([]);
-  /** Create flow: result of `GET /items/check-requirements`; `null` until loaded or when editing. */
   readonly requirements = signal<RequirementsResponse | null>(null);
 
-  /** Opening balance fields only during setup phase when the API allows item creation with OB. */
-  readonly showOpeningBalanceFields = computed(
-    () => !this.item() && this.requirements()?.canCreateItem === true,
-  );
+  readonly isEditMode = computed(() => this.editItemId() != null && this.editItemId() !== '');
 
-  /** Create flow: prerequisites missing (not the OB-period lock). */
-  readonly showItemFormPrerequisitesBanner = computed(() => {
-    const req = this.requirements();
-    if (this.item() || !req || req.canCreateItem) {
+  readonly showOpeningBalanceFields = computed(() => {
+    if (this.isEditMode()) {
       return false;
     }
-    return req.blockReason !== 'OPENING_BALANCE';
+    const req = this.requirements();
+    if (!req) {
+      return false;
+    }
+    if (req.isOpeningBalanceAllowed !== true) {
+      return false;
+    }
+    return req.canCreateItem === true;
   });
 
-  /** Create flow: item creation blocked because the opening balance period is closed. */
-  readonly showItemFormOpeningBalanceClosedBanner = computed(() => {
+  readonly showItemFormPrerequisitesBanner = computed(() => {
     const req = this.requirements();
-    if (this.item() || !req || req.canCreateItem) {
+    if (this.isEditMode() || !req || this.loadingLookups() || req.canCreateItem) {
       return false;
     }
-    return req.blockReason === 'OPENING_BALANCE';
+    return true;
+  });
+
+  /** Matches Item Master: OB setup-phase notice; hidden after finalize. */
+  readonly showItemFormOpeningBalanceSetupBanner = computed(() => {
+    const req = this.requirements();
+    if (this.isEditMode() || !req || this.loadingLookups() || !req.canCreateItem) {
+      return false;
+    }
+    return req.isOpeningBalanceAllowed === true;
   });
 
   readonly form: FormGroup = this.fb.group({
@@ -202,32 +204,33 @@ export class ItemFormComponent {
     openingQty: [null as number | null],
     openingCost: [null as number | null],
     isActive: [true],
-    itemUnits: this.fb.array<FormGroup>([], { validators: [itemUnitsBaseUnitValidator] }),
+    baseUnitId: ['', Validators.required],
   });
+
+  /** Matches `/items/<uuid>/edit` → id used with `ItemsService.getItemById(id)`. */
+  private parseEditItemIdFromUrl(): string | null {
+    const path = this.router.url.split('?')[0];
+    const m = /^\/items\/([^/]+)\/edit\/?$/.exec(path);
+    return m ? decodeURIComponent(m[1]) : null;
+  }
 
   constructor() {
     effect(() => {
-      if (!this.visible()) {
-        this.requirements.set(null);
-        this.subcategories.set([]);
-        this.subcategoriesLoading.set(false);
-        return;
-      }
+      const id = this.editItemId();
+      const gen = ++this.dataLoadGen;
       this.submitError.set('');
-      this.activeTab.set(0);
       this.imageFile.set(null);
       this.removeImage.set(false);
-      const row = this.item();
-      if (row) {
-        this.patchForEdit(row);
+      this.extraItemUnitsSnapshot.set([]);
+      if (id) {
+        this.patchForEdit({ id } as ItemListRow, gen);
       } else {
-        this.resetForCreate();
+        this.resetForCreate(gen);
       }
     });
 
     effect(() => {
-      const vis = this.visible();
-      if (!vis) {
+      if (this.isEditMode()) {
         this.syncOpeningBalanceValidators(false);
         return;
       }
@@ -259,16 +262,6 @@ export class ItemFormComponent {
           this.form.get('openingCost')?.updateValueAndValidity({ emitEvent: false });
         }
       });
-
-    this.form.valueChanges
-      .pipe(startWith(null), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.itemUnits.updateValueAndValidity({ emitEvent: false });
-      });
-  }
-
-  get itemUnits(): FormArray<FormGroup> {
-    return this.form.get('itemUnits') as FormArray<FormGroup>;
   }
 
   filteredStores(): LocationOption[] {
@@ -280,10 +273,6 @@ export class ItemFormComponent {
     return all.filter((l) => !l.departmentId || l.departmentId === deptId);
   }
 
-  /**
-   * Subcategory select is disabled when no category, while subcategories are loading, or when
-   * the API returned no subcategories. (Disabled via template only.)
-   */
   isSubcategorySelectDisabled(): boolean {
     const catId = this.form.get('categoryId')?.value as string | undefined;
     if (catId == null || String(catId).trim() === '') {
@@ -295,10 +284,6 @@ export class ItemFormComponent {
     return this.subcategories().length === 0;
   }
 
-  /**
-   * Fetches subcategories for `categoryId`. When `clearSubcategory` is true (user changed category),
-   * resets `subcategoryId` first. Edit flow passes false so the patched value is kept.
-   */
   private loadSubcategoriesForCategoryId$(
     catId: string | null,
     options: { clearSubcategory: boolean },
@@ -319,24 +304,6 @@ export class ItemFormComponent {
     );
   }
 
-  addUnitRow(): void {
-    const hasBase = this.itemUnits.controls.some(
-      (g) => g.get('unitType')?.value === 'BASE',
-    );
-    const defaultType: ItemUnitRow['unitType'] = hasBase ? 'PURCHASE' : 'BASE';
-    this.itemUnits.push(
-      this.fb.group({
-        unitId: ['', Validators.required],
-        unitType: [defaultType],
-        conversionRate: [1, [Validators.required, Validators.min(0.000001)]],
-      }),
-    );
-  }
-
-  removeUnitRow(index: number): void {
-    this.itemUnits.removeAt(index);
-  }
-
   onImagePicked(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -355,12 +322,8 @@ export class ItemFormComponent {
     this.removeImage.set(true);
   }
 
-  close(): void {
-    this.closed.emit();
-  }
-
-  onTabIndexChange(index: number): void {
-    this.activeTab.set(index);
+  cancel(): void {
+    void this.router.navigate(['/items']);
   }
 
   save(): void {
@@ -370,39 +333,20 @@ export class ItemFormComponent {
         c.markAsDirty();
         c.updateValueAndValidity({ onlySelf: true });
       });
-      this.itemUnits.controls.forEach((g) => {
-        g.markAllAsDirty();
-        g.updateValueAndValidity();
-      });
       return;
     }
 
     const raw = this.form.getRawValue();
-    const itemUnits: ItemUnitRow[] = this.itemUnits.controls.map((g) => ({
-      unitId: g.get('unitId')?.value,
-      unitType: g.get('unitType')?.value,
-      conversionRate: Number(g.get('conversionRate')?.value),
-    }));
-
-    const baseCount = itemUnits.filter((u) => u.unitType === 'BASE').length;
-    if (baseCount !== 1) {
-      this.submitError.set(
-        baseCount === 0
-          ? this.t('ITEM_FORM.ERROR_BASE_UNIT_REQUIRED')
-          : this.t('ITEM_FORM.ERROR_ONLY_ONE_BASE_UNIT'),
-      );
+    const baseUnitId = (raw.baseUnitId as string) || '';
+    if (!baseUnitId.trim()) {
+      this.submitError.set(this.t('ITEM_FORM.ERROR_BASE_UNIT_SELECT'));
       return;
     }
-    for (const u of itemUnits) {
-      if (!u.unitId) {
-        this.submitError.set(this.t('ITEM_FORM.ERROR_SELECT_UNIT_ALL_ROWS'));
-        return;
-      }
-      if (Number.isNaN(u.conversionRate) || u.conversionRate <= 0) {
-        this.submitError.set(this.t('ITEM_FORM.ERROR_POSITIVE_CONVERSION'));
-        return;
-      }
-    }
+
+    const itemUnits: ItemUnitRow[] = [
+      { unitId: baseUnitId.trim(), unitType: 'BASE', conversionRate: 1 },
+      ...this.extraItemUnitsSnapshot(),
+    ];
 
     const payload: ItemPayload = {
       name: (raw.name as string).trim(),
@@ -415,20 +359,25 @@ export class ItemFormComponent {
       defaultStoreId: raw.defaultStoreId || null,
       unitPrice: raw.unitPrice != null && raw.unitPrice !== '' ? Number(raw.unitPrice) : 0,
       isActive: raw.isActive !== false,
-      itemUnits: itemUnits.length ? itemUnits : undefined,
+      itemUnits,
     };
 
     if (this.removeImage() && !this.imageFile()) {
       payload.imageUrl = null;
     }
 
-    const current = this.item();
+    const currentId = this.editItemId();
     const openingQty =
       raw.openingQty != null && raw.openingQty !== '' ? Number(raw.openingQty) : 0;
     const openingCost =
       raw.openingCost != null && raw.openingCost !== '' ? Number(raw.openingCost) : null;
 
-    if (!current && this.requirements()?.canCreateItem && openingQty > 0) {
+    if (
+      !currentId &&
+      this.requirements()?.canCreateItem &&
+      this.requirements()?.isOpeningBalanceAllowed &&
+      openingQty > 0
+    ) {
       if (openingQty < 0 || Number.isNaN(openingQty)) {
         this.submitError.set(this.t('ITEM_FORM.ERROR_OB_QTY_INVALID'));
         return;
@@ -445,8 +394,8 @@ export class ItemFormComponent {
 
     this.saving.set(true);
 
-    const req$ = current
-      ? this.itemsApi.updateItem(current.id, payload)
+    const req$ = currentId
+      ? this.itemsApi.updateItem(currentId, payload)
       : this.itemsApi.createItem(payload);
 
     req$.pipe(first()).subscribe({
@@ -467,9 +416,10 @@ export class ItemFormComponent {
         }
 
         if (
-          !current &&
+          !currentId &&
           saved?.id &&
           this.requirements()?.canCreateItem &&
+          this.requirements()?.isOpeningBalanceAllowed &&
           openingQty > 0 &&
           openingCost != null &&
           !Number.isNaN(openingCost) &&
@@ -517,7 +467,8 @@ export class ItemFormComponent {
         }
 
         this.saving.set(false);
-        this.saved.emit();
+        this.message.success(this.t('ITEMS.SUCCESS_SAVED'));
+        void this.router.navigate(['/items']);
       },
       error: (err: { error?: { message?: string }; message?: string }) => {
         this.saving.set(false);
@@ -555,7 +506,7 @@ export class ItemFormComponent {
     };
   }
 
-  private resetForCreate(): void {
+  private resetForCreate(gen: number): void {
     this.requirements.set(null);
     this.form.reset({
       name: '',
@@ -570,39 +521,80 @@ export class ItemFormComponent {
       openingQty: null,
       openingCost: null,
       isActive: true,
+      baseUnitId: '',
     });
-    this.clearItemUnits();
     this.imagePreview.set(null);
     this.loadingLookups.set(true);
     forkJoin({
       lookups: this.fetchLookups$(),
       checkRequirements: this.itemsApi.checkRequirements().pipe(
-        map((res) => {
-          if (!res.success || !res.data) {
-            return null;
-          }
-          return this.normalizeRequirementsResponse(res.data);
-        }),
+        map((res) => (res.success && res.data ? res.data : null)),
         catchError(() => of(null)),
       ),
     })
       .pipe(first())
       .subscribe({
         next: ({ checkRequirements: reqData }) => {
+          if (gen !== this.dataLoadGen) {
+            return;
+          }
           this.requirements.set(reqData);
           this.loadingLookups.set(false);
-          this.addDefaultBaseUnitRowForCreate();
         },
         error: () => {
+          if (gen !== this.dataLoadGen) {
+            return;
+          }
           this.loadingLookups.set(false);
           this.requirements.set(null);
         },
       });
   }
 
-  private patchForEdit(row: ItemListRow | ItemDetail): void {
+  private applyUnitsFromApiRows(units: ItemUnitRow[]): void {
+    const base = units.find((u) => u.unitType === 'BASE');
+    this.form.patchValue({ baseUnitId: base?.unitId ?? '' }, { emitEvent: false });
+    this.extraItemUnitsSnapshot.set(
+      units
+        .filter((u) => u.unitType !== 'BASE')
+        .map((u) => ({
+          unitId: u.unitId,
+          unitType: u.unitType,
+          conversionRate: Number(u.conversionRate),
+        })),
+    );
+    this.form.get('baseUnitId')?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private patchBaseUnitFromListRow(row: ItemListRow): void {
+    const base = row.itemUnits?.find((u) => u.unitType === 'BASE');
+    const id = base?.unit?.id ?? '';
+    this.form.patchValue({ baseUnitId: id }, { emitEvent: false });
+    this.extraItemUnitsSnapshot.set([]);
+    this.form.get('baseUnitId')?.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private patchForEdit(row: ItemListRow, gen: number): void {
     this.requirements.set(null);
     this.loadingLookups.set(true);
+    this.form.reset(
+      {
+        name: '',
+        barcode: '',
+        description: '',
+        departmentId: '',
+        categoryId: '',
+        subcategoryId: '',
+        supplierId: '',
+        defaultStoreId: '',
+        unitPrice: null,
+        openingQty: null,
+        openingCost: null,
+        isActive: true,
+        baseUnitId: '',
+      },
+      { emitEvent: false },
+    );
     this.fetchLookups$()
       .pipe(
         first(),
@@ -611,9 +603,13 @@ export class ItemFormComponent {
         ),
       )
       .subscribe((detail) => {
+        if (gen !== this.dataLoadGen) {
+          return;
+        }
         const itemRow = row;
         this.loadingLookups.set(false);
         if (!detail) {
+          this.message.warning(this.t('ITEM_FORM.ERROR_LOAD_DETAIL'));
           this.subcategories.set([]);
           this.subcategoriesLoading.set(false);
           this.form.patchValue(
@@ -629,6 +625,20 @@ export class ItemFormComponent {
             { emitEvent: false },
           );
           this.imagePreview.set(this.itemsApi.resolveAssetUrl(itemRow.imageUrl));
+          this.removeImage.set(false);
+          this.imageFile.set(null);
+          this.patchBaseUnitFromListRow(itemRow);
+          this.itemsApi
+            .getItemUnits(itemRow.id)
+            .pipe(first())
+            .subscribe((units) => {
+              if (gen !== this.dataLoadGen) {
+                return;
+              }
+              if (units.length) {
+                this.applyUnitsFromApiRows(units);
+              }
+            });
           return;
         }
         this.form.patchValue(
@@ -645,6 +655,7 @@ export class ItemFormComponent {
             openingQty: null,
             openingCost: null,
             isActive: detail.isActive !== false,
+            baseUnitId: '',
           },
           { emitEvent: false },
         );
@@ -656,47 +667,19 @@ export class ItemFormComponent {
         this.imagePreview.set(this.itemsApi.resolveAssetUrl(detail.imageUrl));
         this.removeImage.set(false);
         this.imageFile.set(null);
-        this.clearItemUnits();
         this.itemsApi
           .getItemUnits(itemRow.id)
           .pipe(first())
           .subscribe((units) => {
-            for (const u of units) {
-              this.itemUnits.push(
-                this.fb.group({
-                  unitId: [u.unitId, Validators.required],
-                  unitType: [u.unitType],
-                  conversionRate: [
-                    Number(u.conversionRate),
-                    [Validators.required, Validators.min(0.000001)],
-                  ],
-                }),
-              );
+            if (gen !== this.dataLoadGen) {
+              return;
             }
+            this.applyUnitsFromApiRows(units);
             if (!units.length) {
-              this.addUnitRow();
+              this.patchBaseUnitFromListRow(itemRow);
             }
-            this.itemUnits.updateValueAndValidity({ emitEvent: false });
           });
       });
-  }
-
-  private clearItemUnits(): void {
-    while (this.itemUnits.length) {
-      this.itemUnits.removeAt(0);
-    }
-  }
-
-  /** After lookups load for new item, ensure one BASE row exists. */
-  private addDefaultBaseUnitRowForCreate(): void {
-    if (this.item()) {
-      return;
-    }
-    if (this.itemUnits.length > 0) {
-      return;
-    }
-    this.addUnitRow();
-    this.itemUnits.updateValueAndValidity({ emitEvent: false });
   }
 
   private syncOpeningBalanceValidators(showOb: boolean): void {
@@ -716,46 +699,24 @@ export class ItemFormComponent {
     openingCost.updateValueAndValidity({ emitEvent: false });
   }
 
-  private normalizeRequirementsResponse(data: RequirementsResponse): RequirementsResponse {
-    if (data.canCreateItem) {
-      return data;
-    }
-    if (data.blockReason) {
-      return data;
-    }
-    const missing = this.keysWithZeroCount(data.requirements);
-    if (missing.length === 0) {
-      return { ...data, blockReason: 'OPENING_BALANCE' };
-    }
-    return data;
-  }
 
-  private keysWithZeroCount(req: RequirementsResponse['requirements']): ItemCreationRequirementKey[] {
-    const missing: ItemCreationRequirementKey[] = [];
-    if (req.units.count === 0) {
-      missing.push('units');
-    }
-    if (req.categories.count === 0) {
-      missing.push('categories');
-    }
-    if (req.vendors.count === 0) {
-      missing.push('vendors');
-    }
-    if (req.locations.count === 0) {
-      missing.push('locations');
-    }
-    return missing;
-  }
-
-  /** Comma-separated prerequisite labels for the create-blocked banner. */
   missingRequirementLabelsJoined(): string {
     const req = this.requirements();
     if (!req?.requirements) {
       return '';
     }
-    return this.keysWithZeroCount(req.requirements)
-      .map((k) => this.t(`ITEMS.REQUIREMENT_LABEL.${k.toUpperCase()}`))
-      .join(', ');
+    const r = req.requirements;
+    const missing: ItemCreationRequirementKey[] = [];
+    if (r.units.count === 0) {
+      missing.push('units');
+    }
+    if (r.categories.count === 0) {
+      missing.push('categories');
+    }
+    if (r.locations.count === 0) {
+      missing.push('locations');
+    }
+    return missing.map((k) => this.t(`ITEMS.REQUIREMENT_LABEL.${k.toUpperCase()}`)).join(', ');
   }
 
   private fetchLookups$() {
@@ -771,7 +732,7 @@ export class ItemFormComponent {
         .pipe(catchError(() => of([] as SupplierOption[]))),
       departments: this.lookups
         .listDepartments({ take: 200, isActive: true })
-        .pipe(catchError(() => of([] as DepartmentOption[]))),
+        .pipe(catchError(() => of([] as { id: string; name: string }[]))),
       locations: this.lookups
         .listLocations({ take: 200, isActive: true })
         .pipe(catchError(() => of([] as LocationOption[]))),

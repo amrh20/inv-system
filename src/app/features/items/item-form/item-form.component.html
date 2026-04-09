@@ -1,335 +1,297 @@
-<nz-modal
-  [nzVisible]="visible()"
-  [nzTitle]="item() ? ('ITEM_FORM.EDIT_ITEM' | translate) : ('ITEM_FORM.NEW_ITEM' | translate)"
-  [nzWidth]="840"
-  [nzFooter]="footerTpl"
-  (nzOnCancel)="close()"
-  [nzMaskClosable]="false"
->
-  <ng-container *nzModalContent>
-    <nz-spin [nzSpinning]="loadingLookups()">
-      <form nz-form nzLayout="vertical" [formGroup]="form">
-        <nz-tabs
-          [nzSelectedIndex]="activeTab()"
-          (nzSelectedIndexChange)="onTabIndexChange($event)"
-        >
-          <nz-tab [nzTitle]="tabBasic">
-            <ng-template #tabBasic>
-              <span class="tab-label">
-                <lucide-icon [img]="lucidePackage" [size]="14" />
-                {{ 'ITEM_FORM.BASIC_INFO' | translate }}
-              </span>
-            </ng-template>
-            <div class="form-body">
-            <div nz-row [nzGutter]="16">
-              @if (showItemFormPrerequisitesBanner()) {
-                <div nz-col nzSpan="24">
-                  <nz-alert
-                    nzType="warning"
-                    nzShowIcon
-                    class="item-form-alert"
-                    [nzMessage]="
-                      'ITEMS.REQUIREMENTS_WARNING' | translate: { missingLabels: missingRequirementLabelsJoined() }
-                    "
-                  />
-                </div>
-              }
-              @if (showItemFormOpeningBalanceClosedBanner()) {
-                <div nz-col nzSpan="24">
-                  <nz-alert
-                    nzType="warning"
-                    nzShowIcon
-                    class="item-form-alert"
-                    [nzMessage]="'ITEMS.OPENING_BALANCE_BANNER' | translate"
-                  />
-                </div>
-              }
-              <div nz-col nzSpan="24">
-                <nz-form-item>
-                  <nz-form-label nzRequired>{{ 'COMMON.ITEM_NAME' | translate }}</nz-form-label>
-                  <nz-form-control [nzErrorTip]="'ITEM_FORM.ERROR_NAME_REQUIRED' | translate">
-                    <input nz-input formControlName="name" [placeholder]="'ITEM_FORM.ITEM_NAME_PLACEHOLDER' | translate" />
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="24">
-                <nz-form-item class="form-description">
-                  <nz-form-label>{{ 'COMMON.DESCRIPTION' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <textarea
-                      nz-input
-                      formControlName="description"
-                      rows="4"
-                      [placeholder]="'COMMON.OPTIONAL' | translate"
-                    ></textarea>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label>{{ 'COMMON.BARCODE' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <input nz-input formControlName="barcode" [placeholder]="'ITEM_FORM.BARCODE_PLACEHOLDER' | translate" />
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label>{{ 'COMMON.UNIT_PRICE' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <nz-input-number
-                      formControlName="unitPrice"
-                      [nzMin]="0"
-                      [nzStep]="0.01"
-                      [nzPlaceHolder]="'ITEM_FORM.ZERO_DECIMAL' | translate"
-                      class="w-100"
-                    />
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label>{{ 'COMMON.CATEGORY' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <nz-select formControlName="categoryId" nzAllowClear [nzPlaceHolder]="'ITEM_FORM.SELECT_CATEGORY' | translate">
-                      @for (c of categories(); track c.id) {
-                        <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
-                      }
-                    </nz-select>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label>{{ 'COMMON.SUBCATEGORY' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <nz-select
-                      formControlName="subcategoryId"
-                      nzAllowClear
-                      [nzPlaceHolder]="
-                        (subcategoriesLoading()
-                          ? 'ITEM_FORM.LOADING_SUBCATEGORIES'
-                          : 'ITEM_FORM.SELECT_SUBCATEGORY'
-                        ) | translate
-                      "
-                      [nzDisabled]="isSubcategorySelectDisabled()"
-                      [nzLoading]="subcategoriesLoading()"
-                    >
-                      @for (s of subcategories(); track s.id) {
-                        <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
-                      }
-                    </nz-select>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label>{{ 'COMMON.SUPPLIER' | translate }}</nz-form-label>
-                  <nz-form-control>
-                    <nz-select formControlName="supplierId" nzAllowClear [nzPlaceHolder]="'COMMON.NONE' | translate">
-                      @for (s of suppliers(); track s.id) {
-                        <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
-                      }
-                    </nz-select>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="12">
-                <nz-form-item>
-                  <nz-form-label nzRequired>{{ 'COMMON.DEPARTMENT' | translate }}</nz-form-label>
-                  <nz-form-control [nzErrorTip]="'COMMON.REQUIRED' | translate">
-                    <nz-select formControlName="departmentId" [nzPlaceHolder]="'ITEM_FORM.SELECT_DEPARTMENT' | translate">
-                      @for (d of departments(); track d.id) {
-                        <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
-                      }
-                    </nz-select>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              <div nz-col nzSpan="24">
-                <nz-form-item>
-                  <nz-form-label nzRequired>{{ 'ITEM_FORM.DEFAULT_STORE' | translate }}</nz-form-label>
-                  <nz-form-control [nzErrorTip]="'COMMON.REQUIRED' | translate">
-                    <nz-select
-                      formControlName="defaultStoreId"
-                      [nzPlaceHolder]="'ITEM_FORM.SELECT_STORE' | translate"
-                      [nzDisabled]="!form.get('departmentId')?.value"
-                    >
-                      @for (l of filteredStores(); track l.id) {
-                        <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
-                      }
-                    </nz-select>
-                  </nz-form-control>
-                </nz-form-item>
-              </div>
-              @if (showOpeningBalanceFields()) {
-                <div nz-col nzSpan="12">
-                  <nz-form-item>
-                    <nz-form-label>{{ 'ITEM_FORM.OPENING_QTY' | translate }}</nz-form-label>
-                    <nz-form-control>
-                      <nz-input-number
-                        formControlName="openingQty"
-                        [nzMin]="0"
-                        [nzStep]="0.01"
-                        [nzPrecision]="4"
-                        [nzPlaceHolder]="'ITEM_FORM.OPENING_QTY_PLACEHOLDER' | translate"
-                        class="w-100"
-                      />
-                    </nz-form-control>
-                  </nz-form-item>
-                </div>
-                <div nz-col nzSpan="12">
-                  <nz-form-item>
-                    <nz-form-label [nzRequired]="(form.get('openingQty')?.value ?? 0) > 0">
-                      {{ 'ITEM_FORM.OPENING_COST' | translate }}
-                    </nz-form-label>
-                    <nz-form-control [nzErrorTip]="openingCostErrorTpl">
-                      <nz-input-number
-                        formControlName="openingCost"
-                        [nzMin]="0"
-                        [nzStep]="0.01"
-                        [nzPlaceHolder]="'ITEM_FORM.OPENING_COST_PLACEHOLDER' | translate"
-                        class="w-100"
-                      />
-                      <ng-template #openingCostErrorTpl let-control>
-                        @if (control.hasError('openingStockCostRequired')) {
-                          {{ 'ITEM_FORM.ERROR_OPENING_STOCK_COST_REQUIRED' | translate }}
-                        } @else if (control.hasError('min')) {
-                          {{ 'ITEM_FORM.ERROR_OB_COST_REQUIRED' | translate }}
-                        }
-                      </ng-template>
-                    </nz-form-control>
-                  </nz-form-item>
-                </div>
-                <div nz-col nzSpan="24">
-                  <p class="ob-hint">{{ 'ITEM_FORM.OB_FIELDS_HINT' | translate }}</p>
-                </div>
-              }
-              @if (item()) {
-                <div nz-col nzSpan="24">
-                  <label nz-checkbox formControlName="isActive">{{ 'COMMON.ACTIVE' | translate }}</label>
-                </div>
-              }
-            </div>
-            </div>
-          </nz-tab>
+<div class="item-form-page">
+  <div class="item-form-page__header">
+    <a nz-button nzType="text" class="item-form-page__back" routerLink="/items">
+      <lucide-icon [img]="lucideArrowLeft" [size]="18" [strokeWidth]="2" />
+      {{ 'ITEMS.BACK_TO_ITEM_MASTER' | translate }}
+    </a>
+    <div class="item-form-page__title-row">
+      <lucide-icon [img]="lucidePackage" [size]="26" [strokeWidth]="2" class="item-form-page__title-icon" />
+      <div>
+        <h1 class="item-form-page__title">
+          {{ (isEditMode() ? 'ITEM_FORM.EDIT_ITEM' : 'ITEM_FORM.NEW_ITEM') | translate }}
+        </h1>
+        <p class="item-form-page__meta">{{ 'ITEM_FORM.PAGE_SUBTITLE' | translate }}</p>
+      </div>
+    </div>
+  </div>
 
-        <nz-tab [nzTitle]="tabImage">
-          <ng-template #tabImage>
-            <span class="tab-label">
-              <lucide-icon [img]="lucideImage" [size]="14" />
-              {{ 'COMMON.IMAGE' | translate }}
-            </span>
-          </ng-template>
-          <div class="image-tab">
-            @if (imagePreview()) {
-              <div class="image-preview-wrap">
-                <img [src]="imagePreview()!" [alt]="'COMMON.PREVIEW' | translate" class="image-preview" />
-                <button nz-button nzType="link" nzDanger type="button" (click)="clearImage()">
-                  {{ 'ITEM_FORM.REMOVE_IMAGE' | translate }}
-                </button>
-              </div>
-            } @else {
-              <div class="image-drop" (click)="fileInput.click()">
-                <lucide-icon [img]="lucideImage" [size]="36" class="muted-icon" />
-                <p>{{ 'ITEM_FORM.CLICK_TO_UPLOAD' | translate }}</p>
-                <p class="hint">{{ 'ITEM_FORM.UPLOAD_HINT' | translate }}</p>
-              </div>
-            }
-            <input
-              #fileInput
-              type="file"
-              accept="image/*"
-              class="hidden-file"
-              (change)="onImagePicked($event)"
-            />
-            @if (!imagePreview()) {
-              <button nz-button nzBlock type="button" class="browse-btn" (click)="fileInput.click()">
-                {{ 'COMMON.BROWSE' | translate }}
-              </button>
-            }
-          </div>
-        </nz-tab>
+  <nz-spin [nzSpinning]="loadingLookups()">
+    <div class="item-form-page__card">
+      <form nz-form nzLayout="vertical" [formGroup]="form" class="item-form">
+        <nz-divider [nzText]="'ITEM_FORM.SECTION_BASIC' | translate" nzOrientation="left" class="item-form__divider" />
 
-        <nz-tab [nzTitle]="tabUnits">
-          <ng-template #tabUnits>
-            <span
-              class="tab-label"
-              [class.tab-label--error]="form.get('itemUnits')?.hasError('baseUnitInvalid')"
-            >
-              <lucide-icon [img]="lucideRuler" [size]="14" />
-              {{ 'COMMON.UNITS' | translate }}
-              @if (form.get('itemUnits')?.hasError('baseUnitInvalid')) {
-                <span class="tab-error-dot" [attr.title]="'ITEM_FORM.ERROR_BASE_UNIT_REQUIRED' | translate"></span>
-              }
-            </span>
-          </ng-template>
-          @if (form.get('itemUnits')?.hasError('baseUnitInvalid')) {
-            <nz-alert
-              nzType="error"
-              nzShowIcon
-              class="units-tab-alert"
-              [nzMessage]="'ITEM_FORM.ERROR_BASE_UNIT_REQUIRED' | translate"
-            />
-          }
-          <p class="units-hint">
-            {{ 'ITEM_FORM.UNITS_HINT' | translate }}
-          </p>
-          @for (row of itemUnits.controls; track $index; let i = $index) {
-            <div class="unit-row" [formGroup]="$any(row)">
-              <nz-select formControlName="unitType" class="unit-type">
-                <nz-option nzValue="BASE" nzLabel="BASE" />
-                <nz-option nzValue="PURCHASE" nzLabel="PURCHASE" />
-                <nz-option nzValue="ISSUE" nzLabel="ISSUE" />
-              </nz-select>
-              <nz-select formControlName="unitId" [nzPlaceHolder]="'COMMON.UNIT' | translate" class="unit-select">
-                @for (u of units(); track u.id) {
-                  <nz-option [nzValue]="u.id" [nzLabel]="u.name + ' (' + u.abbreviation + ')'" />
-                }
-              </nz-select>
-              <nz-input-number
-                formControlName="conversionRate"
-                [nzMin]="0.000001"
-                [nzStep]="0.01"
-                class="unit-rate"
+        <div nz-row [nzGutter]="16">
+          @if (showItemFormPrerequisitesBanner()) {
+            <div nz-col nzSpan="24">
+              <nz-alert
+                nzType="warning"
+                nzShowIcon
+                class="item-form-alert"
+                [nzMessage]="
+                  'ITEMS.REQUIREMENTS_WARNING' | translate: { missingLabels: missingRequirementLabelsJoined() }
+                "
               />
-              <button nz-button nzType="text" nzDanger type="button" (click)="removeUnitRow(i)" [attr.aria-label]="'COMMON.REMOVE_ROW' | translate">
-                ✕
-              </button>
             </div>
           }
-          <button nz-button nzType="dashed" nzBlock type="button" class="add-unit" (click)="addUnitRow()">
-            {{ 'ITEM_FORM.ADD_UNIT' | translate }}
-          </button>
-        </nz-tab>
-        </nz-tabs>
+          @if (showItemFormOpeningBalanceSetupBanner()) {
+            <div nz-col nzSpan="24">
+              <nz-alert
+                nzType="warning"
+                nzShowIcon
+                class="item-form-alert"
+                [nzMessage]="'ITEMS.OPENING_BALANCE_BANNER' | translate"
+              />
+            </div>
+          }
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'COMMON.ITEM_NAME' | translate }}</nz-form-label>
+              <nz-form-control [nzErrorTip]="'ITEM_FORM.ERROR_NAME_REQUIRED' | translate">
+                <input nz-input formControlName="name" [placeholder]="'ITEM_FORM.ITEM_NAME_PLACEHOLDER' | translate" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'COMMON.BARCODE' | translate }}</nz-form-label>
+              <nz-form-control>
+                <input nz-input formControlName="barcode" [placeholder]="'ITEM_FORM.BARCODE_PLACEHOLDER' | translate" />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24">
+            <nz-form-item class="form-description">
+              <nz-form-label>{{ 'COMMON.DESCRIPTION' | translate }}</nz-form-label>
+              <nz-form-control>
+                <textarea
+                  nz-input
+                  formControlName="description"
+                  rows="3"
+                  [placeholder]="'COMMON.OPTIONAL' | translate"
+                ></textarea>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'COMMON.UNIT_PRICE' | translate }}</nz-form-label>
+              <nz-form-control>
+                <nz-input-number
+                  formControlName="unitPrice"
+                  [nzMin]="0"
+                  [nzStep]="0.01"
+                  [nzPlaceHolder]="'ITEM_FORM.ZERO_DECIMAL' | translate"
+                  class="w-100"
+                />
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'COMMON.CATEGORY' | translate }}</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="categoryId" nzAllowClear [nzPlaceHolder]="'ITEM_FORM.SELECT_CATEGORY' | translate">
+                  @for (c of categories(); track c.id) {
+                    <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'COMMON.SUBCATEGORY' | translate }}</nz-form-label>
+              <nz-form-control>
+                <nz-select
+                  formControlName="subcategoryId"
+                  nzAllowClear
+                  [nzPlaceHolder]="
+                    (subcategoriesLoading()
+                      ? 'ITEM_FORM.LOADING_SUBCATEGORIES'
+                      : 'ITEM_FORM.SELECT_SUBCATEGORY'
+                    ) | translate
+                  "
+                  [nzDisabled]="isSubcategorySelectDisabled()"
+                  [nzLoading]="subcategoriesLoading()"
+                >
+                  @for (s of subcategories(); track s.id) {
+                    <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label>{{ 'COMMON.SUPPLIER' | translate }}</nz-form-label>
+              <nz-form-control>
+                <nz-select formControlName="supplierId" nzAllowClear [nzPlaceHolder]="'COMMON.NONE' | translate">
+                  @for (s of suppliers(); track s.id) {
+                    <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'COMMON.DEPARTMENT' | translate }}</nz-form-label>
+              <nz-form-control [nzErrorTip]="'COMMON.REQUIRED' | translate">
+                <nz-select formControlName="departmentId" [nzPlaceHolder]="'ITEM_FORM.SELECT_DEPARTMENT' | translate">
+                  @for (d of departments(); track d.id) {
+                    <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'ITEM_FORM.DEFAULT_STORE' | translate }}</nz-form-label>
+              <nz-form-control [nzErrorTip]="'COMMON.REQUIRED' | translate">
+                <nz-select
+                  formControlName="defaultStoreId"
+                  [nzPlaceHolder]="'ITEM_FORM.SELECT_STORE' | translate"
+                  [nzDisabled]="!form.get('departmentId')?.value"
+                >
+                  @for (l of filteredStores(); track l.id) {
+                    <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+          @if (showOpeningBalanceFields()) {
+            <div nz-col nzSpan="24" nzMd="12">
+              <nz-form-item>
+                <nz-form-label>{{ 'ITEM_FORM.OPENING_QTY' | translate }}</nz-form-label>
+                <nz-form-control>
+                  <nz-input-number
+                    formControlName="openingQty"
+                    [nzMin]="0"
+                    [nzStep]="0.01"
+                    [nzPrecision]="4"
+                    [nzPlaceHolder]="'ITEM_FORM.OPENING_QTY_PLACEHOLDER' | translate"
+                    class="w-100"
+                  />
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col nzSpan="24" nzMd="12">
+              <nz-form-item>
+                <nz-form-label [nzRequired]="(form.get('openingQty')?.value ?? 0) > 0">
+                  {{ 'ITEM_FORM.OPENING_COST' | translate }}
+                </nz-form-label>
+                <nz-form-control [nzErrorTip]="openingCostErrorTpl">
+                  <nz-input-number
+                    formControlName="openingCost"
+                    [nzMin]="0"
+                    [nzStep]="0.01"
+                    [nzPlaceHolder]="'ITEM_FORM.OPENING_COST_PLACEHOLDER' | translate"
+                    class="w-100"
+                  />
+                  <ng-template #openingCostErrorTpl let-control>
+                    @if (control.hasError('openingStockCostRequired')) {
+                      {{ 'ITEM_FORM.ERROR_OPENING_STOCK_COST_REQUIRED' | translate }}
+                    } @else if (control.hasError('min')) {
+                      {{ 'ITEM_FORM.ERROR_OB_COST_REQUIRED' | translate }}
+                    }
+                  </ng-template>
+                </nz-form-control>
+              </nz-form-item>
+            </div>
+            <div nz-col nzSpan="24">
+              <p class="ob-hint">{{ 'ITEM_FORM.OB_FIELDS_HINT' | translate }}</p>
+            </div>
+          }
+          @if (isEditMode()) {
+            <div nz-col nzSpan="24">
+              <label nz-checkbox formControlName="isActive">{{ 'COMMON.ACTIVE' | translate }}</label>
+            </div>
+          }
+        </div>
+
+
+      
+        <div nz-row [nzGutter]="16">
+          <div nz-col nzSpan="24" nzMd="12">
+            <nz-form-item>
+              <nz-form-label nzRequired>{{ 'COMMON.BASE_UNIT' | translate }}</nz-form-label>
+              <nz-form-control [nzErrorTip]="'ITEM_FORM.ERROR_BASE_UNIT_SELECT' | translate">
+                <nz-select formControlName="baseUnitId" [nzPlaceHolder]="'COMMON.UNIT' | translate">
+                  @for (u of units(); track u.id) {
+                    <nz-option [nzValue]="u.id" [nzLabel]="u.name + ' (' + u.abbreviation + ')'" />
+                  }
+                </nz-select>
+              </nz-form-control>
+            </nz-form-item>
+          </div>
+        </div>
+
+
+        <div nz-row [nzGutter]="16" class="image-section-row">
+          <div nz-col nzSpan="24" nzMd="14" class="image-section-copy">
+            <p class="image-section-hint">{{ 'ITEM_FORM.CLICK_TO_UPLOAD' | translate }}</p>
+            <p class="image-section-hint image-section-hint--muted">{{ 'ITEM_FORM.UPLOAD_HINT' | translate }}</p>
+          </div>
+          <div nz-col nzSpan="24" nzMd="10">
+            <div class="image-card">
+              @if (imagePreview()) {
+                <div class="image-preview-wrap">
+                  <img [src]="imagePreview()!" [alt]="'COMMON.PREVIEW' | translate" class="image-preview" />
+                  <button nz-button nzType="link" nzDanger type="button" (click)="clearImage()">
+                    {{ 'ITEM_FORM.REMOVE_IMAGE' | translate }}
+                  </button>
+                </div>
+              } @else {
+                <div class="image-drop" (click)="fileInput.click()">
+                  <lucide-icon [img]="lucideImage" [size]="36" [strokeWidth]="2" class="muted-icon" />
+                  <p>{{ 'ITEM_FORM.CLICK_TO_UPLOAD' | translate }}</p>
+                  <p class="hint">{{ 'ITEM_FORM.UPLOAD_HINT' | translate }}</p>
+                </div>
+              }
+              <input
+                #fileInput
+                type="file"
+                accept="image/*"
+                class="hidden-file"
+                (change)="onImagePicked($event)"
+              />
+              @if (!imagePreview()) {
+                <button nz-button nzBlock type="button" class="browse-btn" (click)="fileInput.click()">
+                  {{ 'COMMON.BROWSE' | translate }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
 
         @if (submitError()) {
           <div class="submit-error">
-            <lucide-icon [img]="lucideAlert" [size]="16" />
+            <lucide-icon [img]="lucideAlert" [size]="16" [strokeWidth]="2" />
             {{ submitError() }}
           </div>
         }
-      </form>
-    </nz-spin>
-  </ng-container>
-</nz-modal>
 
-<ng-template #footerTpl>
-  <button nz-button type="button" (click)="close()">{{ 'COMMON.CANCEL' | translate }}</button>
-  <button
-    nz-button
-    nzType="primary"
-    type="button"
-    [disabled]="saving() || loadingLookups() || form.invalid"
-    (click)="save()"
-  >
-    @if (saving()) {
-      <lucide-icon [img]="lucideLoader" [size]="14" class="spin" />
-      {{ 'COMMON.SAVING' | translate }}
-    } @else {
-      <lucide-icon [img]="lucideSave" [size]="14" />
-      {{ 'ITEM_FORM.SAVE_ITEM' | translate }}
-    }
-  </button>
-</ng-template>
+        <div class="item-form-page__actions">
+          <button nz-button type="button" (click)="cancel()">{{ 'COMMON.CANCEL' | translate }}</button>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="saving() || loadingLookups() || form.invalid"
+            (click)="save()"
+          >
+            @if (saving()) {
+              <lucide-icon [img]="lucideLoader" [size]="14" [strokeWidth]="2" class="spin" />
+              {{ 'COMMON.SAVING' | translate }}
+            } @else {
+              <lucide-icon [img]="lucideSave" [size]="14" [strokeWidth]="2" />
+              {{ 'ITEM_FORM.SAVE_ITEM' | translate }}
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </nz-spin>
+</div>

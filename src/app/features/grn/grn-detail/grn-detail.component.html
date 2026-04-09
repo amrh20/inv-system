@@ -5,174 +5,553 @@
 } @else {
   @let g = grn()!;
 
-  <button nz-button nzType="link" type="button" class="grn-detail__back" (click)="back()">
-    {{ 'GRN.DETAIL.BACK' | translate }}
-  </button>
+  <div [class.grn-detail--with-review-bar]="showValidatedReviewBar() || showApprovedPostBar()">
+    <button nz-button nzType="link" type="button" class="grn-detail__back" (click)="back()">
+      {{ 'GRN.DETAIL.BACK' | translate }}
+    </button>
 
-  <div class="grn-detail__card">
-    <div class="grn-detail__head">
-      <div>
-        <div class="grn-detail__title-row">
-          <h1 class="grn-detail__no">{{ g.grnNumber }}</h1>
-          <span class="status-badge" [ngClass]="'status-' + statusClass(g.status)">
-            {{ 'GRN.STATUS.' + g.status | translate }}
-          </span>
-        </div>
-        <div class="grn-detail__meta">
-          <span>
-            {{ 'GRN.DETAIL.VENDOR' | translate }}:
-            @if (g.vendor?.name) {
-              {{ g.vendor?.name }}
-            } @else {
-              <span class="grn-detail__warn">{{ 'GRN.DETAIL.VENDOR_UNMATCHED' | translate }}: {{ g.vendorNameSnapshot }}</span>
-            }
-          </span>
-          <span>{{ 'GRN.DETAIL.WAREHOUSE' | translate }}: {{ g.location?.name }}</span>
-          <span>{{ 'COMMON.DATE' | translate }}: {{ g.receivingDate | date: 'mediumDate' }}</span>
-          @if (g.importedByUser) {
-            <span>
-              {{ 'GRN.DETAIL.IMPORTED_BY' | translate }}: {{ g.importedByUser.firstName }}
-              {{ g.importedByUser.lastName }}
-            </span>
-          }
-        </div>
+    @if (showReviewerEditedAfterRejectionAlert()) {
+      <div class="grn-detail__reviewer-edited-banner">
+        <nz-alert
+          nzType="info"
+          nzShowIcon
+          [nzMessage]="'GRN.DETAIL.REVIEWER_EDITED_AFTER_REJECTION' | translate"
+        />
       </div>
-      @if (g.pdfAttachmentUrl) {
-        <a
-          nz-button
-          nzType="default"
-          [href]="invoiceHref(g.pdfAttachmentUrl)"
-          target="_blank"
-          rel="noreferrer"
-        >
-          {{ 'GRN.DETAIL.PDF' | translate }}
-        </a>
-      }
-    </div>
-
-    @if (g.status === 'REJECTED' && g.rejectionReason) {
-      <nz-alert
-        nzType="error"
-        [nzMessage]="'GRN.DETAIL.REJECTION' | translate: { reason: g.rejectionReason }"
-        nzShowIcon
-        class="grn-detail__alert"
-      />
     }
-  </div>
 
-  <div class="grn-detail__card">
-    <div class="grn-detail__lines-head">
-      <h2>{{ 'GRN.DETAIL.LINES_TITLE' | translate: { count: g.lines?.length ?? 0 } }}</h2>
-      <span class="grn-detail__mapped">
-        {{ mappedCount() }} {{ 'GRN.DETAIL.MAPPED' | translate }} / {{ unmappedCount() }}
-        {{ 'GRN.DETAIL.UNMAPPED' | translate }}
-      </span>
-    </div>
-    <nz-table [nzData]="g.lines ?? []" [nzShowPagination]="false" nzSize="small">
-      <thead>
-        <tr>
-          <th>{{ 'GRN.DETAIL.COL_FL_CODE' | translate }}</th>
-          <th>{{ 'GRN.DETAIL.COL_DESC' | translate }}</th>
-          <th>{{ 'GRN.DETAIL.COL_FL_UOM' | translate }}</th>
-          <th nzAlign="right">{{ 'GRN.DETAIL.COL_ORD' | translate }}</th>
-          <th nzAlign="right">{{ 'GRN.DETAIL.COL_RCVD' | translate }}</th>
-          <th nzAlign="right">{{ 'GRN.DETAIL.COL_PRICE' | translate }}</th>
-          <th nzAlign="center">{{ 'GRN.DETAIL.COL_CONV' | translate }}</th>
-          <th nzAlign="right">{{ 'GRN.DETAIL.COL_BASE' | translate }}</th>
-          <th>{{ 'GRN.DETAIL.COL_INTERNAL' | translate }}</th>
-          <th>{{ 'COMMON.STATUS' | translate }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (line of g.lines; track line.id) {
-          <tr [class.grn-detail__unmapped]="!line.isMapped">
-            <td class="grn-detail__mono">{{ line.futurelogItemCode }}</td>
-            <td>{{ line.futurelogDescription }}</td>
-            <td>{{ line.futurelogUom }}</td>
-            <td nzAlign="right">{{ line.orderedQty | number: '1.2-2' }}</td>
-            <td nzAlign="right">{{ line.receivedQty | number: '1.2-2' }}</td>
-            <td nzAlign="right">{{ line.unitPrice | number: '1.2-2' }}</td>
-            <td nzAlign="center">{{ line.conversionFactor | number: '1.4-4' }}</td>
-            <td nzAlign="right">{{ line.qtyInBaseUnit | number: '1.4-4' }}</td>
-            <td>
-              @if (line.internalItemId) {
-                {{ 'GRN.DETAIL.HAS_INTERNAL' | translate }}
-              } @else {
-                —
-              }
-            </td>
-            <td>
-              @if (line.isMapped) {
-                <span class="status-badge status-posted">{{ 'GRN.DETAIL.MAPPED' | translate }}</span>
-              } @else {
-                <span class="status-badge status-pending">{{ 'GRN.DETAIL.UNMAPPED' | translate }}</span>
-              }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </nz-table>
-  </div>
-
-  @if (g.status !== 'POSTED' && g.status !== 'REJECTED') {
-    <div class="grn-detail__card">
-      <h3 class="grn-detail__actions-title">{{ 'GRN.DETAIL.ACTIONS' | translate }}</h3>
-      @if (actionError()) {
-        <nz-alert nzType="error" [nzMessage]="actionError()" nzShowIcon class="grn-detail__alert" />
+    @if (g.status === 'REJECTED') {
+      @if (g.isEditedAfterRejection) {
+        <div class="grn-detail__rejection-banner grn-detail__rejection-banner--edited">
+          <nz-alert
+            nzType="warning"
+            nzShowIcon
+            [nzMessage]="'GRN.DETAIL.EDITED_AFTER_REJECTION_READY' | translate"
+            [nzDescription]="
+              g.rejectionReason?.trim()
+                ? (('GRN.DETAIL.ORIGINAL_REJECTION_REASON' | translate) + '\n\n' + g.rejectionReason)
+                : ''
+            "
+          />
+        </div>
+      } @else {
+        <div class="grn-detail__rejection-banner">
+          <nz-alert
+            nzType="error"
+            nzShowIcon
+            [nzMessage]="'GRN.DETAIL.REJECTION_BANNER_TITLE' | translate"
+            [nzDescription]="
+              g.rejectionReason?.trim()
+                ? g.rejectionReason
+                : ('GRN.DETAIL.REJECTION_NO_REASON' | translate)
+            "
+          />
+        </div>
       }
-      <div class="grn-detail__actions">
-        @if (g.status === 'DRAFT') {
-          <button nz-button nzType="primary" type="button" [disabled]="acting()" (click)="validateGrn()">
-            {{ 'GRN.DETAIL.VALIDATE' | translate }}
-          </button>
-        }
-        @if (g.status === 'VALIDATED') {
-          <button nz-button nzType="primary" type="button" [disabled]="acting()" (click)="submitForApproval()">
-            {{ 'GRN.DETAIL.SUBMIT' | translate }}
-          </button>
-        }
-        @if (g.status === 'PENDING_APPROVAL' && isFinance()) {
-          <button nz-button nzType="primary" type="button" [disabled]="acting()" (click)="approve()">
-            {{ 'GRN.DETAIL.APPROVE' | translate }}
-          </button>
-          <button nz-button nzDanger type="button" [disabled]="acting()" (click)="openReject()">
-            {{ 'GRN.DETAIL.REJECT' | translate }}
-          </button>
-        }
-        @if (g.status === 'APPROVED' && isFinance()) {
-          <button nz-button nzType="primary" type="button" [disabled]="acting()" (click)="postToLedger()">
-            {{ 'GRN.DETAIL.POST' | translate }}
-          </button>
-        }
-      </div>
+    }
 
-      @if (showReject()) {
-        <div class="grn-detail__reject">
-          <label class="grn-detail__label">{{ 'GRN.DETAIL.REJECT_REASON' | translate }}</label>
-          <textarea
-            nz-input
-            rows="3"
-            [ngModel]="rejectReason()"
-            (ngModelChange)="rejectReason.set($event)"
-            [placeholder]="'GRN.DETAIL.REJECT_REASON_PH' | translate"
-          ></textarea>
-          <div class="grn-detail__reject-actions">
-            <button nz-button nzDanger type="button" [disabled]="!rejectReason().trim()" (click)="confirmReject()">
-              {{ 'GRN.DETAIL.REJECT_CONFIRM' | translate }}
-            </button>
-            <button nz-button type="button" (click)="cancelReject()">{{ 'COMMON.CANCEL' | translate }}</button>
+    @if (showStorekeeperValidatedAlert()) {
+      <div class="grn-detail__workflow-info-banner">
+        <nz-alert
+          nzType="info"
+          nzShowIcon
+          [nzMessage]="'GRN.DETAIL.COST_CONTROL_REVIEW_PENDING' | translate"
+        />
+      </div>
+    }
+
+    @if (g.status === 'APPROVED') {
+      <div class="grn-detail__workflow-info-banner">
+        <nz-alert
+          nzType="info"
+          nzShowIcon
+          [nzMessage]="'GRN.DETAIL.WAITING_FINANCE_POSTING' | translate"
+        />
+      </div>
+    }
+
+    @if (g.status === 'POSTED') {
+      <div class="grn-detail__workflow-info-banner">
+        <nz-alert
+          nzType="success"
+          nzShowIcon
+          [nzMessage]="'GRN.DETAIL.POSTED_LOCKED' | translate"
+        />
+      </div>
+    }
+
+    <div class="grn-detail__card">
+      <div class="grn-detail__head">
+        <div>
+          <div class="grn-detail__title-row">
+            <h1 class="grn-detail__no">{{ g.grnNumber }}</h1>
+            <span class="status-badge" [ngClass]="'status-' + statusClass(g.status)">
+              {{ 'GRN.STATUS.' + statusLabelSuffix(g.status) | translate }}
+            </span>
+          </div>
+          <div class="grn-detail__meta">
+            <span>
+              {{ 'GRN.DETAIL.VENDOR' | translate }}:
+              @if (g.vendor?.name) {
+                {{ g.vendor?.name }}
+              } @else {
+                <span class="grn-detail__warn">{{ 'GRN.DETAIL.VENDOR_UNMATCHED' | translate }}: {{ g.vendorNameSnapshot }}</span>
+              }
+            </span>
+            <span>{{ 'GRN.DETAIL.WAREHOUSE' | translate }}: {{ g.location?.name }}</span>
+            <span>{{ 'COMMON.DATE' | translate }}: {{ g.receivingDate | date: 'mediumDate' }}</span>
+            @if (g.importedByUser) {
+              <span>
+                {{ 'GRN.DETAIL.IMPORTED_BY' | translate }}: {{ g.importedByUser.firstName }}
+                {{ g.importedByUser.lastName }}
+              </span>
+            }
+            @if (g.status === 'REJECTED' && g.rejectedByUser) {
+              <span>
+                {{ 'GRN.STATUS.REJECTED_BY' | translate }}: {{ g.rejectedByUser.firstName }}
+                {{ g.rejectedByUser.lastName }}
+              </span>
+            }
           </div>
         </div>
+        @if (g.pdfAttachmentUrl && !showValidatedReviewBar()) {
+          <a
+            nz-button
+            nzType="default"
+            [href]="invoiceHref(g.pdfAttachmentUrl)"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {{ 'GRN.DETAIL.PDF' | translate }}
+          </a>
+        }
+      </div>
+    </div>
+
+    @if (showValidatedReviewBar() && g.pdfAttachmentUrl) {
+      <div class="grn-detail__card grn-detail__invoice-card">
+        <h3 class="grn-detail__invoice-title">{{ 'GRN.DETAIL.INVOICE_PREVIEW' | translate }}</h3>
+        @if (isInvoiceImageUrl(g.pdfAttachmentUrl)) {
+          <div class="grn-detail__invoice-frame">
+            <img [src]="invoiceHref(g.pdfAttachmentUrl)" alt="" class="grn-detail__invoice-img" />
+          </div>
+        } @else {
+          <a
+            nz-button
+            nzType="default"
+            [href]="invoiceHref(g.pdfAttachmentUrl)"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {{ 'GRN.DETAIL.PDF' | translate }}
+          </a>
+        }
+      </div>
+    }
+
+    <div class="grn-detail__card">
+      <div class="grn-detail__lines-head">
+        <h2>
+          {{
+            'GRN.DETAIL.LINES_TITLE'
+              | translate
+                : {
+                    count: showRejectedLineEdit() ? rejectedEditLines().length : (g.lines?.length ?? 0),
+                  }
+          }}
+        </h2>
+        @if (!showValidatedReviewBar() && !showRejectedLineEdit()) {
+          <span class="grn-detail__mapped">
+            {{ mappedCount() }} {{ 'GRN.DETAIL.MAPPED' | translate }} / {{ unmappedCount() }}
+            {{ 'GRN.DETAIL.UNMAPPED' | translate }}
+          </span>
+        }
+      </div>
+
+      @if (g.status === 'REJECTED' && actionError()) {
+        <nz-alert nzType="error" [nzMessage]="actionError()" nzShowIcon class="grn-detail__alert" />
+      }
+
+      @if (showRejectedLineEdit()) {
+        <p class="grn-detail__edit-lines-hint">{{ 'GRN.DETAIL.EDIT_LINES_HINT' | translate }}</p>
+
+        <div class="grn-detail__field">
+          <label class="grn-detail__label">{{ 'GRN.CREATE.ADD_ITEMS' | translate }}</label>
+          <nz-input-group [nzPrefix]="rejectedSearchIcon" class="grn-detail__search-wrap">
+            <input
+              nz-input
+              [disabled]="rejectedItemSearchDisabled()"
+              [ngModel]="itemQuery()"
+              (ngModelChange)="onRejectedItemQueryChange($event)"
+              [placeholder]="
+                rejectedItemSearchDisabled()
+                  ? ('GRN.DETAIL.ITEM_SEARCH_DISABLED_REJECTED' | translate)
+                  : ('GRN.CREATE.ITEM_SEARCH_PH' | translate)
+              "
+              (focus)="!rejectedItemSearchDisabled() && itemDropdownOpen.set(true)"
+            />
+          </nz-input-group>
+          <ng-template #rejectedSearchIcon>
+            @if (itemSearchLoading()) {
+              <lucide-icon [img]="lucideLoader" [size]="16" [strokeWidth]="2" class="grn-detail__spin" />
+            } @else {
+              <lucide-icon [img]="lucideSearch" [size]="16" [strokeWidth]="2" />
+            }
+          </ng-template>
+          @if (!rejectedItemSearchDisabled() && itemDropdownOpen() && itemQuery().length >= 2) {
+            <div class="grn-detail__dropdown">
+              @for (row of categorizedRejectedItemRows(); track row.item.id) {
+                <button type="button" class="grn-detail__dd-item" (click)="addRejectedLine(row)">
+                  @if (row.item.imageUrl) {
+                    <img [src]="row.item.imageUrl" [alt]="row.item.name" class="grn-detail__thumb" />
+                  } @else {
+                    <span class="grn-detail__thumb grn-detail__thumb--ph">
+                      <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+                    </span>
+                  }
+                  <div class="grn-detail__dd-text">
+                    <div class="grn-detail__dd-name-row">
+                      @if (row.tier === 'match') {
+                        <span class="grn-detail__tier" aria-hidden="true">✅</span>
+                      }
+                      <span class="grn-detail__dd-name">{{ row.item.name }}</span>
+                    </div>
+                    <div class="grn-detail__dd-meta">
+                      @if (row.item.barcode) {
+                        <span class="font-mono">{{ row.item.barcode }}</span>
+                      }
+                      @if (row.tier === 'new') {
+                        <span class="grn-detail__tier-lbl">{{ 'GRN.CREATE.SUPPLIER_TIER_NEW' | translate }}</span>
+                      }
+                      @if (row.tier === 'conflict' && row.conflictSupplierName) {
+                        <span class="grn-detail__tier-conflict">{{
+                          'GRN.CREATE.SUPPLIER_BELONGS_HINT' | translate: { name: row.conflictSupplierName }
+                        }}</span>
+                      }
+                    </div>
+                  </div>
+                </button>
+              }
+              @if (!itemSearchLoading() && categorizedRejectedItemRows().length === 0) {
+                <div class="grn-detail__dd-empty">{{ 'GRN.CREATE.NO_ITEMS' | translate }}</div>
+              }
+            </div>
+          }
+        </div>
+
+        <nz-table [nzData]="rejectedEditLines()" [nzShowPagination]="false" nzSize="small" class="grn-detail__edit-table">
+          <thead>
+            <tr>
+              <th>{{ 'GRN.CREATE.COL_ITEM' | translate }}</th>
+              <th nzWidth="100px">{{ 'GRN.CREATE.COL_UOM' | translate }}</th>
+              <th nzWidth="110px" nzAlign="right">{{ 'GRN.CREATE.COL_RECEIVED' | translate }} *</th>
+              <th nzWidth="110px" nzAlign="right">{{ 'GRN.CREATE.COL_PRICE' | translate }}</th>
+              <th nzWidth="110px" nzAlign="right">{{ 'GRN.CREATE.COL_LINE_TOTAL' | translate }}</th>
+              <th nzWidth="56px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of rejectedEditLines(); track line.clientKey; let idx = $index) {
+              <tr [class.grn-detail__tr--invalid]="invalidRejectedLineIndexes().includes(idx)">
+                <td>
+                  <div class="grn-detail__line-cell">
+                    @if (line.imageUrl) {
+                      <img [src]="line.imageUrl" [alt]="line.itemName" class="grn-detail__line-thumb" />
+                    } @else {
+                      <span class="grn-detail__line-thumb grn-detail__line-thumb--ph">
+                        <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+                      </span>
+                    }
+                    <div>
+                      <div class="grn-detail__line-name">{{ line.itemName }}</div>
+                      @if (line.barcode) {
+                        <div class="grn-detail__line-bc font-mono">{{ line.barcode }}</div>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <nz-tag class="grn-detail__uom-tag">{{ line.uomName }}</nz-tag>
+                </td>
+                <td>
+                  <input
+                    nz-input
+                    type="number"
+                    min="0.001"
+                    step="0.001"
+                    class="grn-detail__qty-input"
+                    [ngModel]="line.receivedQty"
+                    (ngModelChange)="updateRejectedLine(idx, 'receivedQty', $event)"
+                  />
+                </td>
+                <td>
+                  <input
+                    nz-input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="grn-detail__qty-input"
+                    [ngModel]="line.unitPrice"
+                    (ngModelChange)="updateRejectedLine(idx, 'unitPrice', $event)"
+                  />
+                </td>
+                <td nzAlign="right">{{ rejectedLineTotal(line) | number: '1.2-2' }}</td>
+                <td>
+                  <button
+                    nz-button
+                    nzType="text"
+                    nzDanger
+                    type="button"
+                    [attr.aria-label]="'GRN.DETAIL.CONFIRM_REMOVE_LINE_TITLE' | translate"
+                    (click)="removeRejectedLine(idx)"
+                  >
+                    <lucide-icon [img]="lucideTrash" [size]="18" [strokeWidth]="2" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+
+        <div class="grn-detail__edit-lines-footer">
+          <span class="grn-detail__grand-total">
+            {{ 'GRN.CREATE.GRAND_TOTAL' | translate }}:
+            <strong>{{ rejectedEditGrandTotal() | number: '1.2-2' }}</strong>
+          </span>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="updatingItems() || acting()"
+            (click)="updateRejectedItems()"
+          >
+            {{ 'GRN.DETAIL.UPDATE_ITEMS' | translate }}
+          </button>
+        </div>
+      } @else {
+        <nz-table [nzData]="g.lines ?? []" [nzShowPagination]="false" nzSize="small">
+          <thead>
+            <tr>
+              <th>{{ 'GRN.DETAIL.COL_ITEM' | translate }}</th>
+              <th>{{ 'GRN.DETAIL.COL_FL_CODE' | translate }}</th>
+              <th>{{ 'GRN.DETAIL.COL_DESC' | translate }}</th>
+              <th>{{ 'GRN.DETAIL.COL_FL_UOM' | translate }}</th>
+              <th nzAlign="right">{{ 'GRN.DETAIL.COL_ORD' | translate }}</th>
+              <th nzAlign="right">{{ 'GRN.DETAIL.COL_RCVD' | translate }}</th>
+              <th nzAlign="right">{{ 'GRN.DETAIL.COL_PRICE' | translate }}</th>
+              @if (!showValidatedReviewBar()) {
+                <th nzAlign="center">{{ 'GRN.DETAIL.COL_CONV' | translate }}</th>
+                <th nzAlign="right">{{ 'GRN.DETAIL.COL_BASE' | translate }}</th>
+                <th>{{ 'GRN.DETAIL.COL_INTERNAL' | translate }}</th>
+                <th>{{ 'COMMON.STATUS' | translate }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (line of g.lines; track line.id) {
+              <tr [class.grn-detail__unmapped]="!line.isMapped">
+                <td>{{ lineItemName(line) }}</td>
+                <td class="grn-detail__mono">{{ line.futurelogItemCode }}</td>
+                <td>{{ line.futurelogDescription }}</td>
+                <td>{{ line.uom?.abbreviation || line.uom?.name || line.futurelogUom }}</td>
+                <td nzAlign="right">{{ line.orderedQty | number: '1.2-2' }}</td>
+                <td nzAlign="right">{{ line.receivedQty | number: '1.2-2' }}</td>
+                <td nzAlign="right">{{ line.unitPrice | number: '1.2-2' }}</td>
+                @if (!showValidatedReviewBar()) {
+                  <td nzAlign="right">{{ line.conversionFactor | number: '1.4-4' }}</td>
+                  <td nzAlign="right">{{ line.qtyInBaseUnit | number: '1.4-4' }}</td>
+                  <td>
+                    @if (line.internalItemId) {
+                      {{ 'GRN.DETAIL.HAS_INTERNAL' | translate }}
+                    } @else {
+                      —
+                    }
+                  </td>
+                  <td>
+                    @if (line.isMapped) {
+                      <span class="status-badge status-posted">{{ 'GRN.DETAIL.MAPPED' | translate }}</span>
+                    } @else {
+                      <span class="status-badge status-pending">{{ 'GRN.DETAIL.UNMAPPED' | translate }}</span>
+                    }
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </nz-table>
       }
     </div>
-  }
 
-  @if (g.status === 'POSTED') {
-    <div class="grn-detail__posted">
-      <p class="grn-detail__posted-title">{{ 'GRN.DETAIL.POSTED_TITLE' | translate }}</p>
-      <p class="grn-detail__posted-sub">
-        {{ 'GRN.DETAIL.POSTED_AT' | translate }}: {{ g.postedAt | date: 'medium' }}
-      </p>
-    </div>
-  }
+    @if (g.status !== 'POSTED' && g.status !== 'REJECTED') {
+      @if (!(g.status === 'VALIDATED' && isGrnStatusReviewer()) && showMainWorkflowActionsCard()) {
+        <div class="grn-detail__card">
+          <h3 class="grn-detail__actions-title">{{ 'GRN.DETAIL.ACTIONS' | translate }}</h3>
+          @if (actionError()) {
+            <nz-alert nzType="error" [nzMessage]="actionError()" nzShowIcon class="grn-detail__alert" />
+          }
+          <div class="grn-detail__actions">
+            @if (g.status === 'DRAFT' && canManageGrn()) {
+              <button nz-button nzType="primary" type="button" [disabled]="acting()" (click)="validateGrn()">
+                {{ 'GRN.DETAIL.VALIDATE' | translate }}
+              </button>
+            }
+            @if (showSubmitForApproval()) {
+              <button nz-button nzType="primary" type="button" [disabled]="acting()" (click)="submitForApproval()">
+                {{ 'GRN.DETAIL.SUBMIT' | translate }}
+              </button>
+            }
+            @if (g.status === 'PENDING_APPROVAL' && isFinance()) {
+              <button nz-button nzType="primary" type="button" [disabled]="acting()" (click)="approve()">
+                {{ 'GRN.DETAIL.APPROVE' | translate }}
+              </button>
+              <button nz-button nzDanger type="button" [disabled]="acting()" (click)="openReject()">
+                {{ 'GRN.DETAIL.REJECT' | translate }}
+              </button>
+            }
+          </div>
+
+          @if (showReject()) {
+            <div class="grn-detail__reject">
+              <label class="grn-detail__label">{{ 'GRN.DETAIL.REJECT_REASON' | translate }}</label>
+              <textarea
+                nz-input
+                rows="3"
+                [ngModel]="rejectReason()"
+                (ngModelChange)="rejectReason.set($event)"
+                [placeholder]="'GRN.DETAIL.REJECT_REASON_PH' | translate"
+              ></textarea>
+              <div class="grn-detail__reject-actions">
+                <button nz-button nzDanger type="button" [disabled]="!rejectReason().trim()" (click)="confirmReject()">
+                  {{ 'GRN.DETAIL.REJECT_CONFIRM' | translate }}
+                </button>
+                <button nz-button type="button" (click)="cancelReject()">{{ 'COMMON.CANCEL' | translate }}</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    }
+
+    @if (g.status === 'REJECTED' && canManageGrn()) {
+      <div class="grn-detail__card">
+        <h3 class="grn-detail__actions-title">{{ 'GRN.DETAIL.REJECTED_ACTIONS_TITLE' | translate }}</h3>
+        <p class="grn-detail__resubmit-hint">{{ 'GRN.DETAIL.RESUBMIT_HINT' | translate }}</p>
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          [disabled]="acting()"
+          (click)="resubmitRejected()"
+        >
+          {{ 'GRN.DETAIL.RESUBMIT' | translate }}
+        </button>
+      </div>
+    }
+
+    @if (g.status === 'POSTED') {
+      <div class="grn-detail__posted">
+        <span class="status-badge status-posted grn-detail__posted-badge">{{
+          'GRN.STATUS.POSTED' | translate
+        }}</span>
+        <p class="grn-detail__posted-title">{{ 'GRN.DETAIL.POSTED_TITLE' | translate }}</p>
+        <p class="grn-detail__posted-sub">
+          {{ 'GRN.DETAIL.POSTED_AT' | translate }}: {{ g.postedAt | date: 'medium' }}
+        </p>
+        @if (g.postedByUser) {
+          <p class="grn-detail__posted-sub">
+            {{ 'GRN.DETAIL.POSTED_BY' | translate }}: {{ g.postedByUser.firstName }}
+            {{ g.postedByUser.lastName }}
+          </p>
+        }
+      </div>
+    }
+
+    @if (showValidatedReviewBar()) {
+      @if (actionError()) {
+        <nz-alert nzType="error" [nzMessage]="actionError()" nzShowIcon class="grn-detail__review-bar-alert" />
+      }
+      <div class="grn-detail__review-bar">
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          class="grn-detail__btn-approve"
+          [disabled]="acting()"
+          (click)="approveValidatedReview()"
+        >
+          <lucide-icon [img]="lucideCheck" [size]="16" [strokeWidth]="2" />
+          {{ 'GRN.DETAIL.APPROVE' | translate }}
+        </button>
+        <button nz-button nzDanger type="button" [disabled]="acting()" (click)="openRejectReviewModal()">
+          {{ 'GRN.DETAIL.REJECT' | translate }}
+        </button>
+      </div>
+    }
+
+    @if (showApprovedPostBar()) {
+      @if (actionError()) {
+        <nz-alert nzType="error" [nzMessage]="actionError()" nzShowIcon class="grn-detail__review-bar-alert" />
+      }
+      <div class="grn-detail__review-bar grn-detail__post-ledger-bar">
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          class="grn-detail__btn-post-ledger"
+          [disabled]="acting()"
+          (click)="postToLedger()"
+        >
+          {{ 'GRN.DETAIL.POST' | translate }}
+        </button>
+        <button nz-button nzDanger type="button" [disabled]="acting()" (click)="openFinanceApprovedRejectModal()">
+          {{ 'GRN.DETAIL.REJECT' | translate }}
+        </button>
+      </div>
+    }
+  </div>
 }
+
+<nz-modal
+  [nzVisible]="rejectReviewModalOpen()"
+  (nzVisibleChange)="onRejectReviewModalVisibleChange($event)"
+  [nzTitle]="
+    (rejectReviewFromFinanceApproved()
+      ? 'GRN.DETAIL.FINANCE_REJECT_MODAL_TITLE'
+      : 'GRN.REJECT_CONFIRMATION'
+    ) | translate
+  "
+  [nzFooter]="rejectReviewFooter"
+  [nzWidth]="400"
+  (nzOnCancel)="cancelRejectReviewModal()"
+>
+  <ng-container *nzModalContent>
+    @if (rejectReviewFromFinanceApproved()) {
+      <p class="grn-detail__finance-reject-hint">{{ 'GRN.DETAIL.FINANCE_REJECT_MODAL_HINT' | translate }}</p>
+    }
+    <label class="grn-detail__label">{{ 'GRN.DETAIL.REJECT_REASON' | translate }}</label>
+    <textarea
+      nz-input
+      rows="3"
+      class="grn-detail__modal-textarea"
+      [ngModel]="rejectReviewReason()"
+      (ngModelChange)="rejectReviewReason.set($event)"
+      [placeholder]="
+        (rejectReviewFromFinanceApproved()
+          ? 'GRN.DETAIL.FINANCE_REJECT_REASON_PH'
+          : 'GRN.DETAIL.REJECT_REASON_PH'
+        ) | translate
+      "
+    ></textarea>
+    @if (rejectReviewError()) {
+      <p class="grn-detail__field-error">{{ rejectReviewError() }}</p>
+    }
+  </ng-container>
+  <ng-template #rejectReviewFooter>
+    <button nz-button type="button" (click)="cancelRejectReviewModal()">
+      {{ 'COMMON.CANCEL' | translate }}
+    </button>
+    <button nz-button nzDanger type="button" [disabled]="acting()" (click)="submitRejectReview()">
+      {{ 'GRN.DETAIL.REJECT_CONFIRM' | translate }}
+    </button>
+  </ng-template>
+</nz-modal>

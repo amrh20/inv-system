@@ -106,20 +106,18 @@ export class ItemImportComponent implements OnInit {
   readonly blockReason = signal<ItemCreationBlockReason | null>(null);
   readonly missingData = signal<ItemCreationRequirementKey[]>([]);
   readonly requirementsLoading = signal(true);
+  readonly openingBalanceSetupActive = signal(false);
   readonly openingBalanceSettingsPath = '/settings';
 
   readonly showPrerequisitesBanner = computed(
-    () =>
-      !this.requirementsMet() &&
-      !this.requirementsLoading() &&
-      this.blockReason() !== 'OPENING_BALANCE',
+    () => !this.requirementsMet() && !this.requirementsLoading(),
   );
 
   readonly showOpeningBalanceBanner = computed(
     () =>
-      !this.requirementsMet() &&
+      this.requirementsMet() &&
       !this.requirementsLoading() &&
-      this.blockReason() === 'OPENING_BALANCE',
+      this.openingBalanceSetupActive(),
   );
 
   readonly importBlocked = computed(
@@ -229,11 +227,13 @@ export class ItemImportComponent implements OnInit {
             this.requirementsMet.set(true);
             this.blockReason.set(null);
             this.missingData.set([]);
+            this.openingBalanceSetupActive.set(false);
             return;
           }
-          const { canCreateItem, requirements: r, blockReason: br } = res.data;
+          const { canCreateItem, requirements: r, blockReason: br, isOpeningBalanceAllowed } = res.data;
           this.requirementsMet.set(canCreateItem);
           this.blockReason.set(br ?? null);
+          this.openingBalanceSetupActive.set(isOpeningBalanceAllowed === true);
           const missing: ItemCreationRequirementKey[] = [];
           if (r.units.count === 0) {
             missing.push('units');
@@ -241,22 +241,17 @@ export class ItemImportComponent implements OnInit {
           if (r.categories.count === 0) {
             missing.push('categories');
           }
-          if (r.vendors.count === 0) {
-            missing.push('vendors');
-          }
           if (r.locations.count === 0) {
             missing.push('locations');
           }
           this.missingData.set(missing);
-          if (!canCreateItem && !br && missing.length === 0) {
-            this.blockReason.set('OPENING_BALANCE');
-          }
         },
         error: () => {
           this.requirementsLoading.set(false);
           this.requirementsMet.set(true);
           this.blockReason.set(null);
           this.missingData.set([]);
+          this.openingBalanceSetupActive.set(false);
         },
       });
   }

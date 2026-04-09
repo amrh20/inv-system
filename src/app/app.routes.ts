@@ -4,6 +4,7 @@ import { blockSuperAdminDashboardGuard } from './core/guards/block-super-admin-d
 import { permissionGuard } from './core/guards/permission.guard';
 import { defaultRedirectGuard } from './core/guards/super-admin-redirect.guard';
 import { requireSuperAdminGuard } from './core/guards/require-super-admin.guard';
+import { grnCreateCanDeactivateGuard } from './features/grn/grn-create/grn-create-can-deactivate.guard';
 
 const ROUTE_PERMISSIONS = {
   usersCompanyManage: 'USERS_COMPANY_MANAGE',
@@ -68,6 +69,18 @@ export const routes: Routes = [
         data: { breadcrumb: 'NAV.DASHBOARD' },
       },
       {
+        path: 'items/new',
+        loadComponent: () =>
+          import('./features/items/item-form/item-form.component').then((m) => m.ItemFormComponent),
+        data: { breadcrumb: 'ITEM_FORM.NEW_ITEM' },
+      },
+      {
+        path: 'items/:id/edit',
+        loadComponent: () =>
+          import('./features/items/item-form/item-form.component').then((m) => m.ItemFormComponent),
+        data: { breadcrumb: 'ITEM_FORM.EDIT_ITEM' },
+      },
+      {
         path: 'items',
         loadComponent: () =>
           import('./features/items/items-list/items-list.component').then((m) => m.ItemsListComponent),
@@ -90,6 +103,19 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/items/item-import/item-import.component').then((m) => m.ItemImportComponent),
             data: { breadcrumb: 'NAV.ITEM_IMPORT' },
+          },
+          {
+            path: 'grn/new',
+            canActivate: [permissionGuard],
+            data: { breadcrumb: 'GRN.CREATE.PAGE_TITLE', permission: 'GRN_MANAGE' },
+            loadComponent: () =>
+              import('./features/grn/grn-create/grn-create.component').then((m) => m.GrnCreateComponent),
+            canDeactivate: [grnCreateCanDeactivateGuard],
+          },
+          {
+            path: 'ledger',
+            pathMatch: 'full',
+            redirectTo: '/ledger',
           },
         ],
       },

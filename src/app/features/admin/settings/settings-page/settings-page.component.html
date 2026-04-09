@@ -92,40 +92,166 @@
         }
       </h2>
 
+      @if (celebrateFinalize()) {
+        <div class="settings-page__celebrate" aria-hidden="true"></div>
+      }
+
       @if (obLoading()) {
         <div class="settings-page__loading">
           <lucide-icon [img]="lucideLoader" [size]="18" class="settings-page__spin" />
           {{ 'SETTINGS.OB_LOADING' | translate }}
         </div>
+      } @else if (obSnapshot(); as snap) {
+        <div class="settings-page__ob-snapshot" role="group" [attr.aria-label]="'SETTINGS.OB_SNAPSHOT_TITLE' | translate">
+          <div class="settings-page__ob-snapshot-header">
+            <lucide-icon [img]="lucideLock" [size]="20" [strokeWidth]="2" class="settings-page__ob-snapshot-lock" />
+            <div>
+              <div class="settings-page__ob-snapshot-title">{{ 'SETTINGS.OB_SNAPSHOT_TITLE' | translate }}</div>
+              <p class="settings-page__ob-snapshot-sub">{{ 'SETTINGS.OB_SNAPSHOT_SUBTITLE' | translate }}</p>
+            </div>
+          </div>
+          <dl class="settings-page__ob-snapshot-grid">
+            <div>
+              <dt>{{ 'SETTINGS.OB_SNAPSHOT_ITEMS' | translate }}</dt>
+              <dd>{{ snap.totalItemsCount ?? '—' }}</dd>
+            </div>
+            <div>
+              <dt>{{ 'SETTINGS.OB_SNAPSHOT_VALUE' | translate }}</dt>
+              <dd>
+                @if (snap.totalOpeningValue != null) {
+                  {{ snap.totalOpeningValue | number: '1.2-2' }}
+                  {{ snap.currencyCode || ('COMMON.CURRENCY_SAR' | translate) }}
+                } @else {
+                  —
+                }
+              </dd>
+            </div>
+            <div class="settings-page__ob-snapshot-span2">
+              <dt>{{ 'SETTINGS.OB_SNAPSHOT_FINALIZED_AT' | translate }}</dt>
+              <dd>{{ snap.finalizedAt | date: 'medium' }}</dd>
+            </div>
+            <div class="settings-page__ob-snapshot-span2">
+              <dt>{{ 'SETTINGS.OB_SNAPSHOT_FINALIZED_BY' | translate }}</dt>
+              <dd>{{ snap.finalizedBy }}</dd>
+            </div>
+          </dl>
+          <div class="settings-page__ob-snapshot-actions">
+            <a nz-button nzType="default" routerLink="/inventory/ledger">
+              {{ 'SETTINGS.OB_VIEW_LEDGER' | translate }}
+            </a>
+          </div>
+        </div>
       } @else {
-        <div class="settings-page__ob-row">
+        <div class="settings-page__ob-row settings-page__ob-row--actions">
           <div>
             <div class="settings-page__ob-label">{{ 'SETTINGS.OB_IMPORT_LABEL' | translate }}</div>
             <p class="settings-page__ob-desc">
               {{
-                (obStatus()?.value === 'LOCKED' ? 'SETTINGS.OB_LOCKED_DESC' : 'SETTINGS.OB_OPEN_DESC')
-                  | translate
+                (isObOpen() ? 'SETTINGS.OB_OPEN_DESC' : 'SETTINGS.OB_LOCKED_DESC') | translate
               }}
             </p>
           </div>
-          <nz-switch
-            [ngModel]="isObOpen()"
-            [nzControl]="true"
-            (click)="onObSwitchClick()"
-            [nzCheckedChildren]="'COMMON.ON' | translate"
-            [nzUnCheckedChildren]="'COMMON.OFF' | translate"
-            [nzDisabled]="!canManageOb() || obSaving() || obLoading()"
-          />
+          <div class="settings-page__ob-actions">
+            <nz-switch
+              [ngModel]="isObOpen()"
+              [nzControl]="true"
+              (click)="onObSwitchClick()"
+              [nzCheckedChildren]="'COMMON.ON' | translate"
+              [nzUnCheckedChildren]="'COMMON.OFF' | translate"
+              [nzDisabled]="obSwitchDisabled()"
+            />
+            @if (canManageOb()) {
+              <button
+                nz-button
+                nzType="primary"
+                nzDanger
+                type="button"
+                [nzLoading]="obFinalizeLoading()"
+                [disabled]="obSaving() || obLoading()"
+                (click)="requestFinalizeOpeningBalance()"
+              >
+                {{ 'SETTINGS.OB_FINALIZE_BTN' | translate }}
+              </button>
+            }
+          </div>
         </div>
 
-        @if (obStatus()?.reason) {
+        @if (obStatus()?.allowOpeningBalance?.reason) {
           <p class="settings-page__ob-reason">
             <strong>{{ 'SETTINGS.OB_REASON' | translate }}:</strong>
-            {{ obStatus()?.reason }}
+            {{ obStatus()?.allowOpeningBalance?.reason }}
           </p>
         }
 
         @if (canManageOb()) {
+          @if (obFinalizeValidation(); as v) {
+            <nz-alert
+              nzType="error"
+              nzShowIcon
+              class="settings-page__ob-validate-alert"
+              [nzMessage]="'SETTINGS.OB_FINALIZE_VALIDATION_TITLE' | translate"
+              [nzDescription]="obValDesc"
+            />
+            <ng-template #obValDesc>
+              @if ((v.invalidCostBalances?.length ?? 0) > 0) {
+                <p class="settings-page__ob-validate-section">
+                  {{ 'SETTINGS.OB_ERR_INVALID_COSTS' | translate }}
+                </p>
+                <ul class="settings-page__ob-validate-list">
+                  @for (row of v.invalidCostBalances!; track row.itemId + row.storeName) {
+                    <li>
+                      <button
+                        type="button"
+                        class="settings-page__ob-item-link"
+                        (click)="openItemEdit(row.itemId)"
+                      >
+                        {{ row.itemName }}
+                      </button>
+                      — {{ row.storeName }} ({{ 'SETTINGS.OB_COL_QTY' | translate }}: {{ row.currentQty }})
+                    </li>
+                  }
+                </ul>
+              }
+              @if ((v.itemsMissingBaseUnit?.length ?? 0) > 0) {
+                <p class="settings-page__ob-validate-section">
+                  {{ 'SETTINGS.OB_ERR_MISSING_BASE' | translate }}
+                </p>
+                <ul class="settings-page__ob-validate-list">
+                  @for (row of v.itemsMissingBaseUnit!; track row.itemId) {
+                    <li>
+                      <button
+                        type="button"
+                        class="settings-page__ob-item-link"
+                        (click)="openItemEdit(row.itemId)"
+                      >
+                        {{ row.itemName }}
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+              @if ((v.draftOBMovements?.length ?? 0) > 0) {
+                <p class="settings-page__ob-validate-section">
+                  {{ 'SETTINGS.OB_ERR_DRAFT_MOVEMENTS' | translate }}
+                </p>
+                <ul class="settings-page__ob-validate-list">
+                  @for (row of v.draftOBMovements!; track row.docNo + row.itemId) {
+                    <li>
+                      <span class="settings-page__ob-draft-doc">{{ row.docNo }}</span>
+                      —
+                      <button
+                        type="button"
+                        class="settings-page__ob-item-link"
+                        (click)="openItemEdit(row.itemId)"
+                      >
+                        {{ 'SETTINGS.OB_OPEN_ITEM_FOR_DRAFT' | translate }}
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </ng-template>
+          }
           @if (obError()) {
             <nz-alert nzType="error" [nzMessage]="obError()" nzShowIcon />
           }

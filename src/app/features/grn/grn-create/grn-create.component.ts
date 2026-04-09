@@ -1,32 +1,33 @@
 import { DecimalPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
   DestroyRef,
   inject,
-  input,
   OnInit,
-  output,
   signal,
   computed,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { of, Subject } from 'rxjs';
+import { Router } from '@angular/router';
+import { Observable, of, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import {
   LucideAngularModule,
   FileText,
-  Plus,
   Search,
   Trash2,
   Upload,
@@ -34,59 +35,64 @@ import {
   Loader2,
   Package,
   FileSpreadsheet,
-  ArrowRight,
-  ArrowLeft,
   Download,
 } from 'lucide-angular';
+import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { ItemListRow } from '../../items/models/item.model';
+import type { RequirementsResponse } from '../../items/models/item.model';
 import { ItemsService } from '../../items/services/items.service';
 import { LocationsService } from '../../master-data/services/locations.service';
 import { SuppliersService } from '../../master-data/services/suppliers.service';
 import type { LocationRow } from '../../master-data/models/location.model';
 import type { SupplierRow } from '../../master-data/models/supplier.model';
-import type {
-  GrnImportPreviewData,
-  GrnManualLineDraft,
-} from '../models/grn.model';
+import type { GrnImportPreviewData, GrnManualLineDraft } from '../models/grn.model';
 import { GrnService } from '../services/grn.service';
 
 type CreateMode = 'manual' | 'excel';
 
+type ItemSearchTier = 'match' | 'new' | 'conflict';
+
+interface CategorizedItemRow {
+  item: ItemListRow;
+  tier: ItemSearchTier;
+  conflictSupplierName?: string;
+}
+
 @Component({
-  selector: 'app-grn-create-modal',
+  selector: 'app-grn-create',
   standalone: true,
   imports: [
     FormsModule,
     DecimalPipe,
     NzAlertModule,
     NzButtonModule,
+    NzCardModule,
     NzDatePickerModule,
     NzInputModule,
-    NzModalModule,
     NzSelectModule,
     NzSpinModule,
     NzTableModule,
+    NzTabsModule,
+    NzTagModule,
     TranslatePipe,
     LucideAngularModule,
   ],
-  templateUrl: './grn-create-modal.component.html',
-  styleUrl: './grn-create-modal.component.scss',
+  providers: [ConfirmationService],
+  templateUrl: './grn-create.component.html',
+  styleUrl: './grn-create.component.scss',
 })
-export class GrnCreateModalComponent implements OnInit {
+export class GrnCreateComponent implements OnInit {
   private readonly itemsApi = inject(ItemsService);
   private readonly suppliersApi = inject(SuppliersService);
   private readonly locationsApi = inject(LocationsService);
   private readonly grnApi = inject(GrnService);
   private readonly translate = inject(TranslateService);
   private readonly message = inject(NzMessageService);
+  private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-
-  readonly open = input.required<boolean>();
-  readonly closed = output<void>();
-  readonly created = output<void>();
+  private readonly confirmation = inject(ConfirmationService);
 
   readonly lucideFileText = FileText;
-  readonly lucidePlus = Plus;
   readonly lucideSearch = Search;
   readonly lucideTrash = Trash2;
   readonly lucideUpload = Upload;
@@ -94,13 +100,9 @@ export class GrnCreateModalComponent implements OnInit {
   readonly lucideLoader = Loader2;
   readonly lucidePackage = Package;
   readonly lucideSheet = FileSpreadsheet;
-  readonly lucideArrowRight = ArrowRight;
-  readonly lucideArrowLeft = ArrowLeft;
   readonly lucideDownload = Download;
 
   readonly mode = signal<CreateMode>('manual');
-  readonly step = signal(1);
-
   readonly supplierId = signal('');
   readonly locationId = signal('');
   readonly grnNumber = signal('');
@@ -113,20 +115,22 @@ export class GrnCreateModalComponent implements OnInit {
   readonly preview = signal<GrnImportPreviewData | null>(null);
 
   readonly loading = signal(false);
+  readonly parseLoading = signal(false);
   readonly error = signal('');
 
   readonly suppliers = signal<SupplierRow[]>([]);
   readonly locations = signal<LocationRow[]>([]);
+  readonly requirements = signal<RequirementsResponse | null>(null);
 
   readonly itemQuery = signal('');
   readonly itemResults = signal<ItemListRow[]>([]);
   readonly itemSearchLoading = signal(false);
   readonly itemDropdownOpen = signal(false);
 
-  /** Row indexes (manual step 1) flagged when itemId/uomId validation fails. */
   readonly invalidLineIndexes = signal<number[]>([]);
 
   private readonly search$ = new Subject<string>();
+  private skipDeactivate = false;
 
   readonly receivingDatePicker = computed(() => {
     const s = this.receivingDate();
@@ -136,38 +140,66 @@ export class GrnCreateModalComponent implements OnInit {
     return new Date(y, m - 1, d);
   });
 
-  readonly supplierLabel = computed(() => {
-    const id = this.supplierId();
-    return this.suppliers().find((s) => s.id === id)?.name ?? '—';
+  readonly openingBalanceBlocksGrn = computed(
+    () => this.requirements()?.isOpeningBalanceAllowed === true,
+  );
+
+  readonly categorizedItemRows = computed((): CategorizedItemRow[] => {
+    const sid = this.supplierId();
+    const items = this.itemResults();
+    if (!sid || items.length === 0) return [];
+    const rank: Record<ItemSearchTier, number> = { match: 0, new: 1, conflict: 2 };
+    const rows: CategorizedItemRow[] = items.map((item) => {
+      const prefId = item.supplier?.id ?? null;
+      let tier: ItemSearchTier;
+      let conflictSupplierName: string | undefined;
+      if (!prefId) {
+        tier = 'new';
+      } else if (prefId === sid) {
+        tier = 'match';
+      } else {
+        tier = 'conflict';
+        conflictSupplierName = item.supplier?.name ?? '';
+      }
+      return { item, tier, conflictSupplierName };
+    });
+    rows.sort(
+      (a, b) =>
+        rank[a.tier] - rank[b.tier] || a.item.name.localeCompare(b.item.name, undefined, { sensitivity: 'base' }),
+    );
+    return rows;
   });
 
-  readonly locationLabel = computed(() => {
-    const id = this.locationId();
-    return this.locations().find((l) => l.id === id)?.name ?? '—';
-  });
-
-  readonly manualTotal = computed(() =>
+  readonly manualGrandTotal = computed(() =>
     this.lines().reduce(
       (sum, l) => sum + (Number(l.receivedQty) || 0) * (Number(l.unitPrice) || 0),
       0,
     ),
   );
 
-  readonly isDone = computed(() => {
-    const m = this.mode();
-    const s = this.step();
-    return (m === 'manual' && s === 3) || (m === 'excel' && s === 4);
+  readonly excelGrandTotal = computed(() => {
+    const rows = this.preview()?.rows ?? [];
+    return rows
+      .filter((r) => r.status === 'VALID')
+      .reduce(
+        (sum, r) => sum + (Number(r.receivedQty) || 0) * (Number(r.unitPrice) || 0),
+        0,
+      );
   });
 
-  readonly stepsManual = ['GRN.CREATE.STEP_FILL', 'GRN.CREATE.STEP_CONFIRM', 'GRN.CREATE.STEP_DONE'];
-  readonly stepsExcel = [
-    'GRN.CREATE.STEP_UPLOAD_EXCEL',
-    'GRN.CREATE.STEP_PREVIEW',
-    'GRN.CREATE.STEP_INVOICE_CONFIRM',
-    'GRN.CREATE.STEP_DONE',
-  ];
+  readonly itemSearchDisabled = computed(() => !this.supplierId());
 
   ngOnInit(): void {
+    this.itemsApi
+      .checkRequirements()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.requirements.set(res.success && res.data ? res.data : null);
+        },
+        error: () => this.requirements.set(null),
+      });
+
     this.suppliersApi
       .list({ take: 200 })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -183,7 +215,7 @@ export class GrnCreateModalComponent implements OnInit {
         debounceTime(300),
         distinctUntilChanged(),
         switchMap((q) => {
-          if (!q || q.length < 2) {
+          if (!q || q.length < 2 || !this.supplierId()) {
             return of(null).pipe(
               tap(() => {
                 this.itemResults.set([]);
@@ -193,7 +225,7 @@ export class GrnCreateModalComponent implements OnInit {
             );
           }
           this.itemSearchLoading.set(true);
-          return this.itemsApi.list({ search: q, take: 10, isActive: 'true' }).pipe(
+          return this.itemsApi.list({ search: q, take: 30, isActive: 'true' }).pipe(
             tap(() => this.itemSearchLoading.set(false)),
           );
         }),
@@ -212,27 +244,25 @@ export class GrnCreateModalComponent implements OnInit {
       });
   }
 
-  onItemQueryChange(value: string): void {
-    this.itemQuery.set(value);
-    this.search$.next(value.trim());
-  }
-
-  onOpenChange(open: boolean): void {
-    if (!open) {
-      this.reset();
-      this.closed.emit();
+  onModeChange(mode: CreateMode): void {
+    this.mode.set(mode);
+    this.error.set('');
+    if (mode === 'manual') {
+      this.preview.set(null);
+      this.excelFile.set(null);
+    } else {
+      this.lines.set([]);
+      this.clearLineValidationUi();
     }
   }
 
-  switchMode(m: CreateMode): void {
-    this.mode.set(m);
-    this.step.set(1);
-    this.error.set('');
-    this.preview.set(null);
-    this.excelFile.set(null);
-    this.lines.set([]);
-    this.clearLineValidationUi();
-    this.invoiceFile.set(null);
+  onTabIndexChange(index: number): void {
+    this.onModeChange(index === 0 ? 'manual' : 'excel');
+  }
+
+  onItemQueryChange(value: string): void {
+    this.itemQuery.set(value);
+    this.search$.next(value.trim());
   }
 
   onReceivingDateChange(d: Date | null): void {
@@ -243,8 +273,16 @@ export class GrnCreateModalComponent implements OnInit {
     this.receivingDate.set(`${y}-${m}-${day}`);
   }
 
-  addItem(item: ItemListRow): void {
+  addItem(entry: CategorizedItemRow): void {
+    const item = entry.item;
     if (this.lines().some((l) => l.itemId === item.id)) return;
+
+    if (entry.tier === 'conflict') {
+      const name = entry.conflictSupplierName?.trim() || '—';
+      this.message.warning(
+        this.translate.instant('GRN.CREATE.SUPPLIER_CONFLICT_TOAST', { supplier: name }),
+      );
+    }
 
     const itemId = (item.id ?? '').trim();
     if (!this.isValidUuidString(itemId)) {
@@ -264,9 +302,9 @@ export class GrnCreateModalComponent implements OnInit {
         itemId,
         itemName: item.name,
         barcode: item.barcode ?? '',
+        imageUrl: item.imageUrl ?? null,
         uomId: baseUom.uomId,
         uomName: baseUom.uomName,
-        orderedQty: '',
         receivedQty: '',
         unitPrice: item.unitPrice ?? '',
       },
@@ -295,54 +333,20 @@ export class GrnCreateModalComponent implements OnInit {
 
   onExcelSelected(files: FileList | null): void {
     this.excelFile.set(files?.[0] ?? null);
+    this.preview.set(null);
     this.error.set('');
   }
 
-  validateHeader(): boolean {
-    if (!this.supplierId()) {
-      this.error.set(this.translate.instant('GRN.CREATE.ERROR_SUPPLIER'));
-      return false;
-    }
-    if (!this.locationId()) {
-      this.error.set(this.translate.instant('GRN.CREATE.ERROR_WAREHOUSE'));
-      return false;
-    }
-    if (!this.grnNumber().trim()) {
-      this.error.set(this.translate.instant('GRN.CREATE.ERROR_GRN_NO'));
-      return false;
-    }
-    if (!this.receivingDate().trim()) {
-      this.error.set(this.translate.instant('GRN.CREATE.ERROR_DATE'));
-      return false;
-    }
-    return true;
+  lineTotal(line: GrnManualLineDraft): number {
+    return (Number(line.receivedQty) || 0) * (Number(line.unitPrice) || 0);
   }
 
-  handleManualNext(): void {
-    this.error.set('');
-    if (!this.validateHeader()) return;
-    if (this.lines().length === 0) {
-      this.error.set(this.translate.instant('GRN.CREATE.ERROR_LINES'));
-      return;
-    }
-    const idCheck = this.validateManualLinesForIds();
-    if (!idCheck.ok) {
-      this.flagManualLineIdsError(idCheck.badIndexes, idCheck.firstBadName);
-      return;
-    }
-    this.clearLineValidationUi();
-    const bad = this.lines().find((l) => !l.receivedQty || Number(l.receivedQty) <= 0);
-    if (bad) {
-      this.error.set(
-        this.translate.instant('GRN.CREATE.ERROR_RECEIVED_QTY', { name: bad.itemName }),
-      );
-      return;
-    }
-    if (!this.invoiceFile()) {
-      this.error.set(this.translate.instant('GRN.CREATE.ERROR_INVOICE'));
-      return;
-    }
-    this.step.set(2);
+  previewRowLineTotal(row: { receivedQty: string | number; unitPrice?: string | number }): number {
+    return (Number(row.receivedQty) || 0) * (Number(row.unitPrice) || 0);
+  }
+
+  cancel(): void {
+    void this.router.navigate(['/grn']);
   }
 
   downloadTemplate(): void {
@@ -369,21 +373,16 @@ export class GrnCreateModalComponent implements OnInit {
       this.error.set(this.translate.instant('GRN.CREATE.ERROR_EXCEL'));
       return;
     }
-    this.loading.set(true);
+    this.parseLoading.set(true);
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('supplierId', this.supplierId());
-    fd.append('locationId', this.locationId());
-    fd.append('grnNumber', this.grnNumber().trim());
-    fd.append('receivingDate', this.receivingDate());
     this.grnApi.importPreview(fd).subscribe({
       next: (data) => {
         this.preview.set(data);
-        this.step.set(2);
-        this.loading.set(false);
+        this.parseLoading.set(false);
       },
       error: (err: { error?: { message?: string } }) => {
-        this.loading.set(false);
+        this.parseLoading.set(false);
         this.error.set(
           err?.error?.message ?? this.translate.instant('GRN.CREATE.ERROR_PREVIEW'),
         );
@@ -391,31 +390,55 @@ export class GrnCreateModalComponent implements OnInit {
     });
   }
 
-  handleSubmit(): void {
+  submit(): void {
     this.error.set('');
+    if (this.openingBalanceBlocksGrn()) {
+      const msg = this.translate.instant('TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED');
+      this.error.set(msg);
+      this.message.error(msg);
+      return;
+    }
+    if (!this.validateHeader()) return;
     if (!this.invoiceFile()) {
       this.error.set(this.translate.instant('GRN.CREATE.ERROR_INVOICE'));
+      this.message.error(this.translate.instant('GRN.CREATE.ERROR_INVOICE'));
       return;
     }
 
     if (this.mode() === 'manual') {
+      if (this.lines().length === 0) {
+        this.error.set(this.translate.instant('GRN.CREATE.ERROR_LINES'));
+        return;
+      }
       const idCheck = this.validateManualLinesForIds();
       if (!idCheck.ok) {
         this.flagManualLineIdsError(idCheck.badIndexes, idCheck.firstBadName);
-        this.step.set(1);
         return;
       }
       this.clearLineValidationUi();
-    } else if (!this.validateExcelLinesForCreate()) {
-      this.error.set(this.translate.instant('GRN.CREATE.ERROR_EXCEL_LINE_IDS'));
-      this.message.error(this.translate.instant('GRN.CREATE.ERROR_EXCEL_LINE_IDS'));
-      return;
+      const bad = this.lines().find((l) => !l.receivedQty || Number(l.receivedQty) <= 0);
+      if (bad) {
+        this.error.set(
+          this.translate.instant('GRN.CREATE.ERROR_RECEIVED_QTY', { name: bad.itemName }),
+        );
+        return;
+      }
+    } else {
+      const pv = this.preview();
+      if (!pv || pv.valid < 1) {
+        this.error.set(this.translate.instant('GRN.CREATE.ERROR_EXCEL'));
+        return;
+      }
+      if (!this.validateExcelLinesForCreate()) {
+        this.error.set(this.translate.instant('GRN.CREATE.ERROR_EXCEL_LINE_IDS'));
+        this.message.error(this.translate.instant('GRN.CREATE.ERROR_EXCEL_LINE_IDS'));
+        return;
+      }
     }
 
     this.loading.set(true);
     const form = new FormData();
-    const inv = this.invoiceFile()!;
-    form.append('invoice', inv);
+    form.append('invoice', this.invoiceFile()!);
     form.append('supplierId', this.supplierId());
     form.append('locationId', this.locationId());
     form.append('grnNumber', this.grnNumber().trim());
@@ -425,13 +448,16 @@ export class GrnCreateModalComponent implements OnInit {
     if (this.mode() === 'manual') {
       const payload = this.lines()
         .filter((l) => this.isValidUuidString(l.itemId) && this.isValidUuidString(l.uomId))
-        .map((l) => ({
-          itemId: l.itemId.trim(),
-          uomId: l.uomId.trim(),
-          orderedQty: Number(l.orderedQty) || 0,
-          receivedQty: Number(l.receivedQty),
-          unitPrice: Number(l.unitPrice) || 0,
-        }));
+        .map((l) => {
+          const rq = Number(l.receivedQty);
+          return {
+            itemId: l.itemId.trim(),
+            uomId: l.uomId.trim(),
+            orderedQty: rq,
+            receivedQty: rq,
+            unitPrice: Number(l.unitPrice) || 0,
+          };
+        });
       form.append('lines', JSON.stringify(payload));
     } else {
       const pv = this.preview();
@@ -443,67 +469,80 @@ export class GrnCreateModalComponent implements OnInit {
               this.isValidUuidString(r.itemId) &&
               this.isValidUuidString(r.uomId),
           )
-          .map((r) => ({
-            itemId: r.itemId!.trim(),
-            uomId: r.uomId!.trim(),
-            orderedQty: Number(r.orderedQty) || 0,
-            receivedQty: Number(r.receivedQty),
-            unitPrice: Number(r.unitPrice) || 0,
-          })) ?? [];
+          .map((r) => {
+            const rq = Number(r.receivedQty);
+            return {
+              itemId: r.itemId!.trim(),
+              uomId: r.uomId!.trim(),
+              orderedQty: rq,
+              receivedQty: rq,
+              unitPrice: Number(r.unitPrice) || 0,
+            };
+          }) ?? [];
       form.append('lines', JSON.stringify(payload));
     }
 
     this.grnApi.create(form).subscribe({
       next: () => {
-        const doneStep = this.mode() === 'manual' ? 3 : 4;
-        this.step.set(doneStep);
         this.loading.set(false);
-        setTimeout(() => this.created.emit(), 1400);
+        this.skipDeactivate = true;
+        this.message.success(this.translate.instant('GRN.CREATE_SUCCESS_REVIEW'));
+        void this.router.navigate(['/grn'], { queryParams: { tab: 'VALIDATED' } });
       },
-      error: (err: { error?: { message?: string } }) => {
+      error: (err: HttpErrorResponse | { error?: { message?: string } }) => {
         this.loading.set(false);
+        if (err instanceof HttpErrorResponse && err.status === 403) {
+          this.error.set(this.translate.instant('COMMON.PERMISSION_DENIED'));
+          return;
+        }
+        const body = err instanceof HttpErrorResponse ? err.error : err?.error;
         this.error.set(
-          err?.error?.message ?? this.translate.instant('GRN.CREATE.ERROR_CREATE'),
+          (typeof body === 'object' && body && 'message' in body && typeof body.message === 'string'
+            ? body.message
+            : null) ?? this.translate.instant('GRN.CREATE.ERROR_CREATE'),
         );
       },
     });
   }
 
-  goBack(): void {
-    this.step.update((s) => Math.max(1, s - 1));
-    this.error.set('');
-  }
-
-  excelNextFromPreview(): void {
-    const pv = this.preview();
-    if (pv && pv.valid > 0) {
-      this.step.set(3);
+  confirmDeactivate(): boolean | Observable<boolean> {
+    if (this.skipDeactivate || !this.isDirty()) {
+      return true;
     }
+    return this.confirmation.confirm({
+      title: this.translate.instant('GRN.CREATE.LEAVE_TITLE'),
+      message: this.translate.instant('GRN.CREATE.LEAVE_MESSAGE'),
+      confirmText: this.translate.instant('GRN.CREATE.LEAVE_CONFIRM'),
+      cancelText: this.translate.instant('COMMON.CANCEL'),
+    });
   }
 
-  close(): void {
-    this.reset();
-    this.closed.emit();
+  isDirty(): boolean {
+    if (this.lines().length > 0) return true;
+    if (this.invoiceFile() || this.excelFile() || this.preview()) return true;
+    if (this.notes().trim() || this.grnNumber().trim()) return true;
+    if (this.supplierId() || this.locationId()) return true;
+    return false;
   }
 
-  private reset(): void {
-    this.mode.set('manual');
-    this.step.set(1);
-    this.supplierId.set('');
-    this.locationId.set('');
-    this.grnNumber.set('');
-    this.receivingDate.set(this.todayIso());
-    this.notes.set('');
-    this.lines.set([]);
-    this.clearLineValidationUi();
-    this.invoiceFile.set(null);
-    this.excelFile.set(null);
-    this.preview.set(null);
-    this.error.set('');
-    this.loading.set(false);
-    this.itemQuery.set('');
-    this.itemResults.set([]);
-    this.itemDropdownOpen.set(false);
+  private validateHeader(): boolean {
+    if (!this.supplierId()) {
+      this.error.set(this.translate.instant('GRN.CREATE.ERROR_SUPPLIER'));
+      return false;
+    }
+    if (!this.locationId()) {
+      this.error.set(this.translate.instant('GRN.CREATE.ERROR_WAREHOUSE'));
+      return false;
+    }
+    if (!this.grnNumber().trim()) {
+      this.error.set(this.translate.instant('GRN.CREATE.ERROR_GRN_NO'));
+      return false;
+    }
+    if (!this.receivingDate().trim()) {
+      this.error.set(this.translate.instant('GRN.CREATE.ERROR_DATE'));
+      return false;
+    }
+    return true;
   }
 
   private todayIso(): string {
@@ -514,11 +553,6 @@ export class GrnCreateModalComponent implements OnInit {
     return `${y}-${m}-${day}`;
   }
 
-  lineTotal(line: GrnManualLineDraft): number {
-    return (Number(line.receivedQty) || 0) * (Number(line.unitPrice) || 0);
-  }
-
-  /** Accepts standard UUID strings (with or without hyphens) for Prisma @db.Uuid. */
   private isValidUuidString(value: string | undefined | null): boolean {
     if (value == null) {
       return false;
@@ -527,9 +561,6 @@ export class GrnCreateModalComponent implements OnInit {
     return hex.length === 32 && /^[0-9a-fA-F]+$/.test(hex);
   }
 
-  /**
-   * BASE unit from `itemUnits`: supports `unitId` (detail/list) or nested `unit.id` (list).
-   */
   private resolveBaseUomFromItem(item: ItemListRow): { uomId: string; uomName: string } | null {
     const base = item.itemUnits?.find((u) => u.unitType === 'BASE');
     if (!base) {

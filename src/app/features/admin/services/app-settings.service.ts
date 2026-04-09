@@ -3,7 +3,11 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import { environment } from '../../../../environments/environment';
-import type { OpeningBalanceSetting } from '../models/admin.models';
+import type {
+  InventoryStatusResponse,
+  ObFinalizeSuccessPayload,
+  OpeningBalanceSetting,
+} from '../models/admin.models';
 
 @Injectable({ providedIn: 'root' })
 export class AppSettingsService {
@@ -17,6 +21,29 @@ export class AppSettingsService {
           throw new Error(res.message || 'Failed to load opening balance setting');
         }
         return res.data ?? { value: 'LOCKED' };
+      }),
+    );
+  }
+
+  /** Preferred source for settings UI: OB gate, lock metadata, post-finalize snapshot. */
+  getInventoryStatus(): Observable<InventoryStatusResponse> {
+    return this.http.get<ApiResponse<InventoryStatusResponse>>(`${this.base}/inventory-status`).pipe(
+      map((res) => {
+        if (!res.success || !res.data) {
+          throw new Error(res.message || 'Failed to load inventory status');
+        }
+        return res.data;
+      }),
+    );
+  }
+
+  obFinalize(): Observable<ObFinalizeSuccessPayload> {
+    return this.http.post<ApiResponse<ObFinalizeSuccessPayload>>(`${this.base}/ob-finalize`, {}).pipe(
+      map((res) => {
+        if (!res.success || !res.data) {
+          throw new Error(res.message || 'Finalize failed');
+        }
+        return res.data;
       }),
     );
   }

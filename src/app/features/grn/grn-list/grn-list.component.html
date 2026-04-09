@@ -19,10 +19,27 @@
       >
         <lucide-icon [img]="lucideRefresh" [size]="16" [class.grn-list__spin]="loading()" />
       </button>
-      <button nz-button nzType="primary" type="button" (click)="openCreate()">
-        <lucide-icon [img]="lucidePlus" [size]="15" />
-        {{ 'GRN.LIST.NEW' | translate }}
-      </button>
+      @if (showCreateButton()) {
+        <span
+          nz-tooltip
+          [nzTooltipTitle]="
+            disableCreateButton()
+              ? ('TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED' | translate)
+              : null
+          "
+        >
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="disableCreateButton()"
+            (click)="openCreate()"
+          >
+            <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
+            {{ 'GRN.LIST.NEW' | translate }}
+          </button>
+        </span>
+      }
     </div>
   </div>
 
@@ -34,7 +51,8 @@
         [class.grn-list__tab--active]="activeTab() === tab"
         (click)="setTab(tab)"
       >
-        {{ tabLabel(tab) }}
+        <span class="grn-list__tab-label">{{ tabLabel(tab) }}</span>
+        <span class="grn-list__tab-count" aria-hidden="true">{{ tabBadgeCount(tab) }}</span>
       </button>
     }
   </div>
@@ -65,7 +83,11 @@
         <th>{{ 'COMMON.DATE' | translate }}</th>
         <th nzAlign="center">{{ 'GRN.LIST.COL_LINES' | translate }}</th>
         <th>{{ 'COMMON.STATUS' | translate }}</th>
-        <th nzAlign="right">{{ 'GRN.LIST.COL_ACTION' | translate }}</th>
+        @if (activeTab() === 'REJECTED') {
+          <th>{{ 'GRN.LIST.COL_REJECTION' | translate }}</th>
+          <th>{{ 'GRN.STATUS.REJECTED_BY' | translate }}</th>
+        }
+        <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
       </tr>
     </thead>
     <tbody>
@@ -77,11 +99,67 @@
           <td>{{ grn.receivingDate | date: 'mediumDate' }}</td>
           <td nzAlign="center">{{ grn._count?.lines ?? 0 }}</td>
           <td>
-            <span class="status-badge" [ngClass]="'status-' + statusClass(grn.status)">
-              {{ 'GRN.STATUS.' + grn.status | translate }}
+            <span
+              class="status-badge"
+              [ngClass]="'status-' + statusClass(grn.status)"
+              nz-tooltip
+              [nzTooltipTitle]="
+                grn.status === 'REJECTED' && grn.rejectionReason ? grn.rejectionReason : null
+              "
+            >
+              {{ 'GRN.STATUS.' + statusLabelSuffix(grn.status) | translate }}
             </span>
           </td>
-          <td nzAlign="right" class="grn-list__link">{{ 'GRN.LIST.VIEW' | translate }}</td>
+          @if (activeTab() === 'REJECTED') {
+            <td
+              class="grn-list__rejection"
+              nz-tooltip
+              [nzTooltipTitle]="grn.rejectionReason ?? null"
+            >
+              {{ grn.rejectionReason ?? '—' }}
+            </td>
+            <td>{{ rejectedByDisplay(grn) }}</td>
+          }
+          <td nzAlign="right" class="grn-list__actions-cell" (click)="$event.stopPropagation()">
+            @if (rowMenuItemCount(grn) > 1) {
+              <button
+                nz-button
+                nzType="text"
+                type="button"
+                nz-dropdown
+                [nzDropdownMenu]="grnRowMenu"
+                nzTrigger="click"
+                nzPlacement="bottomRight"
+              >
+                <lucide-icon [img]="lucideEllipsis" [size]="16" [strokeWidth]="2" />
+              </button>
+              <nz-dropdown-menu #grnRowMenu="nzDropdownMenu">
+                <ul nz-menu>
+                  <li nz-menu-item class="grn-list__menu-item" (click)="goToDetail(grn, $event)">
+                    <lucide-icon [img]="lucideEye" [size]="14" [strokeWidth]="2" />
+                    <span>{{ primaryRowActionLabel(grn) }}</span>
+                  </li>
+                  @if (canManageGrn() && canShowEdit(grn)) {
+                    <li nz-menu-item class="grn-list__menu-item" (click)="goToDetail(grn, $event)">
+                      <lucide-icon [img]="lucidePencil" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'GRN.LIST.EDIT_GRN' | translate }}</span>
+                    </li>
+                  }
+                  @if (canManageGrn() && canDelete(grn)) {
+                    <li nz-menu-item nzDanger class="grn-list__menu-item" (click)="onDeleteClick(grn, $event)">
+                      <lucide-icon [img]="lucideTrash" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'GRN.LIST.DELETE_GRN' | translate }}</span>
+                    </li>
+                  }
+                </ul>
+              </nz-dropdown-menu>
+            } @else {
+              <button nz-button nzType="link" type="button" class="grn-list__link-btn" (click)="goToDetail(grn, $event)">
+                <lucide-icon [img]="lucideEye" [size]="14" [strokeWidth]="2" class="grn-list__link-icon" />
+                {{ primaryRowActionLabel(grn) }}
+              </button>
+            }
+          </td>
         </tr>
       }
     </tbody>
@@ -91,9 +169,3 @@
     {{ 'GRN.LIST.TOTAL' | translate: { count: total() } }}
   </div>
 </div>
-
-<app-grn-create-modal
-  [open]="createOpen()"
-  (closed)="onCreateClosed()"
-  (created)="onCreated()"
-/>

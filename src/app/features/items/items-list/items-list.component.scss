@@ -28,10 +28,7 @@
 
 .items-page__header {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 0;
 
   > div:first-child {
     min-width: 0;
@@ -57,41 +54,18 @@
   color: rgba(0, 0, 0, 0.45);
 }
 
-.items-page__header-actions {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.items-page__actions {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.items-page__actions--utility {
-  gap: 8px;
-  padding-inline-end: 16px;
-  border-inline-end: 1px solid var(--border-color-split);
-}
-
-.items-page__add-split {
-  display: inline-flex;
-  align-items: center;
-}
-
-.items-page__add-split-group {
-  display: inline-flex;
-  align-items: center;
-}
-
-.items-page__actions lucide-icon,
 .items-page__filters lucide-icon {
   vertical-align: middle;
   margin-inline-end: 4px;
+}
+
+.items-page__toolbar-group .items-page__toolbar-btn lucide-icon,
+.items-page__toolbar-btn--icon lucide-icon {
+  margin-inline-end: 0;
+}
+
+.items-page__toolbar-group .items-page__toolbar-btn:not(.items-page__toolbar-btn--icon) lucide-icon {
+  margin-inline-end: 6px;
 }
 
 .input-prefix-icon {
@@ -103,11 +77,48 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  row-gap: 10px;
   padding: 12px 14px;
   background: #fafafa;
   border: 1px solid var(--border-color-split);
   border-radius: var(--radius-brand);
+}
+
+.items-page__filters-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.items-page__filters-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-inline-start: auto;
+}
+
+.items-page__toolbar-group {
+  display: inline-flex;
+}
+
+.items-page__toolbar-btn {
+  height: 38px;
+  padding-inline: 14px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.items-page__toolbar-btn--icon {
+  width: 38px;
+  min-width: 38px;
+  padding-inline: 0;
+  justify-content: center;
 }
 
 .filter-search {
@@ -172,7 +183,7 @@
 
 /* Action dropdown menu items: icon + label inline, no wrap */
 .items-table ul[nz-menu] li[nz-menu-item].items-menu__item,
-.items-page__add-split ul[nz-menu] li[nz-menu-item].items-menu__item {
+.items-page__filters-toolbar ul[nz-menu] li[nz-menu-item].items-menu__item {
   display: inline-flex;
   align-items: center;
   gap: 8px;

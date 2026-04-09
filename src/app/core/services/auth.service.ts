@@ -39,6 +39,8 @@ export class AuthService {
   readonly currentTenant = this._currentTenant.asReadonly();
   readonly isAuthenticated = this._isAuthenticated.asReadonly();
   readonly permissions = computed(() => this.currentUser()?.permissions ?? []);
+  /** Current JWT/user role code (empty string when logged out). */
+  readonly userRole = computed(() => this.currentUser()?.role ?? '');
 
   constructor() {
     this.hydrateFromStorage();

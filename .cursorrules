@@ -42,7 +42,8 @@ If a generated solution conflicts with these rules, regenerate until compliant.
 - During migration, treat `frontend/src/` (React codebase) as **read-only reference for business logic**.
 - Re-implement logic as clean Angular 21 code that matches this project's architecture and conventions.
 - Do not copy React patterns verbatim (hooks/components/state shape) when Angular-native alternatives are required.
-- Align all DTOs, enums, and contracts with `backend/prisma/schema.prisma`.
+- **Node API + Prisma for this product:** implement and migrate backend changes in `our-hotel/inv-lastest/` (not other repo `backend/` trees unless explicitly requested).
+- Align all DTOs, enums, and contracts with `our-hotel/inv-lastest/prisma/schema.prisma`.
 - If React behavior conflicts with Prisma schema types, Prisma schema is authoritative.
 
 ### 4) Global Status Styling (Mandatory)

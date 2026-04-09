@@ -9,15 +9,19 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { first } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Eye, Package, Plus, RefreshCw } from 'lucide-angular';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import type { GetPassStatus, GetPassType } from '../../../core/models/enums';
+import type { RequirementsResponse } from '../../items/models/item.model';
+import { ItemsService } from '../../items/services/items.service';
 import type { GetPassListRow } from '../models/get-pass.model';
 import { GetPassService } from '../services/get-pass.service';
 
@@ -48,6 +52,7 @@ const TYPE_FILTERS: Array<'ALL' | GetPassType> = ['ALL', 'TEMPORARY', 'CATERING'
     NzButtonModule,
     NzSelectModule,
     NzTableModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
@@ -57,6 +62,7 @@ const TYPE_FILTERS: Array<'ALL' | GetPassType> = ['ALL', 'TEMPORARY', 'CATERING'
 })
 export class GetPassListComponent implements OnInit {
   private readonly api = inject(GetPassService);
+  private readonly itemsApi = inject(ItemsService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -77,9 +83,26 @@ export class GetPassListComponent implements OnInit {
   readonly pageSize = 20;
   readonly loading = signal(false);
   readonly listError = signal('');
+  /** From `GET /items/check-requirements`; `isOpeningBalanceAllowed` disables New Get Pass during OB setup. */
+  readonly requirements = signal<RequirementsResponse | null>(null);
 
   ngOnInit(): void {
+    this.loadRequirements();
     this.load();
+  }
+
+  private loadRequirements(): void {
+    this.itemsApi
+      .checkRequirements()
+      .pipe(first(), takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.requirements.set(res.success && res.data ? res.data : null);
+        },
+        error: () => {
+          this.requirements.set(null);
+        },
+      });
   }
 
   setStatus(s: (typeof STATUS_FILTERS)[number]): void {

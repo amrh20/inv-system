@@ -1,0 +1,466 @@
+<div class="grn-create-page">
+  <header class="grn-create-page__header">
+    <div class="grn-create-page__header-main">
+      <lucide-icon [img]="lucideFileText" [size]="24" [strokeWidth]="2" class="text-brand-primary" />
+      <h1 class="grn-create-page__title">{{ 'GRN.CREATE.PAGE_TITLE' | translate }}</h1>
+    </div>
+  </header>
+
+  @if (openingBalanceBlocksGrn()) {
+    <nz-alert nzType="warning" [nzMessage]="'TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED' | translate" nzShowIcon />
+  }
+
+  @if (error()) {
+    <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="grn-create-page__alert" />
+  }
+
+  <nz-card class="grn-create-page__card" [nzBordered]="true">
+    <div class="grn-create-page__grid-4">
+      <div class="grn-create-page__field">
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.SUPPLIER' | translate }} *</label>
+        <nz-select
+          class="grn-create-page__control"
+          [nzPlaceHolder]="'GRN.CREATE.SUPPLIER_PH' | translate"
+          [ngModel]="supplierId()"
+          (ngModelChange)="supplierId.set($event ?? ''); itemQuery.set(''); itemResults.set([]); itemDropdownOpen.set(false)"
+          nzShowSearch
+          nzAllowClear
+        >
+          @for (s of suppliers(); track s.id) {
+            <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
+          }
+        </nz-select>
+      </div>
+      <div class="grn-create-page__field">
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.WAREHOUSE' | translate }} *</label>
+        <nz-select
+          class="grn-create-page__control"
+          [nzPlaceHolder]="'GRN.CREATE.WAREHOUSE_PH' | translate"
+          [ngModel]="locationId()"
+          (ngModelChange)="locationId.set($event ?? '')"
+          nzShowSearch
+          nzAllowClear
+        >
+          @for (l of locations(); track l.id) {
+            <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+          }
+        </nz-select>
+      </div>
+      <div class="grn-create-page__field">
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.GRN_NO' | translate }} *</label>
+        <input
+          nz-input
+          class="grn-create-page__control"
+          [ngModel]="grnNumber()"
+          (ngModelChange)="grnNumber.set($event)"
+          [placeholder]="'GRN.CREATE.GRN_NO_PH' | translate"
+        />
+      </div>
+      <div class="grn-create-page__field">
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.RECEIVING_DATE' | translate }} *</label>
+        <nz-date-picker
+          class="grn-create-page__control grn-create-page__date"
+          [ngModel]="receivingDatePicker()"
+          (ngModelChange)="onReceivingDateChange($event)"
+          nzFormat="yyyy-MM-dd"
+        />
+      </div>
+    </div>
+
+    <ng-template #grnCreateManualTabTitle>
+      <span class="grn-create-page__tab-heading">
+        <lucide-icon [img]="lucidePackage" [size]="16" [strokeWidth]="2" />
+        {{ 'GRN.CREATE.TAB_MANUAL' | translate }}
+      </span>
+    </ng-template>
+    <ng-template #grnCreateExcelTabTitle>
+      <span class="grn-create-page__tab-heading">
+        <lucide-icon [img]="lucideSheet" [size]="16" [strokeWidth]="2" />
+        {{ 'GRN.CREATE.TAB_EXCEL' | translate }}
+      </span>
+    </ng-template>
+  
+    <nz-tabs
+      class="grn-create-page__tabs"
+      nzType="line"
+      [nzSelectedIndex]="mode() === 'manual' ? 0 : 1"
+      (nzSelectedIndexChange)="onTabIndexChange($event)"
+    >
+      <nz-tab [nzTitle]="grnCreateManualTabTitle">
+        <div class="grn-create-page__tab-body">
+          <div class="grn-create-page__field">
+            <label class="grn-create-page__label">
+              {{ 'GRN.CREATE.ADD_ITEMS' | translate }} *
+              <span class="grn-create-page__hint">{{ 'GRN.CREATE.ADD_ITEMS_HINT' | translate }}</span>
+            </label>
+            <nz-input-group [nzPrefix]="searchIcon" class="grn-create-page__search-wrap">
+              <input
+                nz-input
+                [disabled]="itemSearchDisabled()"
+                [ngModel]="itemQuery()"
+                (ngModelChange)="onItemQueryChange($event)"
+                [placeholder]="
+                  itemSearchDisabled()
+                    ? ('GRN.CREATE.ITEM_SEARCH_DISABLED' | translate)
+                    : ('GRN.CREATE.ITEM_SEARCH_PH' | translate)
+                "
+                (focus)="!itemSearchDisabled() && itemDropdownOpen.set(true)"
+              />
+            </nz-input-group>
+            <ng-template #searchIcon>
+              @if (itemSearchLoading()) {
+                <lucide-icon [img]="lucideLoader" [size]="16" [strokeWidth]="2" class="grn-create-page__spin" />
+              } @else {
+                <lucide-icon [img]="lucideSearch" [size]="16" [strokeWidth]="2" />
+              }
+            </ng-template>
+            @if (!itemSearchDisabled() && itemDropdownOpen() && itemQuery().length >= 2) {
+              <div class="grn-create-page__dropdown">
+                @for (row of categorizedItemRows(); track row.item.id) {
+                  <button type="button" class="grn-create-page__dd-item" (click)="addItem(row)">
+                    @if (row.item.imageUrl) {
+                      <img [src]="row.item.imageUrl" [alt]="row.item.name" class="grn-create-page__thumb" />
+                    } @else {
+                      <span class="grn-create-page__thumb grn-create-page__thumb--ph">
+                        <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+                      </span>
+                    }
+                    <div class="grn-create-page__dd-text">
+                      <div class="grn-create-page__dd-name-row">
+                        @if (row.tier === 'match') {
+                          <span class="grn-create-page__tier" aria-hidden="true">✅</span>
+                        }
+                        <span class="grn-create-page__dd-name">{{ row.item.name }}</span>
+                      </div>
+                      <div class="grn-create-page__dd-meta">
+                        @if (row.item.barcode) {
+                          <span class="font-mono">{{ row.item.barcode }}</span>
+                        }
+                        @if (row.tier === 'new') {
+                          <span class="grn-create-page__tier-lbl">{{ 'GRN.CREATE.SUPPLIER_TIER_NEW' | translate }}</span>
+                        }
+                        @if (row.tier === 'conflict' && row.conflictSupplierName) {
+                          <span class="grn-create-page__tier-conflict">{{
+                            'GRN.CREATE.SUPPLIER_BELONGS_HINT' | translate: { name: row.conflictSupplierName }
+                          }}</span>
+                        }
+                      </div>
+                    </div>
+                  </button>
+                }
+                @if (!itemSearchLoading() && categorizedItemRows().length === 0) {
+                  <div class="grn-create-page__dd-empty">{{ 'GRN.CREATE.NO_ITEMS' | translate }}</div>
+                }
+              </div>
+            }
+          </div>
+  
+          @if (lines().length > 0) {
+            <nz-table [nzData]="lines()" [nzShowPagination]="false" nzSize="middle" class="grn-create-page__table">
+              <thead>
+                <tr>
+                  <th>{{ 'GRN.CREATE.COL_ITEM' | translate }}</th>
+                  <th nzWidth="100px">{{ 'GRN.CREATE.COL_UOM' | translate }}</th>
+                  <th nzWidth="120px" nzAlign="right">{{ 'GRN.CREATE.COL_QTY' | translate }} *</th>
+                  <th nzWidth="120px" nzAlign="right">{{ 'GRN.CREATE.COL_PRICE' | translate }}</th>
+                  <th nzWidth="120px" nzAlign="right">{{ 'GRN.CREATE.COL_LINE_TOTAL' | translate }}</th>
+                  <th nzWidth="56px"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (line of lines(); track line.itemId; let idx = $index) {
+                  <tr [class.grn-create-page__tr--invalid]="invalidLineIndexes().includes(idx)">
+                    <td>
+                      <div class="grn-create-page__line-cell">
+                        @if (line.imageUrl) {
+                          <img [src]="line.imageUrl" [alt]="line.itemName" class="grn-create-page__line-thumb" />
+                        } @else {
+                          <span class="grn-create-page__line-thumb grn-create-page__line-thumb--ph">
+                            <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+                          </span>
+                        }
+                        <div>
+                          <div class="grn-create-page__line-name">{{ line.itemName }}</div>
+                          @if (line.barcode) {
+                            <div class="grn-create-page__line-bc font-mono">{{ line.barcode }}</div>
+                          }
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <nz-tag class="grn-create-page__uom-tag">{{ line.uomName }}</nz-tag>
+                    </td>
+                    <td>
+                      <input
+                        nz-input
+                        type="number"
+                        min="0.001"
+                        step="0.001"
+                        [ngModel]="line.receivedQty"
+                        (ngModelChange)="updateLine(idx, 'receivedQty', $event)"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        nz-input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        [ngModel]="line.unitPrice"
+                        (ngModelChange)="updateLine(idx, 'unitPrice', $event)"
+                      />
+                    </td>
+                    <td nzAlign="right" class="grn-create-page__line-total">
+                      {{ lineTotal(line) | number: '1.2-2' }}
+                    </td>
+                    <td>
+                      <button nz-button nzType="text" nzDanger type="button" (click)="removeLine(idx)">
+                        <lucide-icon [img]="lucideTrash" [size]="16" [strokeWidth]="2" />
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </nz-table>
+          }
+  
+          <div class="grn-create-page__grand-total">
+            <span>{{ 'GRN.CREATE.GRAND_TOTAL' | translate }}</span>
+            <strong>{{ manualGrandTotal() | number: '1.2-2' }}</strong>
+          </div>
+  
+          <div class="grn-create-page__row2">
+            <div class="grn-create-page__field">
+              <label class="grn-create-page__label">{{ 'GRN.CREATE.NOTES' | translate }}</label>
+              <textarea
+                nz-input
+                rows="2"
+                [ngModel]="notes()"
+                (ngModelChange)="notes.set($event)"
+                [placeholder]="'GRN.CREATE.NOTES_PH' | translate"
+              ></textarea>
+            </div>
+            <div class="grn-create-page__field">
+              <label class="grn-create-page__label">{{ 'GRN.CREATE.INVOICE' | translate }} *</label>
+              <button
+                type="button"
+                class="grn-create-page__upload"
+                [class.grn-create-page__upload--ok]="invoiceFile()"
+                (click)="invoiceManual.click()"
+              >
+                @if (invoiceFile(); as f) {
+                  <lucide-icon [img]="lucideCheck" [size]="18" [strokeWidth]="2" />
+                  <span>{{ f.name }} ({{ (f.size / 1024).toFixed(0) }} KB)</span>
+                } @else {
+                  <lucide-icon [img]="lucideUpload" [size]="18" [strokeWidth]="2" />
+                  <span>{{ 'GRN.CREATE.INVOICE_PH' | translate }}</span>
+                }
+              </button>
+              <input
+                #invoiceManual
+                type="file"
+                accept=".pdf,image/*"
+                hidden
+                (change)="onInvoiceSelected($any($event.target).files)"
+              />
+            </div>
+          </div>
+        </div>
+      </nz-tab>
+      <nz-tab [nzTitle]="grnCreateExcelTabTitle">
+        <div class="grn-create-page__tab-body">
+          <div class="grn-create-page__excel-row">
+            <div class="grn-create-page__template-card">
+              <p class="grn-create-page__template-title">{{ 'GRN.CREATE.TEMPLATE_TITLE' | translate }}</p>
+              <p class="grn-create-page__template-desc">{{ 'GRN.CREATE.TEMPLATE_DESC_V2' | translate }}</p>
+              <button nz-button nzType="default" type="button" (click)="downloadTemplate()">
+                <lucide-icon [img]="lucideDownload" [size]="14" [strokeWidth]="2" />
+                {{ 'GRN.CREATE.TEMPLATE_BTN' | translate }}
+              </button>
+            </div>
+            <button
+              type="button"
+              class="grn-create-page__excel-zone"
+              [class.grn-create-page__excel-zone--ok]="excelFile()"
+              (click)="xlInput.click()"
+            >
+              @if (excelFile(); as xf) {
+                <lucide-icon [img]="lucideCheck" [size]="24" [strokeWidth]="2" />
+                <span>{{ xf.name }}</span>
+              } @else {
+                <lucide-icon [img]="lucideSheet" [size]="24" [strokeWidth]="2" />
+                <span>{{ 'GRN.CREATE.EXCEL_ZONE' | translate }}</span>
+              }
+            </button>
+            <input
+              #xlInput
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              hidden
+              (change)="onExcelSelected($any($event.target).files)"
+            />
+          </div>
+          <div class="grn-create-page__excel-actions">
+            <button
+              nz-button
+              nzType="primary"
+              type="button"
+              [disabled]="parseLoading() || !excelFile() || itemSearchDisabled()"
+              (click)="handleExcelPreview()"
+            >
+              @if (parseLoading()) {
+                <lucide-icon [img]="lucideLoader" [size]="16" [strokeWidth]="2" class="grn-create-page__spin" />
+                {{ 'GRN.CREATE.PARSING' | translate }}
+              } @else {
+                {{ 'GRN.CREATE.PARSE_PREVIEW' | translate }}
+              }
+            </button>
+          </div>
+  
+          @if (preview(); as pv) {
+            <div class="grn-create-page__stats">
+              <div class="grn-create-page__stat">
+                <div class="grn-create-page__stat-val">{{ pv.total }}</div>
+                <div class="grn-create-page__stat-lbl">{{ 'GRN.CREATE.PV_TOTAL' | translate }}</div>
+              </div>
+              <div class="grn-create-page__stat grn-create-page__stat--ok">
+                <div class="grn-create-page__stat-val">{{ pv.valid }}</div>
+                <div class="grn-create-page__stat-lbl">{{ 'GRN.CREATE.PV_VALID' | translate }}</div>
+              </div>
+              <div class="grn-create-page__stat grn-create-page__stat--err">
+                <div class="grn-create-page__stat-val">{{ pv.invalid || 0 }}</div>
+                <div class="grn-create-page__stat-lbl">{{ 'GRN.CREATE.PV_INVALID' | translate }}</div>
+              </div>
+            </div>
+  
+            <nz-table [nzData]="pv.rows" [nzShowPagination]="false" nzSize="middle" class="grn-create-page__table">
+              <thead>
+                <tr>
+                  <th>{{ 'GRN.CREATE.PV_ROW' | translate }}</th>
+                  <th>{{ 'GRN.CREATE.COL_ITEM' | translate }}</th>
+                  <th>{{ 'GRN.CREATE.COL_UOM' | translate }}</th>
+                  <th nzAlign="right">{{ 'GRN.CREATE.COL_QTY' | translate }}</th>
+                  <th nzAlign="right">{{ 'GRN.CREATE.COL_PRICE' | translate }}</th>
+                  <th nzAlign="right">{{ 'GRN.CREATE.COL_LINE_TOTAL' | translate }}</th>
+                  <th>{{ 'COMMON.STATUS' | translate }}</th>
+                  <th>{{ 'GRN.CREATE.PV_ISSUES' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of pv.rows; track $index) {
+                  <tr [class.grn-create-page__row-err]="row.status === 'ERROR'">
+                    <td>{{ row.rowNum }}</td>
+                    <td>
+                      <div class="grn-create-page__line-cell">
+                        @if (row.imageUrl) {
+                          <img [src]="row.imageUrl" [alt]="row.itemName ?? ''" class="grn-create-page__line-thumb" />
+                        } @else {
+                          <span class="grn-create-page__line-thumb grn-create-page__line-thumb--ph">
+                            <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+                          </span>
+                        }
+                        <div class="grn-create-page__line-name">{{ row.itemName || row.barcode || '—' }}</div>
+                      </div>
+                    </td>
+                    <td>
+                      @if (row.uomName) {
+                        <nz-tag class="grn-create-page__uom-tag">{{ row.uomName }}</nz-tag>
+                      } @else {
+                        —
+                      }
+                    </td>
+                    <td nzAlign="right">{{ row.receivedQty }}</td>
+                    <td nzAlign="right">{{ row.unitPrice ?? '—' }}</td>
+                    <td nzAlign="right">{{ previewRowLineTotal(row) | number: '1.2-2' }}</td>
+                    <td>
+                      @if (row.status === 'VALID') {
+                        <span class="status-badge status-posted">{{ 'GRN.CREATE.PV_OK' | translate }}</span>
+                      } @else {
+                        <span class="status-badge status-rejected">{{ 'GRN.CREATE.PV_BAD' | translate }}</span>
+                      }
+                    </td>
+                    <td class="grn-create-page__issues">{{ row.errors?.join(', ') }}</td>
+                  </tr>
+                }
+              </tbody>
+            </nz-table>
+  
+            <div class="grn-create-page__grand-total">
+              <span>{{ 'GRN.CREATE.GRAND_TOTAL_VALID' | translate }}</span>
+              <strong>{{ excelGrandTotal() | number: '1.2-2' }}</strong>
+            </div>
+  
+            @if ((pv.invalid || 0) > 0) {
+              <nz-alert
+                nzType="warning"
+                nzShowIcon
+                [nzMessage]="'GRN.CREATE.PV_SKIP_HINT' | translate: { invalid: pv.invalid, valid: pv.valid }"
+              />
+            }
+          }
+  
+          <div class="grn-create-page__row2">
+            <div class="grn-create-page__field">
+              <label class="grn-create-page__label">{{ 'GRN.CREATE.NOTES' | translate }}</label>
+              <textarea
+                nz-input
+                rows="2"
+                [ngModel]="notes()"
+                (ngModelChange)="notes.set($event)"
+                [placeholder]="'GRN.CREATE.NOTES_PH' | translate"
+              ></textarea>
+            </div>
+            <div class="grn-create-page__field">
+              <label class="grn-create-page__label">{{ 'GRN.CREATE.INVOICE' | translate }} *</label>
+              <button
+                type="button"
+                class="grn-create-page__upload"
+                [class.grn-create-page__upload--ok]="invoiceFile()"
+                (click)="invoiceExcel.click()"
+              >
+                @if (invoiceFile(); as f) {
+                  <lucide-icon [img]="lucideCheck" [size]="18" [strokeWidth]="2" />
+                  <span>{{ f.name }}</span>
+                } @else {
+                  <lucide-icon [img]="lucideUpload" [size]="18" [strokeWidth]="2" />
+                  <span>{{ 'GRN.CREATE.INVOICE_PH' | translate }}</span>
+                }
+              </button>
+              <input
+                #invoiceExcel
+                type="file"
+                accept=".pdf,image/*"
+                hidden
+                (change)="onInvoiceSelected($any($event.target).files)"
+              />
+            </div>
+          </div>
+        </div>
+      </nz-tab>
+    </nz-tabs>
+  </nz-card>
+
+
+
+
+  <footer class="grn-create-page__footer-actions">
+    <button nz-button type="button" (click)="cancel()" [disabled]="loading()">
+      {{ 'COMMON.CANCEL' | translate }}
+    </button>
+    <button
+      nz-button
+      nzType="primary"
+      type="button"
+      [disabled]="loading() || openingBalanceBlocksGrn()"
+      (click)="submit()"
+    >
+      @if (loading()) {
+        <lucide-icon [img]="lucideLoader" [size]="16" [strokeWidth]="2" class="grn-create-page__spin" />
+        {{ 'GRN.CREATE.CREATING' | translate }}
+      } @else {
+        <lucide-icon [img]="lucideCheck" [size]="15" [strokeWidth]="2" />
+        {{ 'GRN.SUBMIT_FOR_REVIEW' | translate }}
+      }
+    </button>
+  </footer>
+</div>

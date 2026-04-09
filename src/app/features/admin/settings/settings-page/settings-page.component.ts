@@ -1,5 +1,9 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { catchError, EMPTY, filter, first, switchMap } from 'rxjs';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -10,18 +14,24 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Building, Lock, Loader2, Package, Save, Settings, Unlock, User } from 'lucide-angular';
-import { first } from 'rxjs';
+import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import type { UserRole } from '../../../../core/models/enums';
 import { environment } from '../../../../../environments/environment';
-import type { OpeningBalanceSetting } from '../../models/admin.models';
+import type {
+  InventoryStatusResponse,
+  ObFinalizeValidationDetails,
+} from '../../models/admin.models';
 import { AppSettingsService } from '../../services/app-settings.service';
 import { UsersAdminService } from '../../services/users-admin.service';
 
 @Component({
   selector: 'app-settings-page',
   standalone: true,
+  providers: [ConfirmationService],
   imports: [
+    DatePipe,
+    DecimalPipe,
     FormsModule,
     NzAlertModule,
     NzButtonModule,
@@ -31,6 +41,7 @@ import { UsersAdminService } from '../../services/users-admin.service';
     NzSwitchModule,
     TranslatePipe,
     LucideAngularModule,
+    RouterLink,
   ],
   templateUrl: './settings-page.component.html',
   styleUrl: './settings-page.component.scss',
@@ -42,6 +53,8 @@ export class SettingsPageComponent implements OnInit {
   private readonly message = inject(NzMessageService);
   private readonly modal = inject(NzModalService);
   private readonly translate = inject(TranslateService);
+  private readonly confirmation = inject(ConfirmationService);
+  private readonly router = inject(Router);
 
   readonly lucideSettings = Settings;
   readonly lucideUser = User;
@@ -68,16 +81,30 @@ export class SettingsPageComponent implements OnInit {
   passwordSuccess = signal(false);
   passwordError = signal('');
 
-  obStatus = signal<OpeningBalanceSetting | null>(null);
+  /** Full inventory / OB status from GET /settings/inventory-status. */
+  obStatus = signal<InventoryStatusResponse | null>(null);
   obLoading = signal(true);
   obLockModalOpen = signal(false);
   obLockReason = signal('');
   obSaving = signal(false);
   obSuccess = signal(false);
   obError = signal('');
+  obFinalizeLoading = signal(false);
+  obFinalizeValidation = signal<ObFinalizeValidationDetails | null>(null);
+  celebrateFinalize = signal(false);
 
   readonly envLabel = signal(
     environment.production ? 'SETTINGS.ENV_PRODUCTION' : 'SETTINGS.ENV_DEVELOPMENT',
+  );
+
+  readonly obSnapshot = computed(() => this.obStatus()?.snapshotSummary ?? null);
+
+  readonly obSwitchDisabled = computed(
+    () =>
+      !this.canManageOb() ||
+      this.obSaving() ||
+      this.obLoading() ||
+      !!this.obStatus()?.snapshotSummary,
   );
 
   ngOnInit(): void {
@@ -132,7 +159,7 @@ export class SettingsPageComponent implements OnInit {
   loadOb(): void {
     this.obLoading.set(true);
     this.settingsApi
-      .getAllowOpeningBalance()
+      .getInventoryStatus()
       .pipe(first())
       .subscribe({
         next: (s) => {
@@ -140,7 +167,7 @@ export class SettingsPageComponent implements OnInit {
           this.obLoading.set(false);
         },
         error: () => {
-          this.obStatus.set({ value: 'LOCKED' });
+          this.obStatus.set(null);
           this.obLoading.set(false);
         },
       });
@@ -209,11 +236,11 @@ export class SettingsPageComponent implements OnInit {
   }
 
   isObOpen(): boolean {
-    return this.obStatus()?.value === 'OPEN';
+    return this.obStatus()?.allowOpeningBalance?.value === 'OPEN';
   }
 
   onObSwitchClick(): void {
-    if (!this.canManageOb() || this.obSaving() || this.obLoading()) {
+    if (this.obSwitchDisabled() || this.obFinalizeLoading()) {
       return;
     }
     this.obError.set('');
@@ -262,6 +289,66 @@ export class SettingsPageComponent implements OnInit {
       });
   }
 
+  requestFinalizeOpeningBalance(): void {
+    if (!this.canManageOb() || this.obFinalizeLoading() || this.obLoading() || this.obSnapshot()) {
+      return;
+    }
+    this.obFinalizeValidation.set(null);
+    this.obError.set('');
+    this.confirmation
+      .confirm({
+        title: this.t('SETTINGS.OB_FINALIZE_CONFIRM_TITLE'),
+        message: this.t('SETTINGS.OB_FINALIZE_CONFIRM_MESSAGE'),
+        confirmText: this.t('SETTINGS.OB_FINALIZE_CONFIRM_OK'),
+        cancelText: this.t('COMMON.CANCEL'),
+        confirmDanger: true,
+      })
+      .pipe(
+        first(),
+        filter(Boolean),
+        switchMap(() => {
+          this.obFinalizeLoading.set(true);
+          return this.settingsApi.obFinalize().pipe(
+            catchError((err: HttpErrorResponse) => {
+              this.obFinalizeLoading.set(false);
+              const body = err.error as {
+                code?: string;
+                message?: string;
+                details?: ObFinalizeValidationDetails;
+              };
+              if (
+                err.status === 400 &&
+                body?.code === 'OB_FINALIZE_VALIDATION_FAILED' &&
+                body.details
+              ) {
+                this.obFinalizeValidation.set(body.details);
+              } else {
+                this.obError.set(
+                  body?.message ?? err.message ?? this.t('SETTINGS.ERR_OB_FINALIZE'),
+                );
+              }
+              return EMPTY;
+            }),
+          );
+        }),
+        first(),
+      )
+      .subscribe({
+        next: () => {
+          this.obFinalizeLoading.set(false);
+          this.message.success(this.t('SETTINGS.MSG_OB_FINALIZE_SUCCESS'));
+          this.celebrateFinalize.set(true);
+          setTimeout(() => this.celebrateFinalize.set(false), 4500);
+          this.loadOb();
+        },
+      });
+  }
+
+  openItemEdit(itemId: string): void {
+    if (!itemId) return;
+    void this.router.navigate(['/items', itemId, 'edit']);
+  }
+
   private confirmEnableOb(): void {
     this.modal.confirm({
       nzTitle: this.t('SETTINGS.OB_ENABLE_CONFIRM_TITLE'),
@@ -288,7 +375,7 @@ export class SettingsPageComponent implements OnInit {
               error: (err: { error?: { message?: string; reason?: string }; message?: string }) => {
                 this.obSaving.set(false);
                 this.obError.set(this.extractObError(err));
-                reject();
+                reject(new Error('enable failed'));
               },
             });
         }),
