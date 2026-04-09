@@ -7,7 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NgClass } from '@angular/common';
+import { DatePipe, DecimalPipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { first } from 'rxjs/operators';
@@ -36,24 +36,44 @@ import {
 import type { LedgerEntryRow } from '../../ledger/models/ledger-entry.model';
 import { LedgerService } from '../../ledger/services/ledger.service';
 import type { ItemListRow } from '../../items/models/item.model';
-import type { LocationOption } from '../../items/models/item.model';
+import type { LocationOption, SupplierOption } from '../../items/models/item.model';
 import { ItemMasterLookupsService } from '../../items/services/item-master-lookups.service';
 import { ItemsService } from '../../items/services/items.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type {
   MovementDocumentDetail,
   MovementDocumentPayload,
+  MovementFormState,
+  MovementLineDetail,
+  MovementLineFormRow,
   MovementLinePayload,
 } from '../models/movement-document.model';
 import { MovementDocumentsService } from '../services/movement-documents.service';
 
-const MOVEMENT_TYPES = [{ value: 'ADJUSTMENT', label: 'MOVEMENTS.TYPES.ADJUSTMENT' }];
+/** All movement types selectable on new documents; labels via `MOVEMENTS.TYPES.*`. */
+const MOVEMENT_TYPE_VALUES: readonly string[] = [
+  'OPENING_BALANCE',
+  'RECEIVE',
+  'ISSUE',
+  'TRANSFER_OUT',
+  'TRANSFER_IN',
+  'RETURN',
+  'ADJUSTMENT',
+  'BREAKAGE',
+  'COUNT_ADJUSTMENT',
+  'TRANSFER',
+  'LOAN_WRITE_OFF',
+  'GET_PASS_OUT',
+  'GET_PASS_RETURN',
+];
 
 @Component({
   selector: 'app-movement-form',
   standalone: true,
   providers: [ConfirmationService],
   imports: [
+    DatePipe,
+    DecimalPipe,
     FormsModule,
     NgClass,
     NzAlertModule,
@@ -92,7 +112,7 @@ export class MovementFormComponent implements OnInit {
   readonly lucideIn = ArrowDownRight;
   readonly lucideOut = ArrowUpRight;
 
-  readonly movementTypes = MOVEMENT_TYPES;
+  readonly movementTypeValues = MOVEMENT_TYPE_VALUES;
 
   readonly id = signal<string | null>(null);
   readonly isNew = computed(() => this.id() === 'new');
@@ -104,13 +124,15 @@ export class MovementFormComponent implements OnInit {
   readonly currentDoc = signal<MovementDocumentDetail | null>(null);
   readonly items = signal<ItemListRow[]>([]);
   readonly locations = signal<LocationOption[]>([]);
+  readonly suppliers = signal<SupplierOption[]>([]);
   readonly ledgerEntries = signal<LedgerEntryRow[]>([]);
 
-  readonly form = signal<MovementDocumentPayload>({
+  readonly form = signal<MovementFormState>({
     movementType: 'ADJUSTMENT',
     documentDate: new Date().toISOString().split('T')[0],
     sourceLocationId: null,
     destLocationId: null,
+    supplierId: null,
     referenceNumber: '',
     department: '',
     notes: '',
@@ -119,11 +141,21 @@ export class MovementFormComponent implements OnInit {
 
   readonly isReadOnly = computed(() => this.currentDoc()?.status === 'POSTED');
   readonly showSourceLoc = computed(() =>
-    ['RETURN', 'ADJUSTMENT'].includes(this.form().movementType),
+    ['RETURN', 'ADJUSTMENT', 'TRANSFER_OUT'].includes(this.form().movementType),
   );
   readonly showDestLoc = computed(() =>
-    ['OPENING_BALANCE', 'RETURN'].includes(this.form().movementType),
+    ['OPENING_BALANCE', 'RETURN', 'RECEIVE', 'TRANSFER_IN'].includes(this.form().movementType),
   );
+
+  /** Supplier: editable for RECEIVE; read-only row only when a supplier id exists (skip empty OB). */
+  readonly showSupplierSection = computed(() => {
+    const sid = this.form().supplierId;
+    const hasSupplier = sid != null && String(sid).trim() !== '';
+    if (this.isReadOnly()) {
+      return hasSupplier;
+    }
+    return this.form().movementType === 'RECEIVE' || hasSupplier;
+  });
 
   ngOnInit(): void {
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -141,6 +173,7 @@ export class MovementFormComponent implements OnInit {
           documentDate: new Date().toISOString().split('T')[0],
           sourceLocationId: null,
           destLocationId: null,
+          supplierId: null,
           referenceNumber: '',
           department: '',
           notes: '',
@@ -167,6 +200,13 @@ export class MovementFormComponent implements OnInit {
         next: (l) => this.locations.set(l),
         error: () => this.locations.set([]),
       });
+    this.lookups
+      .listSuppliers({ take: 300 })
+      .pipe(first())
+      .subscribe({
+        next: (s) => this.suppliers.set(s),
+        error: () => this.suppliers.set([]),
+      });
   }
 
   private loadDocument(id: string): void {
@@ -177,22 +217,17 @@ export class MovementFormComponent implements OnInit {
       .subscribe({
         next: (doc) => {
           this.currentDoc.set(doc);
+          const reasonText = (doc.reason ?? doc.referenceNumber ?? '').trim();
           this.form.set({
             movementType: doc.movementType,
-            documentDate: doc.documentDate ? doc.documentDate.split('T')[0] : '',
+            documentDate: this.normalizeDocumentDateInput(doc.documentDate),
             sourceLocationId: doc.sourceLocationId ?? null,
             destLocationId: doc.destLocationId ?? null,
-            referenceNumber: doc.referenceNumber ?? '',
+            supplierId: doc.supplierId ?? null,
+            referenceNumber: reasonText,
             department: doc.department ?? '',
             notes: doc.notes ?? '',
-            lines: (doc.lines ?? []).map((l) => ({
-              itemId: l.itemId,
-              locationId: l.locationId ?? null,
-              qtyRequested: l.qtyRequested,
-              unitCost: l.unitCost ?? 0,
-              totalValue: l.totalValue ?? 0,
-              notes: l.notes ?? '',
-            })),
+            lines: (doc.lines ?? []).map((l) => this.mapApiLineToFormRow(l)),
           });
           this.loading.set(false);
 
@@ -213,18 +248,19 @@ export class MovementFormComponent implements OnInit {
       });
   }
 
-  onFieldChange<K extends keyof MovementDocumentPayload>(field: K, value: MovementDocumentPayload[K]): void {
+  onFieldChange<K extends keyof MovementFormState>(field: K, value: MovementFormState[K]): void {
     this.form.update((f) => ({ ...f, [field]: value }));
   }
 
-  onLineChange(index: number, field: keyof MovementLinePayload, value: unknown): void {
+  onLineChange(index: number, field: keyof MovementLineFormRow, value: unknown): void {
     this.form.update((f) => {
       const lines = [...f.lines];
-      const line = { ...lines[index], [field]: value };
+      const line = { ...lines[index], [field]: value } as MovementLineFormRow;
       if (field === 'qtyRequested' || field === 'unitCost') {
         const qty = Number(line.qtyRequested) || 0;
         const cost = Number(line.unitCost) || 0;
         line.totalValue = qty * cost;
+        line.qtyInBaseUnitSnapshot = qty;
       }
       lines[index] = line;
       return { ...f, lines };
@@ -243,6 +279,9 @@ export class MovementFormComponent implements OnInit {
           unitCost: 0,
           totalValue: 0,
           notes: '',
+          itemNameSnapshot: '',
+          lineLocationNameSnapshot: '',
+          qtyInBaseUnitSnapshot: 1,
         },
       ],
     }));
@@ -264,7 +303,7 @@ export class MovementFormComponent implements OnInit {
   }
 
   saveDraft(): void {
-    const payload = this.form();
+    const payload = this.toApiPayload(this.form());
     if (this.isNew()) {
       this.saving.set(true);
       this.error.set('');
@@ -325,13 +364,13 @@ export class MovementFormComponent implements OnInit {
           .post(docId)
           .pipe(first())
           .subscribe({
-            next: (doc) => {
+            next: () => {
               this.saving.set(false);
-              this.currentDoc.set(doc);
               this.postResult.set({
                 success: true,
                 message: this.t('MOVEMENTS.SUCCESS_POSTED'),
               });
+              this.loadDocument(docId);
               this.ledgerApi
                 .byDocument(docId)
                 .pipe(first())
@@ -369,5 +408,94 @@ export class MovementFormComponent implements OnInit {
 
   private t(key: string, params?: Record<string, unknown>): string {
     return this.translate.instant(key, params);
+  }
+
+  movementTypeLabel(type: string): string {
+    const key = `MOVEMENTS.TYPES.${type}`;
+    const translated = this.translate.instant(key);
+    return translated === key ? type : translated;
+  }
+
+  locationName(id: string | null | undefined): string {
+    if (id == null || String(id).trim() === '') {
+      return '—';
+    }
+    return this.locations().find((l) => l.id === id)?.name ?? '—';
+  }
+
+  supplierName(id: string | null | undefined): string {
+    if (id == null || String(id).trim() === '') {
+      return '—';
+    }
+    return this.suppliers().find((s) => s.id === id)?.name ?? '—';
+  }
+
+  lineItemDisplayName(line: MovementLineFormRow): string {
+    if (line.itemNameSnapshot?.trim()) {
+      return line.itemNameSnapshot;
+    }
+    const item = this.getItemById(line.itemId);
+    return item ? this.itemLabel(item) : '—';
+  }
+
+  lineQtyBaseDisplay(line: MovementLineFormRow): number {
+    const snap = line.qtyInBaseUnitSnapshot;
+    if (snap != null && Number.isFinite(snap)) {
+      return snap;
+    }
+    return Number(line.qtyRequested) || 0;
+  }
+
+  private normalizeDocumentDateInput(raw: string | null | undefined): string {
+    if (!raw) {
+      return new Date().toISOString().split('T')[0];
+    }
+    if (raw.includes('T')) {
+      return raw.split('T')[0]!;
+    }
+    return raw.length >= 10 ? raw.slice(0, 10) : raw;
+  }
+
+  private num(v: unknown): number {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  private mapApiLineToFormRow(l: MovementLineDetail): MovementLineFormRow {
+    const qtyBase = this.num(l.qtyInBaseUnit ?? l.qtyRequested);
+    const uc = this.num(l.unitCost);
+    const tv = this.num(l.totalValue) || qtyBase * uc;
+    return {
+      itemId: l.itemId,
+      locationId: l.locationId ?? null,
+      qtyRequested: qtyBase,
+      unitCost: uc,
+      totalValue: tv,
+      notes: l.notes ?? '',
+      itemNameSnapshot: l.item?.name ?? '',
+      lineLocationNameSnapshot: l.location?.name ?? '',
+      qtyInBaseUnitSnapshot: qtyBase,
+    };
+  }
+
+  private toApiPayload(f: MovementFormState): MovementDocumentPayload {
+    return {
+      movementType: f.movementType,
+      documentDate: f.documentDate,
+      sourceLocationId: f.sourceLocationId?.trim() ? f.sourceLocationId : null,
+      destLocationId: f.destLocationId?.trim() ? f.destLocationId : null,
+      supplierId: f.supplierId?.trim() ? f.supplierId : null,
+      reason: f.referenceNumber?.trim() || null,
+      department: f.department?.trim() || null,
+      notes: f.notes?.trim() || null,
+      lines: f.lines.map((row) => ({
+        itemId: row.itemId,
+        locationId: row.locationId?.trim() ? row.locationId : null,
+        qtyRequested: Number(row.qtyRequested) || 0,
+        unitCost: Number(row.unitCost) || 0,
+        totalValue: Number(row.totalValue) || 0,
+        notes: row.notes?.trim() || null,
+      })),
+    };
   }
 }

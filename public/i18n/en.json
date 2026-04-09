@@ -384,6 +384,9 @@
     "SOURCE_LOCATION": "Source Location (From)",
     "DESTINATION_LOCATION": "Destination Location (To)",
     "SELECT_LOCATION": "Select Location...",
+    "SUPPLIER": "Supplier",
+    "SELECT_SUPPLIER": "Select supplier…",
+    "QTY_BASE_UNIT": "Qty (base unit)",
     "LINE_ITEMS": "Line Items",
     "ADD_LINE": "Add Line",
     "NO_ITEMS_ADDED": "No items added. Click 'Add Line' to get started.",
@@ -409,7 +412,11 @@
       "RECEIPT": "Receipt",
       "RECEIVE": "Receive",
       "BREAKAGE": "Breakage",
-      "COUNT_ADJUSTMENT": "Count Adjustment"
+      "COUNT_ADJUSTMENT": "Count Adjustment",
+      "TRANSFER": "Transfer",
+      "LOAN_WRITE_OFF": "Loan Write-off",
+      "GET_PASS_OUT": "Get Pass Out",
+      "GET_PASS_RETURN": "Get Pass Return"
     }
   },
   "LEDGER": {

@@ -490,7 +490,8 @@ export class ItemFormComponent {
       documentDate: new Date().toISOString().split('T')[0],
       sourceLocationId: null,
       destLocationId: defaultStoreId,
-      referenceNumber: null,
+      supplierId: null,
+      reason: null,
       department: null,
       notes: this.t('ITEM_FORM.OB_MOVEMENT_NOTES'),
       lines: [

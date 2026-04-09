@@ -376,6 +376,9 @@
     "SOURCE_LOCATION": "الموقع المصدر (من)",
     "DESTINATION_LOCATION": "الموقع الوجهة (إلى)",
     "SELECT_LOCATION": "اختر الموقع...",
+    "SUPPLIER": "المورد",
+    "SELECT_SUPPLIER": "اختر المورد…",
+    "QTY_BASE_UNIT": "الكمية (الوحدة الأساسية)",
     "LINE_ITEMS": "بنود الحركة",
     "ADD_LINE": "إضافة سطر",
     "NO_ITEMS_ADDED": "لم يتم إضافة أصناف بعد. اضغط \"إضافة سطر\" للبدء.",
@@ -401,7 +404,11 @@
       "RECEIPT": "استلام",
       "RECEIVE": "استلام",
       "BREAKAGE": "تكسر",
-      "COUNT_ADJUSTMENT": "تسوية جرد"
+      "COUNT_ADJUSTMENT": "تسوية جرد",
+      "TRANSFER": "تحويل",
+      "LOAN_WRITE_OFF": "شطب عهدة",
+      "GET_PASS_OUT": "خروج تصريح",
+      "GET_PASS_RETURN": "إرجاع تصريح"
     }
   },
   "LEDGER": {

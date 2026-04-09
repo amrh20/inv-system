@@ -82,86 +82,129 @@
       />
     }
 
+    @let lineColSpan = isReadOnly() ? 4 : 5;
+
     <div class="movement-form__card">
       <h2 class="movement-form__card-title">{{ 'MOVEMENTS.DOCUMENT_DETAILS' | translate }}</h2>
       <div class="movement-form__grid">
         <div class="movement-form__field">
           <label class="movement-form__label">{{ 'MOVEMENTS.MOVEMENT_TYPE' | translate }}</label>
-          <nz-select
-            class="movement-form__control"
-            [ngModel]="form().movementType"
-            (ngModelChange)="onFieldChange('movementType', $event)"
-            [disabled]="isReadOnly() || !isNew()"
-            nzAllowClear
-          >
-            @for (t of movementTypes; track t.value) {
-              <nz-option [nzValue]="t.value" [nzLabel]="t.label | translate" />
-            }
-          </nz-select>
+          @if (isReadOnly()) {
+            <p class="movement-form__view-value">{{ movementTypeLabel(form().movementType) }}</p>
+          } @else {
+            <nz-select
+              class="movement-form__control"
+              [ngModel]="form().movementType"
+              (ngModelChange)="onFieldChange('movementType', $event)"
+              [disabled]="!isNew()"
+              nzAllowClear
+            >
+              @for (tv of movementTypeValues; track tv) {
+                <nz-option [nzValue]="tv" [nzLabel]="('MOVEMENTS.TYPES.' + tv) | translate" />
+              }
+            </nz-select>
+          }
         </div>
         <div class="movement-form__field">
           <label class="movement-form__label">{{ 'COMMON.DATE' | translate }}</label>
-          <input
-            type="date"
-            class="movement-form__input"
-            [ngModel]="form().documentDate"
-            (ngModelChange)="onFieldChange('documentDate', $event)"
-            [disabled]="isReadOnly()"
-          />
+          @if (isReadOnly()) {
+            <p class="movement-form__view-value">{{ form().documentDate | date: 'mediumDate' }}</p>
+          } @else {
+            <input
+              type="date"
+              class="movement-form__input"
+              [ngModel]="form().documentDate"
+              (ngModelChange)="onFieldChange('documentDate', $event)"
+            />
+          }
         </div>
         <div class="movement-form__field">
           <label class="movement-form__label">{{ 'MOVEMENTS.REFERENCE_NO_OPTIONAL' | translate }}</label>
-          <input
-            type="text"
-            class="movement-form__input"
-            [ngModel]="form().referenceNumber"
-            (ngModelChange)="onFieldChange('referenceNumber', $event)"
-            [disabled]="isReadOnly()"
-          />
+          @if (isReadOnly()) {
+            <p class="movement-form__view-value">{{ form().referenceNumber?.trim() ? form().referenceNumber : '—' }}</p>
+          } @else {
+            <input
+              type="text"
+              class="movement-form__input"
+              [ngModel]="form().referenceNumber"
+              (ngModelChange)="onFieldChange('referenceNumber', $event)"
+            />
+          }
         </div>
+        @if (showSupplierSection()) {
+          <div class="movement-form__field">
+            <label class="movement-form__label">{{ 'MOVEMENTS.SUPPLIER' | translate }}</label>
+            @if (isReadOnly()) {
+              <p class="movement-form__view-value">{{ supplierName(form().supplierId) }}</p>
+            } @else {
+              <nz-select
+                class="movement-form__control"
+                [nzPlaceHolder]="'MOVEMENTS.SELECT_SUPPLIER' | translate"
+                [ngModel]="form().supplierId"
+                (ngModelChange)="onFieldChange('supplierId', $event)"
+                nzAllowClear
+              >
+                @for (s of suppliers(); track s.id) {
+                  <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
+                }
+              </nz-select>
+            }
+          </div>
+        }
         @if (showSourceLoc()) {
           <div class="movement-form__field">
             <label class="movement-form__label">{{ 'MOVEMENTS.SOURCE_LOCATION' | translate }}</label>
-            <nz-select
-              class="movement-form__control"
-              [nzPlaceHolder]="'MOVEMENTS.SELECT_LOCATION' | translate"
-              [ngModel]="form().sourceLocationId"
-              (ngModelChange)="onFieldChange('sourceLocationId', $event)"
-              [disabled]="isReadOnly()"
-              nzAllowClear
-            >
-              @for (l of locations(); track l.id) {
-                <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
-              }
-            </nz-select>
+            @if (isReadOnly()) {
+              <p class="movement-form__view-value">{{ locationName(form().sourceLocationId) }}</p>
+            } @else {
+              <nz-select
+                class="movement-form__control"
+                [nzPlaceHolder]="'MOVEMENTS.SELECT_LOCATION' | translate"
+                [ngModel]="form().sourceLocationId"
+                (ngModelChange)="onFieldChange('sourceLocationId', $event)"
+                nzAllowClear
+              >
+                @for (l of locations(); track l.id) {
+                  <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+                }
+              </nz-select>
+            }
           </div>
         }
         @if (showDestLoc()) {
           <div class="movement-form__field">
             <label class="movement-form__label">{{ 'MOVEMENTS.DESTINATION_LOCATION' | translate }}</label>
-            <nz-select
-              class="movement-form__control"
-              [nzPlaceHolder]="'MOVEMENTS.SELECT_LOCATION' | translate"
-              [ngModel]="form().destLocationId"
-              (ngModelChange)="onFieldChange('destLocationId', $event)"
-              [disabled]="isReadOnly()"
-              nzAllowClear
-            >
-              @for (l of locations(); track l.id) {
-                <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
-              }
-            </nz-select>
+            @if (isReadOnly()) {
+              <p class="movement-form__view-value">{{ locationName(form().destLocationId) }}</p>
+            } @else {
+              <nz-select
+                class="movement-form__control"
+                [nzPlaceHolder]="'MOVEMENTS.SELECT_LOCATION' | translate"
+                [ngModel]="form().destLocationId"
+                (ngModelChange)="onFieldChange('destLocationId', $event)"
+                nzAllowClear
+              >
+                @for (l of locations(); track l.id) {
+                  <nz-option [nzValue]="l.id" [nzLabel]="l.name" />
+                }
+              </nz-select>
+            }
           </div>
         }
         <div class="movement-form__field movement-form__field--full">
           <label class="movement-form__label">{{ 'COMMON.NOTES' | translate }}</label>
-          <input
-            type="text"
-            class="movement-form__input"
-            [ngModel]="form().notes"
-            (ngModelChange)="onFieldChange('notes', $event)"
-            [disabled]="isReadOnly()"
-          />
+          @if (isReadOnly()) {
+            <p class="movement-form__view-value movement-form__view-value--multiline">
+              {{ form().notes?.trim() ? form().notes : '—' }}
+            </p>
+          } @else {
+            <input
+              type="text"
+              class="movement-form__input"
+              [ngModel]="form().notes"
+              (ngModelChange)="onFieldChange('notes', $event)"
+            />
+          }
         </div>
       </div>
     </div>
@@ -170,12 +213,7 @@
       <div class="movement-form__lines-header">
         <h2 class="movement-form__card-title">{{ 'MOVEMENTS.LINE_ITEMS' | translate }}</h2>
         @if (!isReadOnly()) {
-          <button
-            nz-button
-            nzType="link"
-            type="button"
-            (click)="addLine()"
-          >
+          <button nz-button nzType="link" type="button" (click)="addLine()">
             <lucide-icon [img]="lucidePlus" [size]="18" />
             <span>{{ 'MOVEMENTS.ADD_LINE' | translate }}</span>
           </button>
@@ -186,7 +224,8 @@
           <thead>
             <tr>
               <th>{{ 'COMMON.ITEM' | translate }}</th>
-              <th class="col-qty">{{ 'COMMON.QTY' | translate }}</th>
+              <th class="col-qty text-right">{{ 'MOVEMENTS.QTY_BASE_UNIT' | translate }}</th>
+              <th class="text-right">{{ 'COMMON.UNIT_COST' | translate }}</th>
               <th>{{ 'COMMON.NOTES' | translate }}</th>
               @if (!isReadOnly()) {
                 <th class="col-actions"></th>
@@ -196,43 +235,63 @@
           <tbody>
             @for (line of form().lines; track $index; let i = $index) {
               <tr>
-                <td>
-                  <nz-select
-                    class="movement-form__item-select"
-                    nzShowSearch
-                    [nzPlaceHolder]="'COMMON.SEARCH_BY_NAME_OR_BARCODE' | translate"
-                    [ngModel]="line.itemId"
-                    (ngModelChange)="onLineChange(i, 'itemId', $event)"
-                    [disabled]="isReadOnly()"
-                    nzAllowClear
-                  >
-                    @for (item of items(); track item.id) {
-                      <nz-option [nzValue]="item.id" [nzLabel]="itemLabel(item)" />
-                    }
-                  </nz-select>
-                </td>
-                <td class="col-qty">
-                  <nz-input-number
-                    class="movement-form__qty"
-                    [ngModel]="line.qtyRequested"
-                    (ngModelChange)="onLineChange(i, 'qtyRequested', $event)"
-                    [disabled]="isReadOnly()"
-                    [nzMin]="0.01"
-                    [nzStep]="0.01"
-                    [nzPrecision]="4"
-                  />
-                </td>
-                <td>
-                  <input
-                    type="text"
-                    class="movement-form__input movement-form__input--sm"
-                    [placeholder]="'COMMON.OPTIONAL_NOTES' | translate"
-                    [ngModel]="line.notes"
-                    (ngModelChange)="onLineChange(i, 'notes', $event)"
-                    [disabled]="isReadOnly()"
-                  />
-                </td>
-                @if (!isReadOnly()) {
+                @if (isReadOnly()) {
+                  <td>
+                    <span class="movement-form__line-text">{{ lineItemDisplayName(line) }}</span>
+                  </td>
+                  <td class="col-qty text-right">
+                    {{ lineQtyBaseDisplay(line) | number: '1.0-4' }}
+                  </td>
+                  <td class="text-right">
+                    {{ line.unitCost | number: '1.2-4' }}
+                  </td>
+                  <td>
+                    <span class="movement-form__line-text">{{ line.notes?.trim() ? line.notes : '—' }}</span>
+                  </td>
+                } @else {
+                  <td>
+                    <nz-select
+                      class="movement-form__item-select"
+                      nzShowSearch
+                      [nzPlaceHolder]="'COMMON.SEARCH_BY_NAME_OR_BARCODE' | translate"
+                      [ngModel]="line.itemId"
+                      (ngModelChange)="onLineChange(i, 'itemId', $event)"
+                      nzAllowClear
+                    >
+                      @for (item of items(); track item.id) {
+                        <nz-option [nzValue]="item.id" [nzLabel]="itemLabel(item)" />
+                      }
+                    </nz-select>
+                  </td>
+                  <td class="col-qty">
+                    <nz-input-number
+                      class="movement-form__qty"
+                      [ngModel]="line.qtyRequested"
+                      (ngModelChange)="onLineChange(i, 'qtyRequested', $event)"
+                      [nzMin]="0.01"
+                      [nzStep]="0.01"
+                      [nzPrecision]="4"
+                    />
+                  </td>
+                  <td>
+                    <nz-input-number
+                      class="movement-form__qty movement-form__qty--cost"
+                      [ngModel]="line.unitCost"
+                      (ngModelChange)="onLineChange(i, 'unitCost', $event)"
+                      [nzMin]="0"
+                      [nzStep]="0.01"
+                      [nzPrecision]="4"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      class="movement-form__input movement-form__input--sm"
+                      [placeholder]="'COMMON.OPTIONAL_NOTES' | translate"
+                      [ngModel]="line.notes"
+                      (ngModelChange)="onLineChange(i, 'notes', $event)"
+                    />
+                  </td>
                   <td class="col-actions">
                     <button
                       nz-button
@@ -250,7 +309,7 @@
             }
             @if (form().lines.length === 0) {
               <tr>
-                <td [attr.colspan]="isReadOnly() ? 3 : 4" class="movement-form__empty">
+                <td [attr.colspan]="lineColSpan" class="movement-form__empty">
                   {{ 'MOVEMENTS.NO_ITEMS_ADDED' | translate }}
                 </td>
               </tr>
