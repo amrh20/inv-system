@@ -47,8 +47,12 @@ export interface ItemsListParams {
   categoryId?: string;
   departmentId?: string;
   locationId?: string;
-  /** Backend expects string `'true' | 'false'` or omit for all */
-  isActive?: string;
+  /** Master catalog mode when supported by the API */
+  catalog?: boolean;
+  /** Lighter list payload when supported by the API */
+  slim?: boolean;
+  /** Backend accepts boolean or `'true' | 'false'`; omit for all */
+  isActive?: boolean | string;
 }
 
 export interface ItemsListResult {

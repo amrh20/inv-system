@@ -15,6 +15,33 @@
   margin: 0 0 16px;
 }
 
+.gp-form__flow {
+  background: var(--surface-subtle, #fafafa);
+  border: 1px solid var(--border-subtle, #f0f0f0);
+  border-radius: var(--radius-brand, 6px);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.gp-form__flow-hint {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.gp-form__flow-steps {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand-dark, rgba(0, 0, 0, 0.88));
+  line-height: 1.5;
+}
+
+.gp-form__req {
+  color: var(--brand-error, #ff4d4f);
+  margin-inline-start: 2px;
+}
+
 .gp-form__alert {
   margin-bottom: 12px;
 }
@@ -69,4 +96,51 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.gp-form__lines-card {
+  overflow: visible;
+}
+
+.gp-form__lines-table-wrap {
+  overflow: visible;
+  width: 100%;
+}
+
+/** Avoid clipping the item select panel when overlay is positioned near table edges. */
+.gp-form__lines-table {
+  .ant-table,
+  .ant-table-container,
+  .ant-table-content {
+    overflow: visible !important;
+  }
+}
+
+.gp-form__item-cell {
+  min-width: 320px;
+}
+
+.gp-form__item-select {
+  min-width: 320px;
+  width: 100%;
+}
+
+/**
+ * Item line dropdown: scrollable list, wider than trigger when labels are long.
+ * Class is set via nzDropdownClassName (overlay attaches under body).
+ */
+::ng-deep .gp-form__item-select-dropdown.ant-select-dropdown {
+  max-height: 250px !important;
+  overflow-y: auto !important;
+}
+
+::ng-deep .gp-form__item-select-dropdown .rc-virtual-list-holder {
+  max-height: 250px !important;
+}
+
+.gp-form__item-empty {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  line-height: 1.4;
 }

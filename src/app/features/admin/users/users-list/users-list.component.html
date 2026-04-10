@@ -239,6 +239,7 @@
             [(ngModel)]="emailPick"
             (ngModelChange)="onCreateEmailPickChange($event)"
             (nzOnSearch)="onCreateEmailSearch($event)"
+            [nzDropdownStyle]="modalSelectDropdownStyle"
           >
             @for (opt of emailSelectOptions(); track emailPickTrack($index, opt)) {
               <nz-option [nzValue]="opt" [nzLabel]="emailOptionLabel(opt)" />
@@ -294,7 +295,12 @@
       <div class="admin-users__form-row admin-users__form-row--2">
         <div>
           <label class="admin-users__label">{{ 'USERS.FORM.ROLE' | translate }}</label>
-          <nz-select [(ngModel)]="formRole" name="role" class="admin-users__full-width">
+          <nz-select
+            [(ngModel)]="formRole"
+            name="role"
+            class="admin-users__full-width"
+            [nzDropdownStyle]="modalSelectDropdownStyle"
+          >
             @for (r of assignableRoles; track r) {
               <nz-option [nzValue]="r" [nzLabel]="('USERS.ROLES.' + r) | translate" />
             }
@@ -303,7 +309,7 @@
         <div>
           <label class="admin-users__label">
             {{ 'USERS.FORM.DEPARTMENT' | translate }}
-            @if (formRole === 'DEPT_MANAGER') {
+            @if (isDepartmentRequired()) {
               *
             }
           </label>
@@ -316,11 +322,15 @@
             [nzLoading]="departmentsLoading()"
             nzAllowClear
             (nzOpenChange)="onDepartmentSelectOpen($event)"
+            [nzDropdownStyle]="modalSelectDropdownStyle"
           >
             @for (dept of departments(); track dept.id) {
               <nz-option [nzValue]="dept.id" [nzLabel]="dept.name" />
             }
           </nz-select>
+          @if (formRole === 'GENERAL_MANAGER') {
+            <div class="admin-users__department-hint">{{ 'USERS.FORM.DEPARTMENT_OPTIONAL_GM' | translate }}</div>
+          }
           @if (!departments().length && !departmentsLoading()) {
             <div class="admin-users__department-empty">{{ 'USERS.FORM.CREATE_DEPARTMENTS_FIRST' | translate }}</div>
           }

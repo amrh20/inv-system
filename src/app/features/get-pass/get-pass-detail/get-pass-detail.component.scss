@@ -58,10 +58,48 @@
   margin: 0 0 12px;
 }
 
+.gp-d__admin-tag {
+  align-self: center;
+  margin-inline-end: 4px;
+}
+
+.gp-d__steps {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.gp-d__audit-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.gp-d__audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th,
+  td {
+    border: 1px solid #f0f0f0;
+    padding: 10px 12px;
+    text-align: start;
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 600;
+    background: var(--surface-subtle, #fafafa);
+  }
+}
+
 .gp-d__pipeline {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.gp-d__rejection-alert {
+  margin-bottom: 16px;
 }
 
 .gp-d__pipe {
@@ -77,6 +115,26 @@
     color: #389e0d;
     font-weight: 600;
   }
+}
+
+.gp-d__pipe-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.gp-d__pipe-meta {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.55);
+  line-height: 1.35;
+}
+
+.gp-d__pipe--on .gp-d__pipe-meta {
+  color: rgba(56, 158, 13, 0.95);
+}
+
+.gp-d__modal-hint {
+  margin-bottom: 8px;
 }
 
 .gp-d__chk {

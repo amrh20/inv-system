@@ -19,6 +19,8 @@ export class LocationsService {
     isActive?: boolean;
     departmentId?: string;
     categoryId?: string;
+    /** Lighter list payload when supported by the API (`meta` may be omitted). */
+    slim?: boolean;
   }): Observable<{ locations: LocationRow[]; total: number }> {
     let p = new HttpParams();
     if (params?.search) p = p.set('search', params.search);
@@ -28,11 +30,20 @@ export class LocationsService {
     if (params?.isActive != null) p = p.set('isActive', String(params.isActive));
     if (params?.departmentId) p = p.set('departmentId', params.departmentId);
     if (params?.categoryId) p = p.set('categoryId', params.categoryId);
-    return this.http.get<ApiResponse<LocationRow[]>>(this.base, { params: p }).pipe(
-      map((res) => ({
-        locations: res.success && Array.isArray(res.data) ? res.data : [],
-        total: res.meta?.total ?? 0,
-      })),
+    if (params?.slim === true) p = p.set('slim', 'true');
+    return this.http.get<ApiResponse<LocationRow[] | LocationRow>>(this.base, { params: p }).pipe(
+      map((res) => {
+        const raw = res.success ? res.data : null;
+        const locations = Array.isArray(raw)
+          ? raw
+          : raw != null && typeof raw === 'object'
+            ? [raw as LocationRow]
+            : [];
+        return {
+          locations,
+          total: res.meta?.total ?? locations.length,
+        };
+      }),
     );
   }
 

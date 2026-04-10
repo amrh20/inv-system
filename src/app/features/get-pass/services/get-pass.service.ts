@@ -88,10 +88,19 @@ export class GetPassService {
     );
   }
 
-  approve(id: string, action: 'APPROVE' | 'REJECT', notes?: string | null): Observable<GetPassDetail> {
-    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/approve`, { action, notes }).pipe(
+  approve(id: string): Observable<GetPassDetail> {
+    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/approve`, {}).pipe(
       map((res) => {
-        if (!res.success || !res.data) throw new Error(res.message || 'Action failed');
+        if (!res.success || !res.data) throw new Error(res.message || 'Approve failed');
+        return res.data;
+      }),
+    );
+  }
+
+  reject(id: string, rejectionReason: string): Observable<GetPassDetail> {
+    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/reject`, { rejectionReason }).pipe(
+      map((res) => {
+        if (!res.success || !res.data) throw new Error(res.message || 'Reject failed');
         return res.data;
       }),
     );

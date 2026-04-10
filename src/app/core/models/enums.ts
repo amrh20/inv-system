@@ -11,7 +11,8 @@ export type UserRole =
   | 'COST_CONTROL'
   | 'FINANCE_MANAGER'
   | 'AUDITOR'
-  | 'SECURITY';
+  | 'SECURITY'
+  | 'GENERAL_MANAGER';
 
 export type PlanType = 'BASIC' | 'PRO' | 'ENTERPRISE' | 'CUSTOM';
 
@@ -69,8 +70,9 @@ export type GetPassType = 'TEMPORARY' | 'CATERING' | 'PERMANENT';
 export type GetPassStatus =
   | 'DRAFT'
   | 'PENDING_DEPT'
+  | 'PENDING_COST_CONTROL'
   | 'PENDING_FINANCE'
-  | 'PENDING_SECURITY'
+  | 'PENDING_GM'
   | 'APPROVED'
   | 'OUT'
   | 'PARTIALLY_RETURNED'

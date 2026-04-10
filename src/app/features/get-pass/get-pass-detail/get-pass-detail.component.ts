@@ -15,7 +15,9 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 import { Observable } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
@@ -24,7 +26,7 @@ import type { GetPassStatus, GetPassType } from '../../../core/models/enums';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
-import type { GetPassDetail, GetPassReturnLinePayload } from '../models/get-pass.model';
+import type { GetPassDetail, GetPassReturnLinePayload, GetPassUserRef } from '../models/get-pass.model';
 import { GetPassService } from '../services/get-pass.service';
 
 interface ReturnDraft {
@@ -50,7 +52,9 @@ interface ReturnDraft {
     NzInputModule,
     NzInputNumberModule,
     NzModalModule,
+    NzStepsModule,
     NzTableModule,
+    NzTagModule,
     TranslatePipe,
     LucideAngularModule,
     HasPermissionDirective,
@@ -156,8 +160,9 @@ export class GetPassDetailComponent implements OnInit {
     switch (s) {
       case 'DRAFT':
       case 'PENDING_DEPT':
+      case 'PENDING_COST_CONTROL':
       case 'PENDING_FINANCE':
-      case 'PENDING_SECURITY':
+      case 'PENDING_GM':
         return 'pending';
       case 'APPROVED':
       case 'OUT':
@@ -189,16 +194,179 @@ export class GetPassDetailComponent implements OnInit {
     return d.status === 'DRAFT' || d.status === 'REJECTED';
   }
 
-  canApprove(): boolean {
+  /** ADMIN / SUPER_ADMIN may act at any workflow step (backend still enforces). */
+  isAdminBypass(): boolean {
+    return this.auth.hasRole('ADMIN', 'SUPER_ADMIN');
+  }
+
+  showPendingDeptActions(): boolean {
+    const d = this.data();
+    if (!d || d.status !== 'PENDING_DEPT') return false;
+    return (
+      this.isAdminBypass() ||
+      this.auth.hasRole('DEPT_MANAGER') ||
+      this.auth.hasPermission('GET_PASS_APPROVE')
+    );
+  }
+
+  showCostControlVerifyActions(): boolean {
+    const d = this.data();
+    if (!d || d.status !== 'PENDING_COST_CONTROL') return false;
+    return this.isAdminBypass() || this.auth.hasRole('COST_CONTROL');
+  }
+
+  showFinanceSignActions(): boolean {
+    const d = this.data();
+    if (!d || d.status !== 'PENDING_FINANCE') return false;
+    return this.isAdminBypass() || this.auth.hasRole('FINANCE_MANAGER');
+  }
+
+  showGmAuthorizeActions(): boolean {
+    const d = this.data();
+    if (!d || d.status !== 'PENDING_GM') return false;
+    return this.isAdminBypass() || this.auth.hasRole('GENERAL_MANAGER');
+  }
+
+  /** True when any workflow approve/reject pair is shown and the user is acting via admin role. */
+  showAdminActionLabel(): boolean {
+    if (!this.isAdminBypass()) return false;
+    return (
+      this.showPendingDeptActions() ||
+      this.showCostControlVerifyActions() ||
+      this.showFinanceSignActions() ||
+      this.showGmAuthorizeActions()
+    );
+  }
+
+  /** Pass is waiting on one of the four approval roles (admin sees every approve action, one enabled). */
+  isWorkflowApprovalPending(): boolean {
     const d = this.data();
     if (!d) return false;
-    if (d.status === 'PENDING_DEPT' || d.status === 'PENDING_FINANCE') {
-      return this.auth.hasPermission('GET_PASS_APPROVE');
+    return (
+      d.status === 'PENDING_DEPT' ||
+      d.status === 'PENDING_COST_CONTROL' ||
+      d.status === 'PENDING_FINANCE' ||
+      d.status === 'PENDING_GM'
+    );
+  }
+
+  canRejectWorkflow(): boolean {
+    return (
+      this.showPendingDeptActions() ||
+      this.showCostControlVerifyActions() ||
+      this.showFinanceSignActions() ||
+      this.showGmAuthorizeActions()
+    );
+  }
+
+  /**
+   * Workflow steps: 0 Draft → 1 Dept → 2 Cost control → 3 Finance → 4 GM → 5 Approved.
+   * Matches statuses (e.g. PENDING_COST_CONTROL → active step index 2).
+   */
+  workflowActiveIndex(status: GetPassStatus): number {
+    switch (status) {
+      case 'DRAFT':
+        return 0;
+      case 'PENDING_DEPT':
+        return 1;
+      case 'PENDING_COST_CONTROL':
+        return 2;
+      case 'PENDING_FINANCE':
+        return 3;
+      case 'PENDING_GM':
+        return 4;
+      case 'APPROVED':
+      case 'OUT':
+      case 'PARTIALLY_RETURNED':
+      case 'RETURNED':
+      case 'CLOSED':
+        return 5;
+      default:
+        return 0;
     }
-    if (d.status === 'PENDING_SECURITY') {
-      return this.auth.hasPermission('GET_PASS_APPROVE_EXIT');
+  }
+
+  private rejectionErrorStepIndex(d: GetPassDetail): number {
+    if (!d.deptApprovedAt) return 1;
+    if (!d.costControlApprovedAt) return 2;
+    if (!d.financeApprovedAt) return 3;
+    if (!d.gmApprovedAt) return 4;
+    return 5;
+  }
+
+  workflowStepStatuses(d: GetPassDetail): Array<'wait' | 'process' | 'finish' | 'error'> {
+    const terminal: GetPassStatus[] = [
+      'APPROVED',
+      'OUT',
+      'PARTIALLY_RETURNED',
+      'RETURNED',
+      'CLOSED',
+    ];
+    if (terminal.includes(d.status)) {
+      return ['finish', 'finish', 'finish', 'finish', 'finish', 'finish'];
     }
-    return false;
+    if (d.status === 'REJECTED') {
+      const err = this.rejectionErrorStepIndex(d);
+      return [0, 1, 2, 3, 4, 5].map((i) => {
+        if (i < err) return 'finish';
+        if (i === err) return 'error';
+        return 'wait';
+      }) as Array<'wait' | 'process' | 'finish' | 'error'>;
+    }
+    const cur = this.workflowActiveIndex(d.status);
+    return [0, 1, 2, 3, 4, 5].map((i) => {
+      if (i < cur) return 'finish';
+      if (i === cur) return 'process';
+      return 'wait';
+    }) as Array<'wait' | 'process' | 'finish' | 'error'>;
+  }
+
+  workflowNzCurrent(d: GetPassDetail): number {
+    const st = this.workflowStepStatuses(d);
+    const proc = st.indexOf('process');
+    if (proc >= 0) return proc;
+    const err = st.indexOf('error');
+    if (err >= 0) return err;
+    return 5;
+  }
+
+  workflowStepStatus(d: GetPassDetail, index: number): 'wait' | 'process' | 'finish' | 'error' {
+    return this.workflowStepStatuses(d)[index] ?? 'wait';
+  }
+
+  /** Approve confirmation modal title by current workflow step. */
+  approveNotesModalTitleKey(): string {
+    const d = this.data();
+    if (!d) return 'GET_PASS.DETAIL.NOTES_APPROVE_TITLE';
+    switch (d.status) {
+      case 'PENDING_DEPT':
+        return 'GET_PASS.DETAIL.NOTES_APPROVE_DEPT_TITLE';
+      case 'PENDING_COST_CONTROL':
+        return 'GET_PASS.DETAIL.NOTES_VERIFY_CC_TITLE';
+      case 'PENDING_FINANCE':
+        return 'GET_PASS.DETAIL.NOTES_SIGN_FINANCE_TITLE';
+      case 'PENDING_GM':
+        return 'GET_PASS.DETAIL.NOTES_AUTHORIZE_GM_TITLE';
+      default:
+        return 'GET_PASS.DETAIL.NOTES_APPROVE_TITLE';
+    }
+  }
+
+  approverDisplayName(ref: GetPassUserRef | null | undefined): string {
+    if (!ref) return '';
+    const name = `${ref.firstName ?? ''} ${ref.lastName ?? ''}`.trim();
+    return name || '';
+  }
+
+  /** Audit cell: nested approver name, else `*ApprovedBy` id from API. */
+  auditApproverCell(
+    ref: GetPassUserRef | null | undefined,
+    approvedById: string | null | undefined,
+  ): string {
+    const name = this.approverDisplayName(ref);
+    if (name) return name;
+    const id = approvedById?.trim();
+    return id ?? '';
   }
 
   canCheckout(): boolean {
@@ -239,26 +407,37 @@ export class GetPassDetailComponent implements OnInit {
     const notes = this.actionNotes().trim();
     if (!id || !action) return;
     if (action === 'REJECT' && !notes) {
-      this.message.warning(this.translate.instant('GET_PASS.DETAIL.REJECT_NOTES_REQUIRED'));
+      this.message.warning(this.translate.instant('GET_PASS.DETAIL.REJECT_REASON_REQUIRED'));
       return;
     }
     this.actionBusy.set(true);
-    this.api
-      .approve(id, action, notes || null)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (d) => {
-          this.data.set(d);
-          this.initReturnDrafts(d);
-          this.actionBusy.set(false);
-          this.notesOpen.set(false);
-          this.message.success(this.translate.instant('GET_PASS.DETAIL.MSG_APPROVE'));
-        },
-        error: (e: Error) => {
-          this.actionBusy.set(false);
-          this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
-        },
-      });
+    const done = (msgKey: string) => {
+      this.actionBusy.set(false);
+      this.notesOpen.set(false);
+      this.message.success(this.translate.instant(msgKey));
+      this.load(id);
+    };
+    const fail = (e: Error) => {
+      this.actionBusy.set(false);
+      this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+    };
+    if (action === 'APPROVE') {
+      this.api
+        .approve(id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => done('GET_PASS.DETAIL.MSG_APPROVE'),
+          error: fail,
+        });
+    } else {
+      this.api
+        .reject(id, notes)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => done('GET_PASS.DETAIL.MSG_REJECT'),
+          error: fail,
+        });
+    }
   }
 
   checkout(): void {

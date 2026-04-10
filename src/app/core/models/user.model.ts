@@ -12,6 +12,8 @@ export interface User {
   role: UserRole;
   permissions: string[];
   department: string | null;
+  /** Tenant membership department (UUID), when assigned in user management. */
+  departmentId?: string | null;
   phone: string | null;
   isActive: boolean;
   lastLoginAt: string | null;

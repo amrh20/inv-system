@@ -35,13 +35,15 @@ export class ItemsService {
 
   getItems(params: ItemsListParams): Observable<ItemsListResult> {
     let httpParams = new HttpParams();
-    const entries: [string, string | number | undefined][] = [
+    const entries: [string, string | number | boolean | undefined][] = [
       ['skip', params.skip],
       ['take', params.take],
       ['search', params.search],
       ['categoryId', params.categoryId],
       ['departmentId', params.departmentId],
       ['locationId', params.locationId],
+      ['catalog', params.catalog === true ? 'true' : undefined],
+      ['slim', params.slim === true ? 'true' : undefined],
       ['isActive', params.isActive],
     ];
     for (const [key, value] of entries) {
@@ -49,14 +51,21 @@ export class ItemsService {
         httpParams = httpParams.set(key, String(value));
       }
     }
-    return this.http
-      .get<ApiResponse<ItemListRow[]>>(this.base, { params: httpParams })
-      .pipe(
-        map((res) => ({
-          items: res.success && Array.isArray(res.data) ? res.data : [],
-          total: res.meta?.total ?? 0,
-        })),
-      );
+    return this.http.get<ApiResponse<ItemListRow[] | ItemListRow>>(this.base, { params: httpParams }).pipe(
+      map((res) => {
+        const raw = res.success ? res.data : null;
+        const items = Array.isArray(raw)
+          ? raw
+          : raw != null && typeof raw === 'object'
+            ? [raw as ItemListRow]
+            : [];
+        /** `slim=true` omits `meta`; use row count as total when unpaginated. */
+        return {
+          items,
+          total: res.meta?.total ?? items.length,
+        };
+      }),
+    );
   }
 
   /** Same as React `itemsAPI.getById`. */
@@ -195,12 +204,16 @@ export class ItemsService {
 
   exportItems(query: Omit<ItemsListParams, 'skip' | 'take'>): Observable<Blob> {
     let httpParams = new HttpParams();
+    const isActiveParam =
+      query.isActive !== undefined && query.isActive !== null && query.isActive !== ''
+        ? String(query.isActive)
+        : undefined;
     const entries: [string, string | undefined][] = [
       ['search', query.search],
       ['categoryId', query.categoryId],
       ['departmentId', query.departmentId],
       ['locationId', query.locationId],
-      ['isActive', query.isActive],
+      ['isActive', isActiveParam],
     ];
     for (const [key, value] of entries) {
       if (value !== undefined && value !== null && value !== '') {

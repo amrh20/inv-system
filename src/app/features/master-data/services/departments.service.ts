@@ -19,6 +19,8 @@ export class DepartmentsService {
     skip?: number;
     take?: number;
     isActive?: boolean;
+    /** Lighter payload when supported by the API */
+    slim?: boolean;
   }): Observable<{ departments: DepartmentRow[]; total: number }> {
     return this.baseCrud.list(params).pipe(map((res) => ({ departments: res.items, total: res.total })));
   }

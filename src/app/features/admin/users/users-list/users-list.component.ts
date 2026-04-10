@@ -92,6 +92,12 @@ export class UsersListComponent implements OnInit {
 
   readonly assignableRoles = ASSIGNABLE_USER_ROLES;
 
+  /** Modal `nz-select` overlays: cap height so the option list scrolls instead of clipping the viewport. */
+  readonly modalSelectDropdownStyle: { maxHeight: string; overflowY: string } = {
+    maxHeight: 'min(256px, 45vh)',
+    overflowY: 'auto',
+  };
+
   readonly users = signal<UserListRow[]>([]);
   readonly total = signal(0);
   readonly maxUsers = signal<number | null>(null);
@@ -519,6 +525,12 @@ export class UsersListComponent implements OnInit {
         return 'gold';
       case 'FINANCE_MANAGER':
         return 'green';
+      case 'AUDITOR':
+        return 'default';
+      case 'SECURITY':
+        return 'volcano';
+      case 'GENERAL_MANAGER':
+        return 'geekblue';
       default:
         return 'default';
     }
@@ -532,6 +544,11 @@ export class UsersListComponent implements OnInit {
 
   canManageCompanyUsers(): boolean {
     return this.auth.hasPermission(UsersListComponent.USERS_COMPANY_MANAGE_PERMISSION);
+  }
+
+  /** Only department managers must have a department; other roles (including GENERAL_MANAGER) are optional. */
+  isDepartmentRequired(): boolean {
+    return this.formRole === 'DEPT_MANAGER';
   }
 
   isLimitReached(): boolean {

@@ -29,8 +29,9 @@ const STATUS_FILTERS: Array<'ALL' | GetPassStatus> = [
   'ALL',
   'DRAFT',
   'PENDING_DEPT',
+  'PENDING_COST_CONTROL',
   'PENDING_FINANCE',
-  'PENDING_SECURITY',
+  'PENDING_GM',
   'APPROVED',
   'OUT',
   'PARTIALLY_RETURNED',
@@ -165,8 +166,9 @@ export class GetPassListComponent implements OnInit {
     switch (status) {
       case 'DRAFT':
       case 'PENDING_DEPT':
+      case 'PENDING_COST_CONTROL':
       case 'PENDING_FINANCE':
-      case 'PENDING_SECURITY':
+      case 'PENDING_GM':
         return 'pending';
       case 'APPROVED':
       case 'OUT':

@@ -1,12 +1,16 @@
 import type { UserRole } from '../../../core/models/enums';
 
-/** Tenant-scoped roles assignable when creating/editing users (matches React UsersPage). */
+/**
+ * Tenant-scoped roles assignable when creating/editing users (matches React UsersPage / API).
+ * Values must match `UserRole` and backend `User.role` (e.g. GENERAL_MANAGER).
+ */
 export const ASSIGNABLE_USER_ROLES: readonly UserRole[] = [
   'ADMIN',
   'STOREKEEPER',
   'DEPT_MANAGER',
   'COST_CONTROL',
   'FINANCE_MANAGER',
+  'GENERAL_MANAGER',
   'AUDITOR',
   'SECURITY',
 ];

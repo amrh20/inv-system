@@ -44,11 +44,22 @@ export interface GetPassDetail extends GetPassListRow {
   expectedReturnDate?: string | null;
   reason?: string | null;
   notes?: string | null;
+  rejectionReason?: string | null;
+  /** FK user ids (Prisma); nested approver relations carry display names. */
+  deptApprovedBy?: string | null;
+  costControlApprovedBy?: string | null;
+  financeApprovedBy?: string | null;
+  gmApprovedBy?: string | null;
+  securityApprovedBy?: string | null;
   deptApprovedAt?: string | null;
+  costControlApprovedAt?: string | null;
   financeApprovedAt?: string | null;
+  gmApprovedAt?: string | null;
   securityApprovedAt?: string | null;
   deptApprover?: GetPassUserRef | null;
+  costControlApprover?: GetPassUserRef | null;
   financeApprover?: GetPassUserRef | null;
+  gmApprover?: GetPassUserRef | null;
   securityApprover?: GetPassUserRef | null;
   lines: GetPassLineDetail[];
 }
