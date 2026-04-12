@@ -11,108 +11,257 @@
       <button nz-button nzType="default" type="button" (click)="load()">
         <lucide-icon [img]="lucideRefresh" [size]="16" [class.gp-list__spin]="loading()" [strokeWidth]="2" />
       </button>
-      <span
-        nz-tooltip
-        [nzTooltipTitle]="
-          requirements()?.isOpeningBalanceAllowed === true
-            ? ('TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED' | translate)
-            : null
-        "
-      >
-        <button
-          nz-button
-          nzType="primary"
-          type="button"
-          [disabled]="requirements()?.isOpeningBalanceAllowed === true"
-          (click)="goNew()"
+      @if (canCreate) {
+        <span
+          nz-tooltip
+          [nzTooltipTitle]="
+            requirements()?.isOpeningBalanceAllowed === true
+              ? ('TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED' | translate)
+              : null
+          "
         >
-          <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
-          {{ 'GET_PASS.LIST.NEW' | translate }}
-        </button>
-      </span>
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="requirements()?.isOpeningBalanceAllowed === true"
+            (click)="goNew()"
+          >
+            <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
+            {{ 'GET_PASS.LIST.NEW' | translate }}
+          </button>
+        </span>
+      }
     </div>
-  </div>
-
-  <div class="gp-list__filters">
-    <nz-select
-      class="gp-list__filter"
-      [ngModel]="activeStatus()"
-      (ngModelChange)="setStatus($event)"
-    >
-      @for (s of statusFilters; track s) {
-        <nz-option [nzValue]="s" [nzLabel]="statusLabel(s)" />
-      }
-    </nz-select>
-    <nz-select
-      class="gp-list__filter"
-      [ngModel]="activeType()"
-      (ngModelChange)="setType($event)"
-    >
-      @for (t of typeFilters; track t) {
-        <nz-option [nzValue]="t" [nzLabel]="typeLabel(t)" />
-      }
-    </nz-select>
   </div>
 
   @if (listError()) {
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  <nz-table
-    #tbl
-    [nzData]="passes()"
-    [nzLoading]="loading()"
-    nzSize="middle"
-    [nzShowPagination]="false"
-    [nzNoResult]="emptyTpl"
-  >
-    <ng-template #emptyTpl>
-      <app-empty-state
-        [title]="'GET_PASS.LIST.EMPTY_TITLE' | translate"
-        [message]="'GET_PASS.LIST.EMPTY_MSG' | translate"
-      />
-    </ng-template>
-    <thead>
-      <tr>
-        <th>{{ 'GET_PASS.LIST.COL_PASS' | translate }}</th>
-        <th>{{ 'GET_PASS.LIST.COL_TYPE' | translate }}</th>
-        <th>{{ 'COMMON.STATUS' | translate }}</th>
-        <th>{{ 'GET_PASS.LIST.COL_ENTITY' | translate }}</th>
-        <th>{{ 'GET_PASS.LIST.COL_BY' | translate }}</th>
-        <th>{{ 'COMMON.DATE' | translate }}</th>
-        <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (p of tbl.data; track p.id) {
-        <tr>
-          <td class="text-brand-primary gp-list__mono">{{ p.passNo }}</td>
-          <td>
-            <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
-          </td>
-          <td>
-            <span class="status-badge" [ngClass]="'status-' + statusClass(p.status)">
-              {{ 'GET_PASS.STATUS.' + p.status | translate }}
-            </span>
-          </td>
-          <td>{{ p.borrowingEntity }}</td>
-          <td>
-            @if (p.createdByUser) {
-              {{ p.createdByUser.firstName }} {{ p.createdByUser.lastName }}
-            } @else {
-              —
+  @if (canViewIncoming()) {
+    <nz-tabs
+      class="gp-list__tabs"
+      [nzSelectedIndex]="listTabIndex()"
+      (nzSelectChange)="onListTabChange($event)"
+    >
+      <nz-tab [nzTitle]="'GET_PASS.LIST.TAB_OUTGOING' | translate">
+        <div class="gp-list__filters mb-5">
+          <nz-select
+            class="gp-list__filter"
+            [ngModel]="activeStatus()"
+            (ngModelChange)="setStatus($event)"
+          >
+            @for (s of statusFilters; track s) {
+              <nz-option [nzValue]="s" [nzLabel]="statusLabel(s)" />
             }
-          </td>
-          <td>{{ p.createdAt | date: 'medium' }}</td>
-          <td nzAlign="right">
-            <button nz-button nzType="link" type="button" (click)="goDetail(p)">
-              <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
-            </button>
-          </td>
+          </nz-select>
+          <nz-select
+            class="gp-list__filter"
+            [ngModel]="activeType()"
+            (ngModelChange)="setType($event)"
+          >
+            @for (t of typeFilters; track t) {
+              <nz-option [nzValue]="t" [nzLabel]="typeLabel(t)" />
+            }
+          </nz-select>
+        </div>
+        <nz-table
+          #tblOut
+          [nzData]="passes()"
+          [nzLoading]="loading()"
+          nzSize="middle"
+          [nzShowPagination]="false"
+          [nzNoResult]="emptyOutgoingTpl"
+        >
+          <ng-template #emptyOutgoingTpl>
+            <app-empty-state
+              [title]="'GET_PASS.LIST.EMPTY_TITLE' | translate"
+              [message]="'GET_PASS.LIST.EMPTY_MSG' | translate"
+            />
+          </ng-template>
+          <thead>
+            <tr>
+              <th>{{ 'GET_PASS.LIST.COL_PASS' | translate }}</th>
+              <th>{{ 'GET_PASS.LIST.COL_TYPE' | translate }}</th>
+              <th>{{ 'COMMON.STATUS' | translate }}</th>
+              @if (showOrgWidePropertyColumns()) {
+                <th>{{ 'GET_PASS.LIST.COL_SOURCE_PROPERTY' | translate }}</th>
+              }
+              <th>{{ 'GET_PASS.LIST.COL_ENTITY' | translate }}</th>
+              <th>{{ 'GET_PASS.LIST.COL_BY' | translate }}</th>
+              <th>{{ 'COMMON.DATE' | translate }}</th>
+              <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of tblOut.data; track p.id) {
+              <tr>
+                <td class="text-brand-primary gp-list__mono">{{ p.passNo }}</td>
+                <td>
+                  <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="'status-' + statusClass(p.status)">
+                    {{ 'GET_PASS.STATUS.' + p.status | translate }}
+                  </span>
+                </td>
+                @if (showOrgWidePropertyColumns()) {
+                  <td>{{ p.tenant?.name ?? '—' }}</td>
+                }
+                <td>{{ p.borrowingEntity }}</td>
+                <td>
+                  @if (p.createdByUser) {
+                    {{ p.createdByUser.firstName }} {{ p.createdByUser.lastName }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>{{ p.createdAt | date: 'medium' }}</td>
+                <td nzAlign="right">
+                  <button nz-button nzType="link" type="button" (click)="goDetail(p)">
+                    <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      </nz-tab>
+      <nz-tab [nzTitle]="'GET_PASS.LIST.TAB_INCOMING' | translate">
+        <nz-table
+          #tblIn
+          [nzData]="passes()"
+          [nzLoading]="loading()"
+          nzSize="middle"
+          [nzShowPagination]="false"
+          [nzNoResult]="emptyIncomingTpl"
+        >
+          <ng-template #emptyIncomingTpl>
+            <app-empty-state
+              [title]="'GET_PASS.LIST.EMPTY_INCOMING_TITLE' | translate"
+              [message]="'GET_PASS.LIST.EMPTY_INCOMING_MSG' | translate"
+            />
+          </ng-template>
+          <thead>
+            <tr>
+              <th>{{ 'GET_PASS.LIST.COL_PASS' | translate }}</th>
+              <th>{{ 'GET_PASS.LIST.COL_SOURCE_HOTEL' | translate }}</th>
+              @if (showOrgWidePropertyColumns()) {
+                <th>{{ 'GET_PASS.LIST.COL_DESTINATION_PROPERTY' | translate }}</th>
+              }
+              <th>{{ 'GET_PASS.LIST.COL_TYPE' | translate }}</th>
+              <th>{{ 'COMMON.STATUS' | translate }}</th>
+              <th>{{ 'COMMON.DATE' | translate }}</th>
+              <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of tblIn.data; track p.id) {
+              <tr>
+                <td class="text-brand-primary gp-list__mono">{{ p.passNo }}</td>
+                <td>{{ p.sourceTenant?.name ?? '—' }}</td>
+                @if (showOrgWidePropertyColumns()) {
+                  <td>{{ p.targetTenant?.name ?? '—' }}</td>
+                }
+                <td>
+                  <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="'status-' + incomingListStatusClass(p)">
+                    {{ incomingListStatusLabelKey(p) | translate }}
+                  </span>
+                </td>
+                <td>{{ (p.updatedAt || p.createdAt) | date: 'medium' }}</td>
+                <td nzAlign="right">
+                  <button nz-button nzType="link" type="button" (click)="goDetail(p)">
+                    <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      </nz-tab>
+    </nz-tabs>
+  } @else {
+    <div class="gp-list__filters mb-5">
+      <nz-select
+        class="gp-list__filter"
+        [ngModel]="activeStatus()"
+        (ngModelChange)="setStatus($event)"
+      >
+        @for (s of statusFilters; track s) {
+          <nz-option [nzValue]="s" [nzLabel]="statusLabel(s)" />
+        }
+      </nz-select>
+      <nz-select
+        class="gp-list__filter"
+        [ngModel]="activeType()"
+        (ngModelChange)="setType($event)"
+      >
+        @for (t of typeFilters; track t) {
+          <nz-option [nzValue]="t" [nzLabel]="typeLabel(t)" />
+        }
+      </nz-select>
+    </div>
+
+    <nz-table
+      #tbl
+      [nzData]="passes()"
+      [nzLoading]="loading()"
+      nzSize="middle"
+      [nzShowPagination]="false"
+      [nzNoResult]="emptyTpl"
+    >
+      <ng-template #emptyTpl>
+        <app-empty-state
+          [title]="'GET_PASS.LIST.EMPTY_TITLE' | translate"
+          [message]="'GET_PASS.LIST.EMPTY_MSG' | translate"
+        />
+      </ng-template>
+      <thead>
+        <tr>
+          <th>{{ 'GET_PASS.LIST.COL_PASS' | translate }}</th>
+          <th>{{ 'GET_PASS.LIST.COL_TYPE' | translate }}</th>
+          <th>{{ 'COMMON.STATUS' | translate }}</th>
+          <th>{{ 'GET_PASS.LIST.COL_ENTITY' | translate }}</th>
+          <th>{{ 'GET_PASS.LIST.COL_BY' | translate }}</th>
+          <th>{{ 'COMMON.DATE' | translate }}</th>
+          <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
         </tr>
-      }
-    </tbody>
-  </nz-table>
+      </thead>
+      <tbody>
+        @for (p of tbl.data; track p.id) {
+          <tr>
+            <td class="text-brand-primary gp-list__mono">{{ p.passNo }}</td>
+            <td>
+              <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+            </td>
+            <td>
+              <span class="status-badge" [ngClass]="'status-' + statusClass(p.status)">
+                {{ 'GET_PASS.STATUS.' + p.status | translate }}
+              </span>
+            </td>
+            <td>{{ p.borrowingEntity }}</td>
+            <td>
+              @if (p.createdByUser) {
+                {{ p.createdByUser.firstName }} {{ p.createdByUser.lastName }}
+              } @else {
+                —
+              }
+            </td>
+            <td>{{ p.createdAt | date: 'medium' }}</td>
+            <td nzAlign="right">
+              <button nz-button nzType="link" type="button" (click)="goDetail(p)">
+                <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+  }
 
   <div class="gp-list__footer">
     <button nz-button type="button" [disabled]="page() <= 1" (click)="prevPage()">

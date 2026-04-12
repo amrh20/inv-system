@@ -2,6 +2,19 @@ import type { ApiResponse } from './api-response.model';
 import type { User } from './user.model';
 import type { UserRole } from './enums';
 
+/** GET /profile — safe subset for settings (no password). */
+export interface UserProfileDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  department: string | null;
+  /** Membership department UUID when returned by profile API. */
+  departmentId?: string | null;
+  role: UserRole;
+}
+
 export interface TenantMembership {
   tenantId: string | null;
   tenantSlug: string;
@@ -77,4 +90,11 @@ export interface LoginCredentials {
   selectedTenantId?: string | null;
   selectedRole?: UserRole;
   memberships?: TenantMembership[];
+}
+
+/** POST /api/auth/reset-password */
+export interface ResetPasswordPayload {
+  email: string;
+  otp: string;
+  newPassword: string;
 }

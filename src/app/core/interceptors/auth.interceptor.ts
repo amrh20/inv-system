@@ -2,8 +2,9 @@ import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injector } from '@angular/core';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { Router } from '@angular/router';
-import { catchError, switchMap, throwError } from 'rxjs';
+import { catchError, firstValueFrom, from, map, switchMap, throwError, type Observable } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
+import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
 import { SubscriptionNoticeService } from '../services/subscription-notice.service';
 import {
@@ -13,6 +14,25 @@ import {
 
 const isAuthEndpoint = (url: string) =>
   url.includes('/auth/login') || url.includes('/auth/refresh');
+
+/** Single-flight refresh so concurrent 401s share one /auth/refresh call. */
+let refreshChain: Promise<string | null> | null = null;
+
+function silentRefreshAccessToken(authService: AuthService): Observable<string | null> {
+  if (!refreshChain) {
+    refreshChain = firstValueFrom(
+      authService.refreshToken().pipe(map(() => authService.getAccessToken())),
+    ).finally(() => {
+      refreshChain = null;
+    });
+  }
+  return from(refreshChain);
+}
+
+const shouldAttemptSilentRefresh = (error: HttpErrorResponse): boolean => {
+  const errorCode = error.error?.error ?? error.error?.code;
+  return errorCode === 'TOKEN_EXPIRED' || errorCode === 'PERMISSIONS_STALE';
+};
 
 /** Translation JSON must not go through auth refresh / headers (avoids broken i18n). */
 const isTranslationJsonRequest = (url: string): boolean => {
@@ -35,11 +55,16 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const translate = injector.get(TranslateService);
   const token = authService.getAccessToken();
 
+  let outgoing = req;
+  if (req.url.startsWith(environment.apiUrl)) {
+    outgoing = outgoing.clone({ withCredentials: true });
+  }
+
   const cloned = token
-    ? req.clone({
+    ? outgoing.clone({
         setHeaders: { Authorization: `Bearer ${token}` },
       })
-    : req;
+    : outgoing;
 
   return next(cloned).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -105,55 +130,31 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
       if (
         error.status === 401 &&
-        errorCode === 'PERMISSIONS_STALE' &&
+        shouldAttemptSilentRefresh(error) &&
         !req.headers.has('X-Skip-Auth-Retry') &&
         !isAuthEndpoint(req.url)
       ) {
-        return authService.refreshToken().pipe(
-          switchMap(() => {
-            const newToken = authService.getAccessToken();
+        return silentRefreshAccessToken(authService).pipe(
+          switchMap((newToken) => {
             if (!newToken) {
               authService.clearAuth();
-              void router.navigate(['/login']);
+              void router.navigate(['/login'], { replaceUrl: true });
               return throwError(() => error);
             }
-            const retryReq = req.clone({
+            const retryBase = req.url.startsWith(environment.apiUrl)
+              ? req.clone({ withCredentials: true })
+              : req;
+            const retryReq = retryBase.clone({
               setHeaders: { Authorization: `Bearer ${newToken}` },
-              headers: req.headers.set('X-Skip-Auth-Retry', 'true'),
+              headers: retryBase.headers.set('X-Skip-Auth-Retry', 'true'),
             });
             return next(retryReq);
           }),
           catchError(() => {
             authService.clearAuth();
-            void router.navigate(['/login']);
+            void router.navigate(['/login'], { replaceUrl: true });
             return throwError(() => error);
           }),
-        );
-      }
-
-      if (
-        error.status === 401 &&
-        !req.headers.has('X-Skip-Auth-Retry') &&
-        !isAuthEndpoint(req.url)
-      ) {
-        return authService.refreshToken().pipe(
-          switchMap((res) => {
-            const newToken = authService.getAccessToken();
-            if (newToken) {
-              const retryReq = req.clone({
-                setHeaders: { Authorization: `Bearer ${newToken}` },
-                headers: req.headers.set('X-Skip-Auth-Retry', 'true'),
-              });
-              return next(retryReq);
-            }
-            router.navigate(['/login']);
-            return throwError(() => error);
-          }),
-          catchError(() => {
-            authService.clearAuth();
-            router.navigate(['/login']);
-            return throwError(() => error);
-          })
         );
       }
       return throwError(() => error);

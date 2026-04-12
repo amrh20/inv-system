@@ -43,6 +43,16 @@
   margin-bottom: 4px;
 }
 
+.gp-d__confirm-condition {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.gp-d__receipt-alert {
+  margin-bottom: 16px;
+}
+
 .gp-d__block {
   margin-top: 12px;
 }
@@ -141,4 +151,14 @@
   display: block;
   font-size: 12px;
   margin-bottom: 4px;
+}
+
+.gp-d__radio-col {
+  min-width: 140px;
+
+  .ant-radio-wrapper {
+    display: flex;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
 }

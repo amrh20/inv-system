@@ -4,11 +4,13 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import type {
+  GetPassConfirmReceiptPayload,
   GetPassCreatePayload,
   GetPassDetail,
   GetPassListRow,
   GetPassReturnLinePayload,
   GetPassUpdatePayload,
+  SisterHotelRow,
 } from '../models/get-pass.model';
 
 /** Backend spreads list result: `{ success, data, total, page, limit }` */
@@ -24,6 +26,37 @@ interface GetPassListHttpBody {
 export class GetPassService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/get-passes`;
+  private readonly orgBase = `${environment.apiUrl}/organization`;
+
+  /**
+   * Sister properties under the same organization (for internal transfers).
+   * The API authorizes by permission (`GET_PASS_CREATE` / `GET_PASS_VIEW`), not by role:
+   * any user whose JWT tenant is part of a group receives the same sibling list.
+   * Response rows may use `id` or `tenantId`, and `name` or `tenantName`.
+   */
+  getSisterHotels(): Observable<SisterHotelRow[]> {
+    return this.http.get<ApiResponse<unknown>>(`${this.orgBase}/sister-hotels`).pipe(
+      map((res) => {
+        if (!res.success || !Array.isArray(res.data)) return [];
+        const out: SisterHotelRow[] = [];
+        for (const raw of res.data) {
+          if (!raw || typeof raw !== 'object') continue;
+          const row = raw as Record<string, unknown>;
+          const id =
+            (typeof row['id'] === 'string' && row['id']) ||
+            (typeof row['tenantId'] === 'string' && row['tenantId']) ||
+            '';
+          if (!id) continue;
+          const name =
+            (typeof row['name'] === 'string' && row['name']) ||
+            (typeof row['tenantName'] === 'string' && row['tenantName']) ||
+            id;
+          out.push({ id, name });
+        }
+        return out;
+      }),
+    );
+  }
 
   list(params?: {
     page?: number;
@@ -41,6 +74,42 @@ export class GetPassService {
         passes: res.success && Array.isArray(res.data) ? res.data : [],
         total: res.total ?? 0,
       })),
+    );
+  }
+
+  /** Internal transfers addressed to the current tenant (sister hotel). */
+  getIncomingPasses(params?: { page?: number; limit?: number }): Observable<{
+    passes: GetPassListRow[];
+    total: number;
+  }> {
+    let p = new HttpParams()
+      .set('limit', String(params?.limit ?? 20))
+      .set('page', String(params?.page ?? 1));
+    return this.http.get<GetPassListHttpBody>(`${this.base}/incoming`, { params: p }).pipe(
+      map((res) => ({
+        passes: res.success && Array.isArray(res.data) ? res.data : [],
+        total: res.total ?? 0,
+      })),
+    );
+  }
+
+  confirmReceipt(id: string, payload: GetPassConfirmReceiptPayload): Observable<GetPassDetail> {
+    return this.http
+      .post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/confirm-receipt`, payload)
+      .pipe(
+        map((res) => {
+          if (!res.success || !res.data) throw new Error(res.message || 'Confirm receipt failed');
+          return res.data;
+        }),
+      );
+  }
+
+  acceptIntoDepartment(id: string): Observable<GetPassDetail> {
+    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/accept-into-department`, {}).pipe(
+      map((res) => {
+        if (!res.success || !res.data) throw new Error(res.message || 'Accept into department failed');
+        return res.data;
+      }),
     );
   }
 

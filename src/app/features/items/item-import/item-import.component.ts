@@ -33,13 +33,15 @@ import {
   Package,
   Upload,
 } from 'lucide-angular';
-import type {
-  ItemCreationBlockReason,
-  ItemCreationRequirementKey,
-  ItemImportIssue,
-  ItemImportPreviewData,
-  ItemImportPreviewRow,
-  ItemImportResult,
+import {
+  getMissingItemCreationRequirements,
+  ITEM_CREATION_REQUIREMENT_ROUTES,
+  type ItemCreationBlockReason,
+  type ItemCreationRequirementKey,
+  type ItemImportIssue,
+  type ItemImportPreviewData,
+  type ItemImportPreviewRow,
+  type ItemImportResult,
 } from '../models/item.model';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
@@ -51,7 +53,6 @@ const IMPORT_PREVIEW_FIXED_COLUMNS: readonly {
   cell: 'text' | 'unitPrice';
 }[] = [
   { field: 'name', labelKey: 'COMMON.ITEM_NAME', cell: 'text' },
-  { field: 'barcode', labelKey: 'COMMON.BARCODE', cell: 'text' },
   { field: 'deptName', labelKey: 'ITEMS.PREVIEW_DEPT', cell: 'text' },
   { field: 'categoryName', labelKey: 'COMMON.CATEGORY', cell: 'text' },
   { field: 'vendorName', labelKey: 'COMMON.VENDOR', cell: 'text' },
@@ -113,6 +114,7 @@ export class ItemImportComponent implements OnInit {
     () => !this.requirementsMet() && !this.requirementsLoading(),
   );
 
+  /** Initial Setup only; hidden after OB finalize (`isOpeningBalanceAllowed === false`). */
   readonly showOpeningBalanceBanner = computed(
     () =>
       this.requirementsMet() &&
@@ -120,6 +122,7 @@ export class ItemImportComponent implements OnInit {
       this.openingBalanceSetupActive(),
   );
 
+  /** Block file/preview only when prerequisites missing or loading (not gated by OB phase). */
   readonly importBlocked = computed(
     () => this.requirementsLoading() || !this.requirementsMet(),
   );
@@ -201,18 +204,7 @@ export class ItemImportComponent implements OnInit {
   }
 
   requirementMasterDataPath(key: ItemCreationRequirementKey): string {
-    switch (key) {
-      case 'units':
-        return '/master-data/units';
-      case 'categories':
-        return '/master-data/categories';
-      case 'vendors':
-        return '/master-data/suppliers';
-      case 'locations':
-        return '/master-data/locations';
-      default:
-        return '/';
-    }
+    return ITEM_CREATION_REQUIREMENT_ROUTES[key];
   }
 
   private loadRequirements(): void {
@@ -234,17 +226,7 @@ export class ItemImportComponent implements OnInit {
           this.requirementsMet.set(canCreateItem);
           this.blockReason.set(br ?? null);
           this.openingBalanceSetupActive.set(isOpeningBalanceAllowed === true);
-          const missing: ItemCreationRequirementKey[] = [];
-          if (r.units.count === 0) {
-            missing.push('units');
-          }
-          if (r.categories.count === 0) {
-            missing.push('categories');
-          }
-          if (r.locations.count === 0) {
-            missing.push('locations');
-          }
-          this.missingData.set(missing);
+          this.missingData.set(getMissingItemCreationRequirements(r));
         },
         error: () => {
           this.requirementsLoading.set(false);

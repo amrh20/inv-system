@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, signal, inject, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -39,6 +39,7 @@ import {
     NzModalModule,
     LucideAngularModule,
     TranslatePipe,
+    RouterLink,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
@@ -49,14 +50,16 @@ export class LoginComponent implements OnInit {
     password: 'SuperAdmin@2026',
   } as const;
   private static readonly LOGIN_REDIRECTS: readonly { path: string; permission?: string }[] = [
-    { path: '/dashboard' },
+    { path: '/dashboard', permission: 'VIEW_DASHBOARD' },
+    { path: '/get-passes', permission: 'GET_PASS_VIEW' },
+    { path: '/breakage', permission: 'BREAKAGE_VIEW' },
+    { path: '/lost-items', permission: 'LOST_ITEMS_VIEW' },
     { path: '/stock', permission: 'INVENTORY_VIEW' },
     { path: '/reports', permission: 'REPORTS_VIEW' },
     { path: '/settings', permission: 'SETTINGS_MANAGE' },
     { path: '/users', permission: 'USERS_COMPANY_MANAGE' },
     { path: '/audit-log', permission: 'AUDIT_LOG_VIEW' },
     { path: '/inventory-history', permission: 'INVENTORY_VIEW' },
-    { path: '/get-passes' },
   ];
 
   private readonly auth = inject(AuthService);
@@ -224,7 +227,15 @@ export class LoginComponent implements OnInit {
       void this.router.navigate([target], { replaceUrl: true });
       return;
     }
-    void this.router.navigate(['/dashboard'], { replaceUrl: true });
+    if (this.auth.hasPermission('GET_PASS_VIEW')) {
+      void this.router.navigate(['/get-passes'], { replaceUrl: true });
+      return;
+    }
+    if (this.auth.hasPermission('BREAKAGE_VIEW')) {
+      void this.router.navigate(['/breakage'], { replaceUrl: true });
+      return;
+    }
+    void this.router.navigate(['/forbidden'], { replaceUrl: true });
   }
 
   private isSuperAdmin(user: User): boolean {

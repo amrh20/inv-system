@@ -91,6 +91,8 @@ export interface InventoryStatusResponse {
   isOpeningBalanceAllowed: boolean;
   reason?: string | null;
   lockedAt?: string | null;
+  /** Optional tenant-wide lock from API (not yet returned by inv-lastest). */
+  isSystemLocked?: boolean;
   allowOpeningBalance: {
     value: string | null;
     reason?: string | null;

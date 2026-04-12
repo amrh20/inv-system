@@ -281,6 +281,18 @@
   }
 }
 
+.login-forgot-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-end: var(--login-space-md);
+  margin-block-start: -0.25rem;
+}
+
+.login-forgot-link {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
 .tenant-selection-panel {
   display: grid;
   gap: var(--login-space-md);

@@ -38,6 +38,8 @@ export interface UserMembership {
  */
 export interface Tenant {
   id: string;
+  /** Set when this tenant is a hotel/property under a parent organization tenant. */
+  parentId?: string | null;
   name: string;
   slug: string;
   subscriptionTier: string;

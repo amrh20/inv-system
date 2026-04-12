@@ -13,6 +13,7 @@ import { EMPTY, forkJoin, of, type Observable } from 'rxjs';
 import { catchError, finalize, map, switchMap, tap } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
@@ -32,7 +33,12 @@ import { ItemsService } from '../../items/services/items.service';
 import { StockService } from '../../stock/services/stock.service';
 import type { StockBalanceRow } from '../../stock/models/stock-balance.model';
 import type { NzSelectItemInterface } from 'ng-zorro-antd/select';
-import type { GetPassCreatePayload, GetPassDetail, GetPassUpdatePayload } from '../models/get-pass.model';
+import type {
+  GetPassCreatePayload,
+  GetPassDetail,
+  GetPassUpdatePayload,
+  SisterHotelRow,
+} from '../models/get-pass.model';
 import { GetPassService } from '../services/get-pass.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
@@ -61,6 +67,7 @@ interface LineItemOption {
     FormsModule,
     NzAlertModule,
     NzButtonModule,
+    NzCheckboxModule,
     NzDatePickerModule,
     NzInputModule,
     NzInputNumberModule,
@@ -124,16 +131,23 @@ export class GetPassFormComponent implements OnInit {
   readonly transferType = signal<GetPassType>('TEMPORARY');
   readonly departmentId = signal('');
   readonly borrowingEntity = signal('');
-  readonly expectedReturnDate = signal<Date | null>(null);
+  /** Shown when transfer type is temporary (payload field `returnDate`). */
+  readonly temporaryReturnDate = signal<Date | null>(null);
+  /** Shown when transfer type is catering (payload field `expectedReturnDate`). */
+  readonly cateringExpectedReturnDate = signal<Date | null>(null);
   readonly reason = signal('');
   readonly notes = signal('');
   readonly lines = signal<LineDraft[]>([{ locationId: '', itemId: '', qty: 1, conditionOut: '' }]);
 
-  /** Expected return date applies to temporary / catering passes only. */
-  readonly requiresExpectedReturnDate = computed(() => {
-    const t = this.transferType();
-    return t === 'TEMPORARY' || t === 'CATERING';
-  });
+  readonly sisterHotels = signal<SisterHotelRow[]>([]);
+  readonly isInternalTransfer = signal(false);
+  readonly targetTenantId = signal('');
+
+  /**
+   * Internal transfer UI is shown once sister destinations exist (API excludes current hotel;
+   * empty when the property is standalone or is the only hotel in the group).
+   */
+  readonly showInternalTransferControls = computed(() => this.sisterHotels().length > 0);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -144,17 +158,23 @@ export class GetPassFormComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.editId.set(id);
 
+    const sisters$ = this.canFetchSisterHotels()
+      ? this.api.getSisterHotels().pipe(catchError(() => of([] as SisterHotelRow[])))
+      : of([] as SisterHotelRow[]);
+
     forkJoin({
       d: this.departmentsApi.list({ slim: true, isActive: true }),
       items: this.itemsApi
         .list({ slim: true, isActive: true })
         .pipe(catchError(() => of({ items: [], total: 0 }))),
+      sisters: sisters$,
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ d, items }) => {
+        next: ({ d, items, sisters }) => {
           this.departments.set(d.departments);
           this.itemCatalog.set(items.items);
+          this.sisterHotels.set(sisters);
           if (!id) {
             this.applyDefaultDepartmentFromProfile(d.departments);
             this.loadLocationsForCurrentDepartment();
@@ -168,6 +188,60 @@ export class GetPassFormComponent implements OnInit {
           this.loading.set(false);
         },
       });
+  }
+
+  /**
+   * Sister-hotel list is loaded when the user may create get passes and the current property
+   * belongs to an organization: either org-root context (branches under this tenant) or a hotel
+   * tenant with a `parentId` (branch under an org). Hotel admins only need one membership; the
+   * tenant’s parent link is enough—no second sibling membership is required.
+   */
+  private canFetchSisterHotels(): boolean {
+    if (!this.auth.hasPermission('GET_PASS_CREATE')) {
+      return false;
+    }
+    if (this.auth.isParentOrganizationContext()) {
+      return true;
+    }
+    const hasParent = this.currentTenantHasParentOrganization();
+    const ct = this.auth.currentTenant();
+    const u = this.auth.currentUser();
+    const memberships = u?.memberships ?? [];
+    const tid = ct?.id;
+    const slug = ct?.slug ?? undefined;
+    const cur =
+      (tid ? memberships.find((m) => m.tenantId === tid) : undefined) ??
+      (slug ? memberships.find((m) => m.tenantSlug === slug) : undefined);
+    console.debug('[get-pass] sister hotels fetch', {
+      willFetch: hasParent,
+      currentTenantParentId: ct?.parentId ?? null,
+      membershipParentId: cur?.parentId ?? null,
+      userTenantParentId: u?.tenant?.parentId ?? null,
+      currentTenantHasParentOrganization: hasParent,
+    });
+    return hasParent;
+  }
+
+  /** True when the active hotel tenant is under a parent organization (`parentId` set). */
+  private currentTenantHasParentOrganization(): boolean {
+    const ct = this.auth.currentTenant();
+    if (ct?.parentId) {
+      return true;
+    }
+    const tid = ct?.id;
+    const slug = ct?.slug ?? undefined;
+    const u = this.auth.currentUser();
+    if (!u) {
+      return false;
+    }
+    const memberships = u.memberships ?? [];
+    const cur =
+      (tid ? memberships.find((m) => m.tenantId === tid) : undefined) ??
+      (slug ? memberships.find((m) => m.tenantSlug === slug) : undefined);
+    if (cur?.parentId) {
+      return true;
+    }
+    return !!u.tenant?.parentId;
   }
 
   /**
@@ -238,7 +312,34 @@ export class GetPassFormComponent implements OnInit {
   onTransferTypeChange(value: GetPassType): void {
     this.transferType.set(value);
     if (value === 'PERMANENT') {
-      this.expectedReturnDate.set(null);
+      this.temporaryReturnDate.set(null);
+      this.cateringExpectedReturnDate.set(null);
+    } else if (value === 'TEMPORARY') {
+      this.cateringExpectedReturnDate.set(null);
+    } else if (value === 'CATERING') {
+      this.temporaryReturnDate.set(null);
+    }
+  }
+
+  onInternalTransferChange(checked: boolean): void {
+    this.isInternalTransfer.set(checked);
+    if (!checked) {
+      this.targetTenantId.set('');
+      return;
+    }
+    const id = this.targetTenantId();
+    const h = id ? this.sisterHotels().find((x) => x.id === id) : undefined;
+    if (h) {
+      this.borrowingEntity.set(h.name);
+    }
+  }
+
+  onTargetTenantChange(id: string): void {
+    this.targetTenantId.set(id);
+    if (!this.isInternalTransfer()) return;
+    const h = this.sisterHotels().find((x) => x.id === id);
+    if (h) {
+      this.borrowingEntity.set(h.name);
     }
   }
 
@@ -517,7 +618,21 @@ export class GetPassFormComponent implements OnInit {
           this.transferType.set(p.transferType);
           this.departmentId.set(p.departmentId ?? '');
           this.borrowingEntity.set(p.borrowingEntity);
-          this.expectedReturnDate.set(p.expectedReturnDate ? new Date(p.expectedReturnDate) : null);
+          this.isInternalTransfer.set(!!p.isInternalTransfer);
+          this.targetTenantId.set(p.targetTenantId?.trim() ?? '');
+          if (p.transferType === 'TEMPORARY') {
+            const raw = p.returnDate ?? p.expectedReturnDate;
+            this.temporaryReturnDate.set(raw ? new Date(raw) : null);
+            this.cateringExpectedReturnDate.set(null);
+          } else if (p.transferType === 'CATERING') {
+            this.temporaryReturnDate.set(null);
+            this.cateringExpectedReturnDate.set(
+              p.expectedReturnDate ? new Date(p.expectedReturnDate) : null,
+            );
+          } else {
+            this.temporaryReturnDate.set(null);
+            this.cateringExpectedReturnDate.set(null);
+          }
           this.reason.set(p.reason ?? '');
           this.notes.set(p.notes ?? '');
           const lineDrafts: LineDraft[] = p.lines.map((l) => ({
@@ -680,17 +795,53 @@ export class GetPassFormComponent implements OnInit {
     | { deptId: string; entity: string; tt: GetPassType; cleanLines: LineDraft[] }
     | null {
     const deptId = this.departmentId();
-    const entity = this.borrowingEntity().trim();
     const tt = this.transferType();
     const rows = this.lines();
-    if (!deptId || !entity) {
-      this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_HEADER'));
+    const wantsInternal = this.isInternalTransfer();
+    const canPickSister = this.showInternalTransferControls();
+    const targetId = this.targetTenantId().trim();
+
+    if (!deptId) {
+      this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_DEPT'));
       return null;
     }
-    if (this.requiresExpectedReturnDate() && !this.expectedReturnDate()) {
-      this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_RETURN'));
+    if (wantsInternal && canPickSister) {
+      if (!targetId) {
+        this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_INTERNAL_TARGET'));
+        return null;
+      }
+    } else if (!wantsInternal) {
+      if (!this.borrowingEntity().trim()) {
+        this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_ENTITY'));
+        return null;
+      }
+    } else if (!this.borrowingEntity().trim()) {
+      this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_ENTITY'));
       return null;
     }
+
+    if (tt === 'TEMPORARY' && !this.temporaryReturnDate()) {
+      this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_RETURN_TEMP'));
+      return null;
+    }
+    if (tt === 'CATERING' && !this.cateringExpectedReturnDate()) {
+      this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_RETURN_CATERING'));
+      return null;
+    }
+
+    const entity =
+      wantsInternal && canPickSister && targetId
+        ? (
+            this.sisterHotels().find((h) => h.id === targetId)?.name ??
+            this.borrowingEntity() ??
+            ''
+          ).trim()
+        : this.borrowingEntity().trim();
+    if (wantsInternal && canPickSister && !entity) {
+      this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_INTERNAL_TARGET'));
+      return null;
+    }
+
     const cleanLines = rows.filter((l) => l.locationId && l.itemId && l.qty && l.qty > 0);
     if (cleanLines.length === 0) {
       this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_LINES'));
@@ -705,10 +856,23 @@ export class GetPassFormComponent implements OnInit {
     tt: GetPassType,
     cleanLines: LineDraft[],
   ): Observable<GetPassDetail> {
-    const exp =
+    const isInt = this.isInternalTransfer();
+    const targetId = isInt ? this.targetTenantId().trim() : '';
+
+    const tempDate = this.temporaryReturnDate();
+    const caterDate = this.cateringExpectedReturnDate();
+
+    const returnDateIso =
+      tt === 'TEMPORARY' && tempDate ? (tempDate as Date).toISOString() : null;
+
+    const expectedReturnDateIso =
       tt === 'PERMANENT'
         ? null
-        : (this.expectedReturnDate() as Date).toISOString();
+        : tt === 'CATERING' && caterDate
+          ? (caterDate as Date).toISOString()
+          : tt === 'TEMPORARY' && tempDate
+            ? (tempDate as Date).toISOString()
+            : null;
 
     const linesPayload = cleanLines.map((l) => ({
       itemId: l.itemId,
@@ -723,7 +887,10 @@ export class GetPassFormComponent implements OnInit {
         transferType: tt,
         departmentId: deptId,
         borrowingEntity: entity,
-        expectedReturnDate: exp,
+        expectedReturnDate: expectedReturnDateIso,
+        returnDate: returnDateIso,
+        isInternalTransfer: isInt,
+        targetTenantId: isInt ? targetId || null : null,
         reason: this.reason().trim() || null,
         notes: this.notes().trim() || null,
         lines: linesPayload,
@@ -734,7 +901,10 @@ export class GetPassFormComponent implements OnInit {
       transferType: tt,
       departmentId: deptId,
       borrowingEntity: entity,
-      expectedReturnDate: exp,
+      expectedReturnDate: expectedReturnDateIso,
+      returnDate: returnDateIso,
+      isInternalTransfer: isInt,
+      targetTenantId: isInt ? targetId || null : null,
       reason: this.reason().trim() || null,
       notes: this.notes().trim() || null,
       lines: linesPayload,

@@ -4,6 +4,12 @@
   gap: 16px;
 }
 
+.gp-list__tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .gp-list__header {
   display: flex;
   justify-content: space-between;

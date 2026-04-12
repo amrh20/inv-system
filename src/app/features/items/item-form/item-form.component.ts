@@ -39,18 +39,18 @@ import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
 import { UnitsService } from '../services/units.service';
-import type {
-  CategoryOption,
-  ItemCreationRequirementKey,
-  ItemDetail,
-  ItemListRow,
-  ItemPayload,
-  ItemUnitRow,
-  LocationOption,
-  RequirementsResponse,
-  SubcategoryOption,
-  SupplierOption,
-  UnitOption,
+import {
+  getMissingItemCreationRequirements,
+  type CategoryOption,
+  type ItemDetail,
+  type ItemListRow,
+  type ItemPayload,
+  type ItemUnitRow,
+  type LocationOption,
+  type RequirementsResponse,
+  type SubcategoryOption,
+  type SupplierOption,
+  type UnitOption,
 } from '../models/item.model';
 
 /** When opening quantity is positive, opening unit cost is required (re-validated when quantity changes). */
@@ -235,6 +235,19 @@ export class ItemFormComponent {
         return;
       }
       this.syncOpeningBalanceValidators(this.showOpeningBalanceFields());
+    });
+
+    effect(() => {
+      const supplier = this.form.get('supplierId');
+      if (!supplier) {
+        return;
+      }
+      if (this.isEditMode()) {
+        supplier.clearValidators();
+      } else {
+        supplier.setValidators([Validators.required]);
+      }
+      supplier.updateValueAndValidity({ emitEvent: false });
     });
 
     this.form
@@ -706,17 +719,7 @@ export class ItemFormComponent {
     if (!req?.requirements) {
       return '';
     }
-    const r = req.requirements;
-    const missing: ItemCreationRequirementKey[] = [];
-    if (r.units.count === 0) {
-      missing.push('units');
-    }
-    if (r.categories.count === 0) {
-      missing.push('categories');
-    }
-    if (r.locations.count === 0) {
-      missing.push('locations');
-    }
+    const missing = getMissingItemCreationRequirements(req.requirements);
     return missing.map((k) => this.t(`ITEMS.REQUIREMENT_LABEL.${k.toUpperCase()}`)).join(', ');
   }
 

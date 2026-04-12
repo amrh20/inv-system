@@ -1,9 +1,18 @@
 import { Injectable, computed, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { tap, catchError, of } from 'rxjs';
+import { tap, catchError, of, map } from 'rxjs';
+import type { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import type { User, ApiResponse, AuthResponse, LoginApiEnvelope, LoginCredentials } from '../models';
+import type {
+  User,
+  ApiResponse,
+  AuthResponse,
+  LoginApiEnvelope,
+  LoginCredentials,
+  ResetPasswordPayload,
+  UserProfileDto,
+} from '../models';
 import { SubscriptionNoticeService } from './subscription-notice.service';
 
 const AUTH_STORAGE_KEY = 'ose-auth';
@@ -20,6 +29,8 @@ export interface CurrentTenant {
   id: string | null;
   slug: string | null;
   name: string | null;
+  /** Set when the active tenant is a branch hotel under an org root (matches API `tenants.parentId`). */
+  parentId?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,6 +49,13 @@ export class AuthService {
   readonly currentUser = this._currentUser.asReadonly();
   readonly currentTenant = this._currentTenant.asReadonly();
   readonly isAuthenticated = this._isAuthenticated.asReadonly();
+
+  /** Active property tenant id (JWT / switched hotel), aligned with API `tenantId`. */
+  currentTenantId(): string | null {
+    const t = this._currentTenant();
+    if (t?.id) return t.id;
+    return this._currentUser()?.tenantId ?? null;
+  }
   readonly permissions = computed(() => this.currentUser()?.permissions ?? []);
   /** Current JWT/user role code (empty string when logged out). */
   readonly userRole = computed(() => this.currentUser()?.role ?? '');
@@ -61,7 +79,7 @@ export class AuthService {
       body['selectedRole'] = credentials.selectedRole;
     }
     return this.http
-      .post<LoginApiEnvelope>(`${this.apiUrl}/auth/login`, body)
+      .post<LoginApiEnvelope>(`${this.apiUrl}/auth/login`, body, { withCredentials: true })
       .pipe(
         tap((res) => {
           const rawUser = res.data?.user;
@@ -93,7 +111,9 @@ export class AuthService {
   switchTenant(tenantSlug: string) {
     const body = { tenantSlug };
     return this.http
-      .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/auth/switch-tenant`, body)
+      .post<ApiResponse<AuthResponse>>(`${this.apiUrl}/auth/switch-tenant`, body, {
+        withCredentials: true,
+      })
       .pipe(
         tap((res) => {
           console.log('Switch Response:', res.data);
@@ -136,25 +156,30 @@ export class AuthService {
 
   logout() {
     const refreshToken = this._refreshToken();
-    if (refreshToken) {
-      this.http
-        .post<ApiResponse<unknown>>(`${this.apiUrl}/auth/logout`, { refreshToken })
-        .pipe(catchError(() => of(null)))
-        .subscribe();
-    }
+    this.http
+      .post<ApiResponse<unknown>>(
+        `${this.apiUrl}/auth/logout`,
+        refreshToken ? { refreshToken } : {},
+        { withCredentials: true },
+      )
+      .pipe(catchError(() => of(null)))
+      .subscribe();
     this.clearAuth();
     this.router.navigate(['/login']);
   }
 
+  /**
+   * Exchanges refresh token (localStorage and/or httpOnly cookie) for a new access token.
+   * On failure clears auth; the HTTP interceptor performs redirect to /login.
+   */
   refreshToken() {
-    const refreshToken = this._refreshToken();
-    if (!refreshToken) {
-      return of(null);
-    }
+    const refreshTokenValue = this._refreshToken();
     return this.http
-      .post<ApiResponse<{ accessToken: string }>>(`${this.apiUrl}/auth/refresh`, {
-        refreshToken,
-      })
+      .post<ApiResponse<{ accessToken: string }>>(
+        `${this.apiUrl}/auth/refresh`,
+        refreshTokenValue ? { refreshToken: refreshTokenValue } : {},
+        { withCredentials: true },
+      )
       .pipe(
         tap((res) => {
           if (res.success && res.data?.accessToken) {
@@ -164,9 +189,8 @@ export class AuthService {
         }),
         catchError(() => {
           this.clearAuth();
-          this.router.navigate(['/login']);
           return of(null);
-        })
+        }),
       );
   }
 
@@ -184,6 +208,68 @@ export class AuthService {
         }
       })
     );
+  }
+
+  /** GET /profile — merges server profile fields into the current user signal. */
+  getProfile(): Observable<User> {
+    return this.http.get<ApiResponse<UserProfileDto>>(`${this.apiUrl}/profile`).pipe(
+      map((res) => {
+        if (!res.success || !res.data) {
+          throw new Error(res.message || 'Failed to load profile');
+        }
+        const d = res.data;
+        const prev = this._currentUser();
+        if (!prev) {
+          throw new Error('Not authenticated');
+        }
+        return {
+          ...prev,
+          id: d.id,
+          firstName: d.firstName,
+          lastName: d.lastName,
+          email: d.email,
+          phone: d.phone ?? null,
+          department: d.department ?? null,
+          departmentId: d.departmentId ?? prev.departmentId ?? null,
+          role: d.role,
+        };
+      }),
+      tap((user) => {
+        this._currentUser.set({
+          ...user,
+          permissions: this.normalizePermissions(user.permissions),
+        });
+        this.persistToStorage();
+      }),
+    );
+  }
+
+  /** POST /auth/change-password — verifies current password on the server, then sets a new hash. */
+  changePassword(body: { currentPassword: string; newPassword: string }): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`${this.apiUrl}/auth/change-password`, body);
+  }
+
+  /** POST /auth/forgot-password — sends OTP to email when account exists. */
+  forgotPassword(email: string): Observable<ApiResponse<null>> {
+    return this.http.post<ApiResponse<null>>(`${this.apiUrl}/auth/forgot-password`, { email });
+  }
+
+  /** POST /auth/reset-password — validates OTP and sets new password. */
+  resetPassword(body: ResetPasswordPayload): Observable<ApiResponse<null>> {
+    return this.http.post<ApiResponse<null>>(`${this.apiUrl}/auth/reset-password`, body);
+  }
+
+  /** Merge profile fields after PUT /users/:id when a full /profile refresh fails. */
+  mergeSessionUserProfile(
+    fields: Pick<
+      User,
+      'firstName' | 'lastName' | 'email' | 'phone' | 'department' | 'departmentId' | 'role'
+    >,
+  ): void {
+    const prev = this._currentUser();
+    if (!prev) return;
+    this._currentUser.set({ ...prev, ...fields });
+    this.persistToStorage();
   }
 
   getAccessToken(): string | null {
@@ -329,6 +415,7 @@ export class AuthService {
     const tenantName = selectedTenantSlug
       ? membershipBySlug?.tenantName ?? user.tenant?.name ?? membershipByTenantId?.tenantName ?? null
       : user.tenant?.name ?? membership?.tenantName ?? null;
+    const parentId = membership?.parentId ?? user.tenant?.parentId ?? null;
 
     if (!tenantId && !tenantSlug && !tenantName) {
       return null;
@@ -338,6 +425,7 @@ export class AuthService {
       id: tenantId,
       slug: tenantSlug,
       name: tenantName,
+      parentId,
     };
   }
 

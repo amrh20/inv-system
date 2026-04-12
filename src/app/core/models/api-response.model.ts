@@ -6,6 +6,8 @@ export interface ApiResponse<T> {
   success: boolean;
   message: string;
   data: T;
+  /** Set when ADMIN creates a GRN that was auto-posted to inventory. */
+  autoPosted?: boolean;
   meta?: {
     page?: number;
     limit?: number;

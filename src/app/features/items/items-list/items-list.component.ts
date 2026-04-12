@@ -38,12 +38,14 @@ import {
 } from 'lucide-angular';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import { StatusToggleComponent } from '../../../shared/components/status-toggle/status-toggle.component';
-import type {
-  CategoryOption,
-  ItemCreationBlockReason,
-  ItemCreationRequirementKey,
-  ItemDetail,
-  ItemListRow,
+import {
+  getMissingItemCreationRequirements,
+  ITEM_CREATION_REQUIREMENT_ROUTES,
+  type CategoryOption,
+  type ItemCreationBlockReason,
+  type ItemCreationRequirementKey,
+  type ItemDetail,
+  type ItemListRow,
 } from '../models/item.model';
 import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
@@ -105,7 +107,7 @@ export class ItemsListComponent implements OnInit {
   readonly requirementsMet = signal(true);
   /** When `canCreateItem` is false, missing master data (`MISSING_PREREQUISITES`). */
   readonly blockReason = signal<ItemCreationBlockReason | null>(null);
-  /** `true` while OB setup is active (`isOpeningBalanceAllowed` from check-requirements). */
+  /** `true` while Initial Setup / OB stage is OPEN (`isOpeningBalanceAllowed` from check-requirements). False after finalize or when locked. */
   readonly openingBalanceSetupActive = signal(false);
   readonly missingData = signal<ItemCreationRequirementKey[]>([]);
   readonly requirementsLoading = signal(true);
@@ -117,7 +119,7 @@ export class ItemsListComponent implements OnInit {
     () => !this.requirementsMet() && !this.requirementsLoading(),
   );
 
-  /** Setup-phase notice while OB is active; hidden after finalize (`isOpeningBalanceAllowed === false`). */
+  /** Initial Setup banner only while OB stage is OPEN; hidden when finalized (`isOpeningBalanceAllowed === false`). */
   readonly showOpeningBalanceBanner = computed(
     () =>
       this.requirementsMet() &&
@@ -125,7 +127,7 @@ export class ItemsListComponent implements OnInit {
       this.openingBalanceSetupActive(),
   );
 
-  /** Disables New item + Import when prerequisites or OB block creation. */
+  /** Disables Add / Import only while prerequisites are missing or still loading (not gated by OB phase). */
   readonly itemCreationActionsDisabled = computed(
     () => this.requirementsLoading() || !this.requirementsMet(),
   );
@@ -211,20 +213,9 @@ export class ItemsListComponent implements OnInit {
       .join(', ');
   }
 
-  /** Router paths under `/master-data/*` (redirect to real list pages). */
+  /** Master-data list routes for prerequisite quick links. */
   requirementMasterDataPath(key: ItemCreationRequirementKey): string {
-    switch (key) {
-      case 'units':
-        return '/master-data/units';
-      case 'categories':
-        return '/master-data/categories';
-      case 'vendors':
-        return '/master-data/suppliers';
-      case 'locations':
-        return '/master-data/locations';
-      default:
-        return '/';
-    }
+    return ITEM_CREATION_REQUIREMENT_ROUTES[key];
   }
 
   private loadRequirements(): void {
@@ -246,17 +237,7 @@ export class ItemsListComponent implements OnInit {
           this.requirementsMet.set(canCreateItem);
           this.blockReason.set(br ?? null);
           this.openingBalanceSetupActive.set(isOpeningBalanceAllowed === true);
-          const missing: ItemCreationRequirementKey[] = [];
-          if (r.units.count === 0) {
-            missing.push('units');
-          }
-          if (r.categories.count === 0) {
-            missing.push('categories');
-          }
-          if (r.locations.count === 0) {
-            missing.push('locations');
-          }
-          this.missingData.set(missing);
+          this.missingData.set(getMissingItemCreationRequirements(r));
         },
         error: () => {
           this.requirementsLoading.set(false);

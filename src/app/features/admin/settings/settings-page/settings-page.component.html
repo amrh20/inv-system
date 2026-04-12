@@ -1,270 +1,372 @@
 <div class="settings-page">
   <div class="settings-page__header">
     <h1 class="settings-page__title">
-      <lucide-icon [img]="lucideSettings" [size]="24" class="settings-page__title-icon" />
+      <lucide-icon [img]="lucideSettings" [size]="24" [strokeWidth]="2" class="settings-page__title-icon" />
       {{ 'SETTINGS.TITLE' | translate }}
     </h1>
     <p class="settings-page__subtitle">{{ 'SETTINGS.SUBTITLE' | translate }}</p>
   </div>
 
-  <section class="settings-page__card">
-    <h2 class="settings-page__h2">
-      <lucide-icon [img]="lucideUser" [size]="20" />
+  <ng-template #tabLabelProfile>
+    <span class="settings-page__tab-label">
+      <lucide-icon [img]="lucideUser" [size]="16" [strokeWidth]="2" />
+      {{ 'SETTINGS.TAB_PROFILE' | translate }}
+    </span>
+  </ng-template>
+  <ng-template #tabLabelSecurity>
+    <span class="settings-page__tab-label">
+      <lucide-icon [img]="lucideLock" [size]="16" [strokeWidth]="2" />
+      {{ 'SETTINGS.PASSWORD_TITLE' | translate }}
+    </span>
+  </ng-template>
+  <ng-template #tabLabelInventory>
+    <span class="settings-page__tab-label">
+      <lucide-icon [img]="lucideSettings" [size]="16" [strokeWidth]="2" />
+      {{ 'SETTINGS.TAB_INVENTORY' | translate }}
+    </span>
+  </ng-template>
+
+  <ng-template #profileCardHeading>
+    <span class="settings-page__card-heading">
+      <lucide-icon [img]="lucideUser" [size]="18" [strokeWidth]="2" />
       {{ 'SETTINGS.PROFILE_TITLE' | translate }}
-    </h2>
+    </span>
+  </ng-template>
+  <ng-template #passwordCardHeading>
+    <span class="settings-page__card-heading">
+      <lucide-icon [img]="lucideLock" [size]="18" [strokeWidth]="2" />
+      {{ 'SETTINGS.PASSWORD_TITLE' | translate }}
+    </span>
+  </ng-template>
+  <ng-template #inventoryCardHeading>
+    <span class="settings-page__card-heading">
+      <lucide-icon [img]="lucidePackage" [size]="18" [strokeWidth]="2" />
+      {{ 'SETTINGS.INVENTORY_TITLE' | translate }}
+    </span>
+  </ng-template>
+  <ng-template #inventoryCardExtraTpl>
+    <span class="settings-page__badge">{{ 'SETTINGS.SUPER_ADMIN_BADGE' | translate }}</span>
+  </ng-template>
 
-    <div class="settings-page__grid">
-      <div>
-        <label class="settings-page__label">{{ 'USERS.FORM.FIRST_NAME' | translate }}</label>
-        <input nz-input [(ngModel)]="profileFirstName" name="pfn" />
-      </div>
-      <div>
-        <label class="settings-page__label">{{ 'USERS.FORM.LAST_NAME' | translate }}</label>
-        <input nz-input [(ngModel)]="profileLastName" name="pln" />
-      </div>
-      <div>
-        <label class="settings-page__label">{{ 'USERS.FORM.PHONE' | translate }}</label>
-        <input nz-input [(ngModel)]="profilePhone" name="pph" />
-      </div>
-      <div>
-        <label class="settings-page__label">{{ 'USERS.FORM.DEPARTMENT' | translate }}</label>
-        <input nz-input [(ngModel)]="profileDepartment" name="pdept" />
-      </div>
-    </div>
-
-    <div class="settings-page__readonly">
-      <span class="settings-page__muted">{{ 'SETTINGS.EMAIL' | translate }}:</span>
-      <span>{{ userEmail() }}</span>
-      <span class="settings-page__hint">({{ 'SETTINGS.EMAIL_READONLY' | translate }})</span>
-    </div>
-    <div class="settings-page__readonly">
-      <span class="settings-page__muted">{{ 'USERS.FORM.ROLE' | translate }}:</span>
-      <span class="status-badge status-processing">{{ ('USERS.ROLES.' + (role() || '')) | translate }}</span>
-    </div>
-
-    @if (profileError()) {
-      <nz-alert nzType="error" [nzMessage]="profileError()" nzShowIcon />
-    }
-    @if (profileSuccess()) {
-      <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_PROFILE_SAVED' | translate" nzShowIcon />
-    }
-
-    <div class="settings-page__footer">
-      <button nz-button nzType="primary" type="button" [nzLoading]="profileSaving()" (click)="saveProfile()">
-        <lucide-icon [img]="lucideSave" [size]="16" />
-        {{ 'SETTINGS.SAVE_PROFILE' | translate }}
-      </button>
-    </div>
-  </section>
-
-  <section class="settings-page__card">
-    <h2 class="settings-page__h2">{{ 'SETTINGS.PASSWORD_TITLE' | translate }}</h2>
-    <div class="settings-page__stack">
-      <div>
-        <label class="settings-page__label">{{ 'SETTINGS.NEW_PASSWORD' | translate }}</label>
-        <input nz-input type="password" [(ngModel)]="passwordNew" name="npw" />
-      </div>
-      <div>
-        <label class="settings-page__label">{{ 'SETTINGS.CONFIRM_PASSWORD' | translate }}</label>
-        <input nz-input type="password" [(ngModel)]="passwordConfirm" name="cpw" />
-      </div>
-    </div>
-    @if (passwordError()) {
-      <nz-alert nzType="error" [nzMessage]="passwordError()" nzShowIcon />
-    }
-    @if (passwordSuccess()) {
-      <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_PASSWORD_SAVED' | translate" nzShowIcon />
-    }
-    <div class="settings-page__footer">
-      <button nz-button nzType="primary" type="button" [nzLoading]="passwordSaving()" (click)="savePassword()">
-        {{ 'SETTINGS.CHANGE_PASSWORD' | translate }}
-      </button>
-    </div>
-  </section>
-
-  @if (isAdmin()) {
-    <section class="settings-page__card">
-      <h2 class="settings-page__h2">
-        <lucide-icon [img]="lucidePackage" [size]="20" />
-        {{ 'SETTINGS.INVENTORY_TITLE' | translate }}
-        @if (isSuperAdmin()) {
-          <span class="settings-page__badge">{{ 'SETTINGS.SUPER_ADMIN_BADGE' | translate }}</span>
-        }
-      </h2>
-
-      @if (celebrateFinalize()) {
-        <div class="settings-page__celebrate" aria-hidden="true"></div>
-      }
-
-      @if (obLoading()) {
-        <div class="settings-page__loading">
-          <lucide-icon [img]="lucideLoader" [size]="18" class="settings-page__spin" />
-          {{ 'SETTINGS.OB_LOADING' | translate }}
-        </div>
-      } @else if (obSnapshot(); as snap) {
-        <div class="settings-page__ob-snapshot" role="group" [attr.aria-label]="'SETTINGS.OB_SNAPSHOT_TITLE' | translate">
-          <div class="settings-page__ob-snapshot-header">
-            <lucide-icon [img]="lucideLock" [size]="20" [strokeWidth]="2" class="settings-page__ob-snapshot-lock" />
-            <div>
-              <div class="settings-page__ob-snapshot-title">{{ 'SETTINGS.OB_SNAPSHOT_TITLE' | translate }}</div>
-              <p class="settings-page__ob-snapshot-sub">{{ 'SETTINGS.OB_SNAPSHOT_SUBTITLE' | translate }}</p>
+  <nz-tabs
+    class="settings-page__tabs"
+    [nzTabPosition]="settingsTabPosition()"
+    nzType="line"
+    [nzAnimated]="false"
+  >
+    <nz-tab [nzTitle]="tabLabelProfile">
+      <div class="settings-page__tab-panel">
+        <nz-card [nzBordered]="true" [nzTitle]="profileCardHeading">
+          <nz-spin [nzSpinning]="profileLoading()">
+          <div class="settings-page__form-wrap">
+            <div class="settings-page__grid">
+              <div>
+                <label class="settings-page__label">{{ 'USERS.FORM.FIRST_NAME' | translate }}</label>
+                <input nz-input [(ngModel)]="profileFirstName" name="pfn" />
+              </div>
+              <div>
+                <label class="settings-page__label">{{ 'USERS.FORM.LAST_NAME' | translate }}</label>
+                <input nz-input [(ngModel)]="profileLastName" name="pln" />
+              </div>
+              <div>
+                <label class="settings-page__label">{{ 'USERS.FORM.PHONE' | translate }}</label>
+                <input nz-input [(ngModel)]="profilePhone" name="pph" />
+              </div>
+              @if (isDeptManager()) {
+                <div>
+                  <label class="settings-page__label">{{ 'USERS.FORM.DEPARTMENT' | translate }}</label>
+                  <nz-select
+                    class="settings-page__select-full"
+                    [formControl]="profileDepartmentIdCtrl"
+                    [nzPlaceHolder]="'SETTINGS.SELECT_YOUR_DEPARTMENT' | translate"
+                    [nzNotFoundContent]="'USERS.FORM.NO_DEPARTMENTS' | translate"
+                    nzAllowClear
+                    nzShowSearch
+                  >
+                    @for (dept of departments(); track dept.id) {
+                      <nz-option [nzValue]="dept.id" [nzLabel]="dept.name" />
+                    }
+                  </nz-select>
+                </div>
+              }
             </div>
-          </div>
-          <dl class="settings-page__ob-snapshot-grid">
-            <div>
-              <dt>{{ 'SETTINGS.OB_SNAPSHOT_ITEMS' | translate }}</dt>
-              <dd>{{ snap.totalItemsCount ?? '—' }}</dd>
+
+            <div class="settings-page__readonly">
+              <span class="settings-page__muted">{{ 'SETTINGS.EMAIL' | translate }}:</span>
+              <span>{{ userEmail() }}</span>
+              <span class="settings-page__hint">({{ 'SETTINGS.EMAIL_READONLY' | translate }})</span>
             </div>
-            <div>
-              <dt>{{ 'SETTINGS.OB_SNAPSHOT_VALUE' | translate }}</dt>
-              <dd>
-                @if (snap.totalOpeningValue != null) {
-                  {{ snap.totalOpeningValue | number: '1.2-2' }}
-                  {{ snap.currencyCode || ('COMMON.CURRENCY_SAR' | translate) }}
-                } @else {
-                  —
-                }
-              </dd>
-            </div>
-            <div class="settings-page__ob-snapshot-span2">
-              <dt>{{ 'SETTINGS.OB_SNAPSHOT_FINALIZED_AT' | translate }}</dt>
-              <dd>{{ snap.finalizedAt | date: 'medium' }}</dd>
-            </div>
-            <div class="settings-page__ob-snapshot-span2">
-              <dt>{{ 'SETTINGS.OB_SNAPSHOT_FINALIZED_BY' | translate }}</dt>
-              <dd>{{ snap.finalizedBy }}</dd>
-            </div>
-          </dl>
-          <div class="settings-page__ob-snapshot-actions">
-            <a nz-button nzType="default" routerLink="/inventory/ledger">
-              {{ 'SETTINGS.OB_VIEW_LEDGER' | translate }}
-            </a>
-          </div>
-        </div>
-      } @else {
-        <div class="settings-page__ob-row settings-page__ob-row--actions">
-          <div>
-            <div class="settings-page__ob-label">{{ 'SETTINGS.OB_IMPORT_LABEL' | translate }}</div>
-            <p class="settings-page__ob-desc">
-              {{
-                (isObOpen() ? 'SETTINGS.OB_OPEN_DESC' : 'SETTINGS.OB_LOCKED_DESC') | translate
-              }}
-            </p>
-          </div>
-          <div class="settings-page__ob-actions">
-            <nz-switch
-              [ngModel]="isObOpen()"
-              [nzControl]="true"
-              (click)="onObSwitchClick()"
-              [nzCheckedChildren]="'COMMON.ON' | translate"
-              [nzUnCheckedChildren]="'COMMON.OFF' | translate"
-              [nzDisabled]="obSwitchDisabled()"
-            />
-            @if (canManageOb()) {
-              <button
-                nz-button
-                nzType="primary"
-                nzDanger
-                type="button"
-                [nzLoading]="obFinalizeLoading()"
-                [disabled]="obSaving() || obLoading()"
-                (click)="requestFinalizeOpeningBalance()"
-              >
-                {{ 'SETTINGS.OB_FINALIZE_BTN' | translate }}
-              </button>
+            <!-- <div class="settings-page__readonly">
+              <span class="settings-page__muted">{{ 'USERS.FORM.ROLE' | translate }}:</span>
+              <span class="status-badge status-processing">{{ ('USERS.ROLES.' + (role() ?? '')) | translate }}</span>
+            </div> -->
+
+            @if (profileError()) {
+              <nz-alert nzType="error" [nzMessage]="profileError()" nzShowIcon />
             }
+            @if (profileSuccess()) {
+              <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_PROFILE_SAVED' | translate" nzShowIcon />
+            }
+
+            <div class="settings-page__footer">
+              <button nz-button nzType="primary" type="button" [nzLoading]="profileSaving()" (click)="saveProfile()">
+                <lucide-icon [img]="lucideSave" [size]="16" [strokeWidth]="2" />
+                {{ 'SETTINGS.SAVE_PROFILE' | translate }}
+              </button>
+            </div>
           </div>
+          </nz-spin>
+        </nz-card>
+      </div>
+    </nz-tab>
+
+    <nz-tab [nzTitle]="tabLabelSecurity">
+      <div class="settings-page__tab-panel">
+        <nz-card [nzBordered]="true" [nzTitle]="passwordCardHeading">
+          <div class="settings-page__form-wrap">
+            <form [formGroup]="passwordForm" class="settings-page__stack">
+              <div>
+                <label class="settings-page__label">{{ 'SETTINGS.CURRENT_PASSWORD' | translate }}</label>
+                <nz-input-password class="settings-page__password-field">
+                  <input
+                    nz-input
+                    type="password"
+                    formControlName="currentPassword"
+                    autocomplete="current-password"
+                  />
+                </nz-input-password>
+              </div>
+              <div>
+                <label class="settings-page__label">{{ 'SETTINGS.NEW_PASSWORD' | translate }}</label>
+                <nz-input-password class="settings-page__password-field">
+                  <input
+                    nz-input
+                    type="password"
+                    formControlName="newPassword"
+                    autocomplete="new-password"
+                  />
+                </nz-input-password>
+              </div>
+              <div>
+                <label class="settings-page__label">{{ 'SETTINGS.CONFIRM_PASSWORD' | translate }}</label>
+                <nz-input-password class="settings-page__password-field">
+                  <input
+                    nz-input
+                    type="password"
+                    formControlName="confirmPassword"
+                    autocomplete="new-password"
+                  />
+                </nz-input-password>
+              </div>
+            </form>
+            @if (passwordError()) {
+              <nz-alert nzType="error" [nzMessage]="passwordError()" nzShowIcon />
+            }
+            @if (passwordSuccess()) {
+              <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_PASSWORD_SAVED' | translate" nzShowIcon />
+            }
+            <div class="settings-page__footer">
+              <button nz-button nzType="primary" type="button" [nzLoading]="passwordSaving()" (click)="changePassword()">
+                <lucide-icon [img]="lucideLock" [size]="16" [strokeWidth]="2" />
+                {{ 'SETTINGS.CHANGE_PASSWORD' | translate }}
+              </button>
+            </div>
+          </div>
+        </nz-card>
+      </div>
+    </nz-tab>
+
+    @if (isAdmin()) {
+      <nz-tab [nzTitle]="tabLabelInventory">
+        <div class="settings-page__tab-panel">
+          <nz-card
+            [nzBordered]="true"
+            [nzTitle]="inventoryCardHeading"
+            [class.settings-page__card--readonly]="!obLoading() && obStatus()?.snapshotSummary"
+            [nzExtra]="isSuperAdmin() ? inventoryCardExtraTpl : undefined"
+          >
+            @if (celebrateFinalize()) {
+              <div class="settings-page__celebrate" aria-hidden="true"></div>
+            }
+
+            @if (obLoading()) {
+              <div class="settings-page__loading">
+                <lucide-icon [img]="lucideLoader" [size]="18" [strokeWidth]="2" class="settings-page__spin" />
+                {{ 'SETTINGS.OB_LOADING' | translate }}
+              </div>
+            } @else if (obStatus()?.snapshotSummary; as snap) {
+              <div class="settings-page__ob-snapshot" role="group" [attr.aria-label]="'SETTINGS.OB_SNAPSHOT_TITLE' | translate">
+                <div class="settings-page__ob-snapshot-header">
+                  <lucide-icon [img]="lucideLock" [size]="20" [strokeWidth]="2" class="settings-page__ob-snapshot-lock" />
+                  <div>
+                    <div class="settings-page__ob-snapshot-title">{{ 'SETTINGS.OB_SNAPSHOT_TITLE' | translate }}</div>
+                    <p class="settings-page__ob-snapshot-sub">{{ 'SETTINGS.OB_SNAPSHOT_SUBTITLE' | translate }}</p>
+                  </div>
+                </div>
+                <dl class="settings-page__ob-snapshot-grid">
+                  <div>
+                    <dt>{{ 'SETTINGS.OB_SNAPSHOT_ITEMS' | translate }}</dt>
+                    <dd>{{ snap.totalItemsCount ?? '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ 'SETTINGS.OB_SNAPSHOT_VALUE' | translate }}</dt>
+                    <dd>
+                      @if (snap.totalOpeningValue != null) {
+                        {{ snap.totalOpeningValue | number: '1.2-2' }}
+                        {{ snap.currencyCode || ('COMMON.CURRENCY_SAR' | translate) }}
+                      } @else {
+                        —
+                      }
+                    </dd>
+                  </div>
+                  <div class="settings-page__ob-snapshot-span2">
+                    <dt>{{ 'SETTINGS.OB_SNAPSHOT_FINALIZED_AT' | translate }}</dt>
+                    <dd>{{ snap.finalizedAt | date: 'medium' }}</dd>
+                  </div>
+                  <div class="settings-page__ob-snapshot-span2">
+                    <dt>{{ 'SETTINGS.OB_SNAPSHOT_FINALIZED_BY' | translate }}</dt>
+                    <dd>{{ snap.finalizedBy }}</dd>
+                  </div>
+                </dl>
+                <div class="settings-page__ob-snapshot-actions">
+                  <a nz-button nzType="default" routerLink="/inventory/ledger">
+                    {{ 'SETTINGS.OB_VIEW_LEDGER' | translate }}
+                  </a>
+                </div>
+              </div>
+            } @else {
+              <div class="settings-page__ob-row settings-page__ob-row--actions">
+                <div>
+                  <div class="settings-page__ob-label">{{ 'SETTINGS.OB_IMPORT_LABEL' | translate }}</div>
+                  <p class="settings-page__ob-desc">
+                    {{
+                      (obStatus()?.isOpeningBalanceAllowed === true
+                        ? 'SETTINGS.OB_OPEN_DESC'
+                        : 'SETTINGS.OB_LOCKED_DESC') | translate
+                    }}
+                  </p>
+                </div>
+                <div class="settings-page__ob-actions">
+                  <nz-switch
+                    [ngModel]="obStatus()?.isOpeningBalanceAllowed === true"
+                    [nzControl]="true"
+                    (click)="onObSwitchClick()"
+                    [nzCheckedChildren]="'COMMON.ON' | translate"
+                    [nzUnCheckedChildren]="'COMMON.OFF' | translate"
+                    [nzDisabled]="obSwitchDisabled()"
+                  />
+                  @if (canManageOb() && obStatus()?.isOpeningBalanceAllowed === true) {
+                    <div class="settings-page__ob-finalize-group">
+                      <button
+                        nz-button
+                        nzType="primary"
+                        nzDanger
+                        type="button"
+                        [nzLoading]="obFinalizeLoading()"
+                        [disabled]="obSaving() || obLoading()"
+                        (click)="requestFinalizeOpeningBalance()"
+                      >
+                        {{ 'SETTINGS.OB_FINALIZE_BTN' | translate }}
+                      </button>
+                      <!-- <span class="settings-page__ob-finalize-hint">
+                        {{ 'SETTINGS.OB_FINALIZE_WARNING_HINT' | translate }}
+                      </span> -->
+                    </div>
+                  }
+                </div>
+              </div>
+
+              @if (obStatus()?.allowOpeningBalance?.reason) {
+                <p class="settings-page__ob-reason">
+                  <strong>{{ 'SETTINGS.OB_REASON' | translate }}:</strong>
+                  {{ obStatus()?.allowOpeningBalance?.reason }}
+                </p>
+              }
+
+              @if (canManageOb()) {
+                @if (obFinalizeValidation(); as v) {
+                  <nz-alert
+                    nzType="error"
+                    nzShowIcon
+                    class="settings-page__ob-validate-alert"
+                    [nzMessage]="'SETTINGS.OB_FINALIZE_VALIDATION_TITLE' | translate"
+                    [nzDescription]="obValDesc"
+                  />
+                  <ng-template #obValDesc>
+                    @if ((v.invalidCostBalances?.length ?? 0) > 0) {
+                      <p class="settings-page__ob-validate-section">
+                        {{ 'SETTINGS.OB_ERR_INVALID_COSTS' | translate }}
+                      </p>
+                      <ul class="settings-page__ob-validate-list">
+                        @for (row of v.invalidCostBalances!; track row.itemId + row.storeName) {
+                          <li>
+                            <button
+                              type="button"
+                              class="settings-page__ob-item-link"
+                              (click)="openItemEdit(row.itemId)"
+                            >
+                              {{ row.itemName }}
+                            </button>
+                            — {{ row.storeName }} ({{ 'SETTINGS.OB_COL_QTY' | translate }}: {{ row.currentQty }})
+                          </li>
+                        }
+                      </ul>
+                    }
+                    @if ((v.itemsMissingBaseUnit?.length ?? 0) > 0) {
+                      <p class="settings-page__ob-validate-section">
+                        {{ 'SETTINGS.OB_ERR_MISSING_BASE' | translate }}
+                      </p>
+                      <ul class="settings-page__ob-validate-list">
+                        @for (row of v.itemsMissingBaseUnit!; track row.itemId) {
+                          <li>
+                            <button
+                              type="button"
+                              class="settings-page__ob-item-link"
+                              (click)="openItemEdit(row.itemId)"
+                            >
+                              {{ row.itemName }}
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    }
+                    @if ((v.draftOBMovements?.length ?? 0) > 0) {
+                      <p class="settings-page__ob-validate-section">
+                        {{ 'SETTINGS.OB_ERR_DRAFT_MOVEMENTS' | translate }}
+                      </p>
+                      <ul class="settings-page__ob-validate-list">
+                        @for (row of v.draftOBMovements!; track row.docNo + row.itemId) {
+                          <li>
+                            <span class="settings-page__ob-draft-doc">{{ row.docNo }}</span>
+                            —
+                            <button
+                              type="button"
+                              class="settings-page__ob-item-link"
+                              (click)="openItemEdit(row.itemId)"
+                            >
+                              {{ 'SETTINGS.OB_OPEN_ITEM_FOR_DRAFT' | translate }}
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </ng-template>
+                }
+                @if (obError()) {
+                  <nz-alert nzType="error" [nzMessage]="obError()" nzShowIcon />
+                }
+                @if (obSuccess()) {
+                  <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_OB_SAVED' | translate" nzShowIcon />
+                }
+              } @else {
+                <nz-alert nzType="info" [nzMessage]="'SETTINGS.OB_ADMIN_ONLY' | translate" nzShowIcon />
+              }
+            }
+          </nz-card>
         </div>
-
-        @if (obStatus()?.allowOpeningBalance?.reason) {
-          <p class="settings-page__ob-reason">
-            <strong>{{ 'SETTINGS.OB_REASON' | translate }}:</strong>
-            {{ obStatus()?.allowOpeningBalance?.reason }}
-          </p>
-        }
-
-        @if (canManageOb()) {
-          @if (obFinalizeValidation(); as v) {
-            <nz-alert
-              nzType="error"
-              nzShowIcon
-              class="settings-page__ob-validate-alert"
-              [nzMessage]="'SETTINGS.OB_FINALIZE_VALIDATION_TITLE' | translate"
-              [nzDescription]="obValDesc"
-            />
-            <ng-template #obValDesc>
-              @if ((v.invalidCostBalances?.length ?? 0) > 0) {
-                <p class="settings-page__ob-validate-section">
-                  {{ 'SETTINGS.OB_ERR_INVALID_COSTS' | translate }}
-                </p>
-                <ul class="settings-page__ob-validate-list">
-                  @for (row of v.invalidCostBalances!; track row.itemId + row.storeName) {
-                    <li>
-                      <button
-                        type="button"
-                        class="settings-page__ob-item-link"
-                        (click)="openItemEdit(row.itemId)"
-                      >
-                        {{ row.itemName }}
-                      </button>
-                      — {{ row.storeName }} ({{ 'SETTINGS.OB_COL_QTY' | translate }}: {{ row.currentQty }})
-                    </li>
-                  }
-                </ul>
-              }
-              @if ((v.itemsMissingBaseUnit?.length ?? 0) > 0) {
-                <p class="settings-page__ob-validate-section">
-                  {{ 'SETTINGS.OB_ERR_MISSING_BASE' | translate }}
-                </p>
-                <ul class="settings-page__ob-validate-list">
-                  @for (row of v.itemsMissingBaseUnit!; track row.itemId) {
-                    <li>
-                      <button
-                        type="button"
-                        class="settings-page__ob-item-link"
-                        (click)="openItemEdit(row.itemId)"
-                      >
-                        {{ row.itemName }}
-                      </button>
-                    </li>
-                  }
-                </ul>
-              }
-              @if ((v.draftOBMovements?.length ?? 0) > 0) {
-                <p class="settings-page__ob-validate-section">
-                  {{ 'SETTINGS.OB_ERR_DRAFT_MOVEMENTS' | translate }}
-                </p>
-                <ul class="settings-page__ob-validate-list">
-                  @for (row of v.draftOBMovements!; track row.docNo + row.itemId) {
-                    <li>
-                      <span class="settings-page__ob-draft-doc">{{ row.docNo }}</span>
-                      —
-                      <button
-                        type="button"
-                        class="settings-page__ob-item-link"
-                        (click)="openItemEdit(row.itemId)"
-                      >
-                        {{ 'SETTINGS.OB_OPEN_ITEM_FOR_DRAFT' | translate }}
-                      </button>
-                    </li>
-                  }
-                </ul>
-              }
-            </ng-template>
-          }
-          @if (obError()) {
-            <nz-alert nzType="error" [nzMessage]="obError()" nzShowIcon />
-          }
-          @if (obSuccess()) {
-            <nz-alert nzType="success" [nzMessage]="'SETTINGS.MSG_OB_SAVED' | translate" nzShowIcon />
-          }
-        } @else {
-          <nz-alert nzType="info" [nzMessage]="'SETTINGS.OB_ADMIN_ONLY' | translate" nzShowIcon />
-        }
-      }
-    </section>
-  }
-
+      </nz-tab>
+    }
+  </nz-tabs>
 </div>
 
 <nz-modal
@@ -279,7 +381,7 @@
   (nzOnOk)="confirmObLock()"
 >
   <ng-container *nzModalContent>
-    <div class="settings-page__stack">
+    <div class="settings-page__stack settings-page__stack--modal">
       <label class="settings-page__label">{{ 'SETTINGS.OB_REASON_LOCK' | translate }}</label>
       <textarea
         nz-input

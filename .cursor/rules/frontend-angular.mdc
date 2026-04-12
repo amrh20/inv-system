@@ -1,0 +1,6 @@
+---
+description: Hotel inventory UI lives in this Angular app, not in other frontend folders.
+globs: "**/*"
+---
+
+When implementing or changing UI for this product, edit this repository (`inv-angular`). Do not use other frontends (e.g. React under `ose-inventory-system/frontend`) unless the user explicitly asks.

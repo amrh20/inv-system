@@ -11,6 +11,8 @@ export interface ItemUnitRow {
 export interface ItemListRow {
   id: string;
   name: string;
+  /** Item code / SKU when present on the API payload */
+  code?: string | null;
   barcode: string | null;
   description: string | null;
   unitPrice: string | number;
@@ -27,6 +29,8 @@ export interface ItemListRow {
     unit?: { id: string; name: string; abbreviation: string };
   }>;
   stockBalances?: Array<{ qtyOnHand: string | number }>;
+  /** Qty on hand at the warehouse requested by `GET /inventory/items-by-locations/:locationId` */
+  currentStock?: number;
 }
 
 export interface ItemDetail extends ItemListRow {
@@ -61,16 +65,25 @@ export interface ItemsListResult {
 }
 
 /** Keys returned when a prerequisite count is zero (`GET /items/check-requirements`). */
-export type ItemCreationRequirementKey = 'units' | 'categories' | 'vendors' | 'locations';
+export type ItemCreationRequirementKey =
+  | 'departments'
+  | 'units'
+  | 'categories'
+  | 'vendors'
+  | 'locations';
 
 /** Why the backend blocks creating/importing items when `canCreateItem` is false. */
 export type ItemCreationBlockReason = 'MISSING_PREREQUISITES' | 'OPENING_BALANCE';
 
 /** Response `data` from `GET /items/check-requirements` (tenant-scoped prerequisites). */
 export interface RequirementsResponse {
-  /** True when units, categories, and locations all have at least one row (tenant-scoped). */
+  /**
+   * True when departments, units, categories, suppliers (vendors), and locations
+   * each have at least one row (tenant-scoped).
+   */
   canCreateItem: boolean;
   requirements: {
+    departments: { count: number };
     units: { count: number };
     categories: { count: number };
     vendors: { count: number };
@@ -79,10 +92,41 @@ export interface RequirementsResponse {
   /** Present when `canCreateItem` is false (see backend `GET /items/check-requirements`). */
   blockReason?: ItemCreationBlockReason;
   /**
-   * Tenant OB toggle / finalize state (`settingService.isOpeningBalanceAllowed`).
-   * When true, OB setup is active and operational transactions (GRN, Get Pass) are blocked until finalize.
+   * Tenant OB stage: `true` when Initial Setup is OPEN (OB not finalized). Drives banners only on Item Master / import — not whether Add/Import is enabled (`canCreateItem` gates actions).
    */
   isOpeningBalanceAllowed: boolean;
+}
+
+/** Quick-link routes for each prerequisite (top-level app routes). */
+export const ITEM_CREATION_REQUIREMENT_ROUTES: Record<ItemCreationRequirementKey, string> = {
+  departments: '/departments',
+  units: '/units-manage',
+  categories: '/categories',
+  vendors: '/suppliers',
+  locations: '/locations',
+};
+
+/** Which master-data rows are missing (count === 0) for item creation. */
+export function getMissingItemCreationRequirements(
+  r: RequirementsResponse['requirements'],
+): ItemCreationRequirementKey[] {
+  const missing: ItemCreationRequirementKey[] = [];
+  if (r.departments.count === 0) {
+    missing.push('departments');
+  }
+  if (r.units.count === 0) {
+    missing.push('units');
+  }
+  if (r.categories.count === 0) {
+    missing.push('categories');
+  }
+  if (r.vendors.count === 0) {
+    missing.push('vendors');
+  }
+  if (r.locations.count === 0) {
+    missing.push('locations');
+  }
+  return missing;
 }
 
 export interface CategoryOption {

@@ -1,27 +1,33 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { FormBuilder, FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, EMPTY, filter, first, switchMap } from 'rxjs';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { Building, Lock, Loader2, Package, Save, Settings, Unlock, User } from 'lucide-angular';
+import { Lock, Loader2, Package, Save, Settings, User as LucideUser } from 'lucide-angular';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { AuthService } from '../../../../core/services/auth.service';
+import type { User } from '../../../../core/models';
 import type { UserRole } from '../../../../core/models/enums';
 import { environment } from '../../../../../environments/environment';
 import type {
   InventoryStatusResponse,
   ObFinalizeValidationDetails,
 } from '../../models/admin.models';
+import type { DepartmentRow } from '../../../master-data/models/department.model';
+import { DepartmentsService } from '../../../master-data/services/departments.service';
 import { AppSettingsService } from '../../services/app-settings.service';
 import { UsersAdminService } from '../../services/users-admin.service';
 
@@ -33,12 +39,16 @@ import { UsersAdminService } from '../../services/users-admin.service';
     DatePipe,
     DecimalPipe,
     FormsModule,
+    ReactiveFormsModule,
     NzAlertModule,
     NzButtonModule,
+    NzCardModule,
     NzInputModule,
     NzModalModule,
+    NzSelectModule,
     NzSpinModule,
     NzSwitchModule,
+    NzTabsModule,
     TranslatePipe,
     LucideAngularModule,
     RouterLink,
@@ -47,32 +57,39 @@ import { UsersAdminService } from '../../services/users-admin.service';
   styleUrl: './settings-page.component.scss',
 })
 export class SettingsPageComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
   private readonly usersApi = inject(UsersAdminService);
+  private readonly departmentsApi = inject(DepartmentsService);
   private readonly settingsApi = inject(AppSettingsService);
   private readonly message = inject(NzMessageService);
   private readonly modal = inject(NzModalService);
   private readonly translate = inject(TranslateService);
   private readonly confirmation = inject(ConfirmationService);
   private readonly router = inject(Router);
+  private readonly fb = inject(FormBuilder);
 
   readonly lucideSettings = Settings;
-  readonly lucideUser = User;
-  readonly lucideBuilding = Building;
+  readonly lucideUser = LucideUser;
   readonly lucideSave = Save;
   readonly lucidePackage = Package;
   readonly lucideLock = Lock;
-  readonly lucideUnlock = Unlock;
   readonly lucideLoader = Loader2;
 
   profileFirstName = '';
   profileLastName = '';
   profilePhone = '';
-  profileDepartment = '';
 
-  passwordNew = '';
-  passwordConfirm = '';
+  readonly departments = signal<DepartmentRow[]>([]);
+  readonly profileDepartmentIdCtrl = new FormControl<string>('', { nonNullable: true });
 
+  readonly passwordForm = this.fb.nonNullable.group({
+    currentPassword: ['', Validators.required],
+    newPassword: ['', [Validators.required, Validators.minLength(8)]],
+    confirmPassword: ['', Validators.required],
+  });
+
+  profileLoading = signal(false);
   profileSaving = signal(false);
   profileSuccess = signal(false);
   profileError = signal('');
@@ -93,33 +110,110 @@ export class SettingsPageComponent implements OnInit {
   obFinalizeValidation = signal<ObFinalizeValidationDetails | null>(null);
   celebrateFinalize = signal(false);
 
+  /** Vertical nav on ≥768px; horizontal scrollable tabs on smaller viewports. */
+  readonly settingsTabPosition = signal<'left' | 'top'>('top');
+
   readonly envLabel = signal(
     environment.production ? 'SETTINGS.ENV_PRODUCTION' : 'SETTINGS.ENV_DEVELOPMENT',
   );
 
-  readonly obSnapshot = computed(() => this.obStatus()?.snapshotSummary ?? null);
+  /** Roles allowed to toggle OB (matches PATCH /inventory/status guards). */
+  readonly isOpeningBalanceSwitchRole = computed(() => {
+    const r = this.normalizedUserRole();
+    return r === 'ADMIN' || r === 'SUPER_ADMIN' || r === 'ORG_MANAGER';
+  });
 
-  readonly obSwitchDisabled = computed(
-    () =>
-      !this.canManageOb() ||
-      this.obSaving() ||
+  readonly obSwitchDisabled = computed(() => {
+    const s = this.obStatus();
+    return (
+      !this.isOpeningBalanceSwitchRole() ||
       this.obLoading() ||
-      !!this.obStatus()?.snapshotSummary,
-  );
+      this.obSaving() ||
+      !!s?.lockedAt
+    );
+  });
 
   ngOnInit(): void {
-    this.hydrateProfileFromUser();
-    this.auth.currentUser();
+    this.loadDepartments();
+    this.loadProfileFromApi();
     this.loadOb();
+    this.bindSettingsTabLayoutMediaQuery();
+  }
+
+  private loadDepartments(): void {
+    this.departmentsApi
+      .list({ slim: true, isActive: true })
+      .pipe(first())
+      .subscribe({
+        next: (res) => {
+          this.departments.set(res.departments ?? []);
+          this.syncProfileDepartmentFromUser();
+        },
+        error: () => this.departments.set([]),
+      });
+  }
+
+  /** Binds department select to profile `departmentId` or legacy `department` name/code. */
+  private syncProfileDepartmentFromUser(user?: User): void {
+    const u = user ?? this.auth.currentUser();
+    if (!u) return;
+    const depts = this.departments();
+    let id = (u.departmentId ?? '').trim();
+    if (!id && u.department?.trim() && depts.length > 0) {
+      const needle = u.department.trim().toLowerCase();
+      const byName = depts.find((d) => d.name.trim().toLowerCase() === needle);
+      if (byName) {
+        id = byName.id;
+      } else {
+        const byCode = depts.find((d) => (d.code ?? '').trim().toLowerCase() === needle);
+        if (byCode) id = byCode.id;
+      }
+    }
+    this.profileDepartmentIdCtrl.setValue(id, { emitEvent: false });
+  }
+
+  private bindSettingsTabLayoutMediaQuery(): void {
+    if (typeof globalThis.matchMedia !== 'function') {
+      this.settingsTabPosition.set('top');
+      return;
+    }
+    const mql = globalThis.matchMedia('(min-width: 768px)');
+    const apply = (): void => {
+      this.settingsTabPosition.set(mql.matches ? 'left' : 'top');
+    };
+    apply();
+    mql.addEventListener('change', apply);
+    this.destroyRef.onDestroy(() => mql.removeEventListener('change', apply));
+  }
+
+  private loadProfileFromApi(): void {
+    this.profileLoading.set(true);
+    this.auth
+      .getProfile()
+      .pipe(first())
+      .subscribe({
+        next: (user) => {
+          this.patchProfileForm(user);
+          this.profileLoading.set(false);
+        },
+        error: () => {
+          this.profileLoading.set(false);
+          this.hydrateProfileFromUser();
+        },
+      });
   }
 
   private hydrateProfileFromUser(): void {
     const u = this.auth.currentUser();
     if (!u) return;
+    this.patchProfileForm(u);
+  }
+
+  private patchProfileForm(u: User): void {
     this.profileFirstName = u.firstName ?? '';
     this.profileLastName = u.lastName ?? '';
     this.profilePhone = u.phone ?? '';
-    this.profileDepartment = u.department ?? '';
+    this.syncProfileDepartmentFromUser(u);
   }
 
   t(key: string): string {
@@ -130,6 +224,16 @@ export class SettingsPageComponent implements OnInit {
     return this.auth.currentUser()?.role;
   }
 
+  private normalizedUserRole(): string {
+    const raw = this.role() ?? '';
+    const u = String(raw).toUpperCase();
+    return u === 'SECURITY_MANAGER' ? 'SECURITY' : u;
+  }
+
+  isDeptManager(): boolean {
+    return this.role() === 'DEPT_MANAGER';
+  }
+
   isAdmin(): boolean {
     return this.auth.hasPermission('SETTINGS_MANAGE');
   }
@@ -138,8 +242,12 @@ export class SettingsPageComponent implements OnInit {
     return this.auth.hasPermission('SETTINGS_OPENING_BALANCE_TOGGLE');
   }
 
+  /** Opening Balance controls (switch context, finalize, validation alerts). */
   canManageOb(): boolean {
-    return this.isSuperAdmin() || this.role() === 'ADMIN';
+    if (this.isOpeningBalanceSwitchRole()) {
+      return true;
+    }
+    return this.auth.hasPermission('SETTINGS_OPENING_BALANCE_TOGGLE');
   }
 
   userEmail(): string {
@@ -179,20 +287,57 @@ export class SettingsPageComponent implements OnInit {
     this.profileSaving.set(true);
     this.profileError.set('');
     this.profileSuccess.set(false);
+
+    const body: Record<string, unknown> = {
+      firstName: this.profileFirstName.trim(),
+      lastName: this.profileLastName.trim(),
+      phone: this.profilePhone.trim() || undefined,
+    };
+    if (this.isDeptManager()) {
+      const deptId = this.profileDepartmentIdCtrl.value.trim();
+      if (!deptId) {
+        this.profileSaving.set(false);
+        this.profileError.set(this.t('USERS.ERRORS.DEPARTMENT_REQUIRED'));
+        return;
+      }
+      body['departmentId'] = deptId;
+    }
+
     this.usersApi
-      .putUser(u.id, {
-        firstName: this.profileFirstName.trim(),
-        lastName: this.profileLastName.trim(),
-        phone: this.profilePhone.trim() || undefined,
-        department: this.profileDepartment.trim() || undefined,
-      })
+      .putUser(u.id, body)
       .pipe(first())
       .subscribe({
-        next: () => {
+        next: (updated) => {
           this.profileSaving.set(false);
           this.profileSuccess.set(true);
           this.message.success(this.t('SETTINGS.MSG_PROFILE_SAVED'));
-          this.auth.getMe().pipe(first()).subscribe();
+          this.auth
+            .getProfile()
+            .pipe(first())
+            .subscribe({
+              next: (user) => this.patchProfileForm(user),
+              error: () => {
+                this.patchProfileForm({
+                  ...u,
+                  firstName: updated.firstName,
+                  lastName: updated.lastName,
+                  email: updated.email,
+                  phone: updated.phone ?? null,
+                  department: updated.department ?? null,
+                  departmentId: updated.departmentId ?? null,
+                  role: updated.role,
+                });
+                this.auth.mergeSessionUserProfile({
+                  firstName: updated.firstName,
+                  lastName: updated.lastName,
+                  email: updated.email,
+                  phone: updated.phone ?? null,
+                  department: updated.department ?? null,
+                  departmentId: updated.departmentId ?? null,
+                  role: updated.role,
+                });
+              },
+            });
           setTimeout(() => this.profileSuccess.set(false), 3000);
         },
         error: (err: { error?: { message?: string }; message?: string }) => {
@@ -202,41 +347,60 @@ export class SettingsPageComponent implements OnInit {
       });
   }
 
-  savePassword(): void {
+  changePassword(): void {
     const u = this.auth.currentUser();
     if (!u) return;
-    if (this.passwordNew !== this.passwordConfirm) {
+    this.passwordError.set('');
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
+    const { currentPassword, newPassword, confirmPassword } = this.passwordForm.getRawValue();
+    if (newPassword !== confirmPassword) {
       this.passwordError.set(this.t('SETTINGS.ERR_PASSWORD_MATCH'));
       return;
     }
-    if (this.passwordNew.length < 6) {
-      this.passwordError.set(this.t('SETTINGS.ERR_PASSWORD_LEN'));
+    if (currentPassword === newPassword) {
+      this.passwordError.set(this.t('SETTINGS.ERR_PASSWORD_UNCHANGED'));
       return;
     }
     this.passwordSaving.set(true);
-    this.passwordError.set('');
     this.passwordSuccess.set(false);
     this.usersApi
-      .putUser(u.id, { password: this.passwordNew })
+      .putUser(u.id, {
+        currentPassword,
+        password: newPassword,
+      })
       .pipe(first())
       .subscribe({
         next: () => {
           this.passwordSaving.set(false);
           this.passwordSuccess.set(true);
-          this.passwordNew = '';
-          this.passwordConfirm = '';
+          this.passwordForm.reset({
+            currentPassword: '',
+            newPassword: '',
+            confirmPassword: '',
+          });
           this.message.success(this.t('SETTINGS.MSG_PASSWORD_SAVED'));
           setTimeout(() => this.passwordSuccess.set(false), 3000);
         },
-        error: (err: { error?: { message?: string }; message?: string }) => {
+        error: (err: HttpErrorResponse) => {
           this.passwordSaving.set(false);
-          this.passwordError.set(err?.error?.message ?? err?.message ?? this.t('SETTINGS.ERR_PASSWORD'));
+          const body = err.error as { code?: string; message?: string } | undefined;
+          const code = body?.code;
+          let msg: string;
+          if (code === 'CURRENT_PASSWORD_REQUIRED') {
+            msg = this.t('SETTINGS.ERR_CURRENT_PASSWORD_REQUIRED');
+          } else if (code === 'CURRENT_PASSWORD_INCORRECT' || code === 'INVALID_CURRENT_PASSWORD') {
+            msg = this.t('SETTINGS.ERR_WRONG_CURRENT_PASSWORD');
+          } else if (code === 'PASSWORD_UNCHANGED') {
+            msg = this.t('SETTINGS.ERR_PASSWORD_UNCHANGED');
+          } else {
+            msg = body?.message ?? err.message ?? this.t('SETTINGS.ERR_PASSWORD');
+          }
+          this.passwordError.set(msg);
         },
       });
-  }
-
-  isObOpen(): boolean {
-    return this.obStatus()?.allowOpeningBalance?.value === 'OPEN';
   }
 
   onObSwitchClick(): void {
@@ -244,7 +408,7 @@ export class SettingsPageComponent implements OnInit {
       return;
     }
     this.obError.set('');
-    if (!this.isObOpen()) {
+    if (this.obStatus()?.isOpeningBalanceAllowed !== true) {
       this.confirmEnableOb();
       return;
     }
@@ -290,7 +454,14 @@ export class SettingsPageComponent implements OnInit {
   }
 
   requestFinalizeOpeningBalance(): void {
-    if (!this.canManageOb() || this.obFinalizeLoading() || this.obLoading() || this.obSnapshot()) {
+    const s = this.obStatus();
+    if (
+      !this.canManageOb() ||
+      s?.isOpeningBalanceAllowed !== true ||
+      this.obFinalizeLoading() ||
+      this.obLoading() ||
+      !!s?.snapshotSummary
+    ) {
       return;
     }
     this.obFinalizeValidation.set(null);
@@ -361,10 +532,11 @@ export class SettingsPageComponent implements OnInit {
           this.obError.set('');
           this.obSuccess.set(false);
           this.settingsApi
-            .obEnable()
+            .patchInventoryStatus({ isOpeningBalanceAllowed: true })
             .pipe(first())
             .subscribe({
-              next: () => {
+              next: (data) => {
+                this.obStatus.set(data);
                 this.obSaving.set(false);
                 this.obSuccess.set(true);
                 this.message.success(this.t('SETTINGS.MSG_OB_SAVED'));

@@ -47,26 +47,72 @@
           }
         </nz-select>
       </div>
-      <div>
-        <label class="gp-form__label">{{ 'GET_PASS.FORM.ENTITY' | translate }}</label>
-        <input
-          nz-input
-          type="text"
-          [ngModel]="borrowingEntity()"
-          (ngModelChange)="borrowingEntity.set($event)"
-          [attr.placeholder]="'GET_PASS.FORM.ENTITY_PLACEHOLDER' | translate"
-        />
-      </div>
-      @if (requiresExpectedReturnDate()) {
+      @if (showInternalTransferControls()) {
+        <div class="gp-form__full">
+          <label
+            nz-checkbox
+            [ngModel]="isInternalTransfer()"
+            (ngModelChange)="onInternalTransferChange($event)"
+          >
+            {{ 'GET_PASS.FORM.INTERNAL_TRANSFER' | translate }}
+          </label>
+        </div>
+      }
+      @if (isInternalTransfer() && showInternalTransferControls()) {
         <div>
           <label class="gp-form__label">
-            {{ 'GET_PASS.FORM.RETURN_DATE' | translate }}
+            {{ 'GET_PASS.FORM.TARGET_TENANT' | translate }}
+            <span class="gp-form__req" aria-hidden="true">*</span>
+          </label>
+          <nz-select
+            class="gp-form__control"
+            [ngModel]="targetTenantId()"
+            (ngModelChange)="onTargetTenantChange($event)"
+            nzShowSearch
+            [nzPlaceHolder]="'GET_PASS.FORM.TARGET_TENANT_PH' | translate"
+          >
+            @for (h of sisterHotels(); track h.id) {
+              <nz-option [nzValue]="h.id" [nzLabel]="h.name" />
+            }
+          </nz-select>
+        </div>
+      }
+      @if (!isInternalTransfer() || !showInternalTransferControls()) {
+        <div>
+          <label class="gp-form__label">{{ 'GET_PASS.FORM.ENTITY' | translate }}</label>
+          <input
+            nz-input
+            type="text"
+            [ngModel]="borrowingEntity()"
+            (ngModelChange)="borrowingEntity.set($event)"
+            [attr.placeholder]="'GET_PASS.FORM.ENTITY_PLACEHOLDER' | translate"
+          />
+        </div>
+      }
+      @if (transferType() === 'TEMPORARY') {
+        <div>
+          <label class="gp-form__label">
+            {{ 'GET_PASS.FORM.RETURN_DATE_TEMP' | translate }}
             <span class="gp-form__req" aria-hidden="true">*</span>
           </label>
           <nz-date-picker
             class="gp-form__control gp-form__picker"
-            [ngModel]="expectedReturnDate()"
-            (ngModelChange)="expectedReturnDate.set($event)"
+            [ngModel]="temporaryReturnDate()"
+            (ngModelChange)="temporaryReturnDate.set($event)"
+            nzFormat="yyyy-MM-dd"
+          />
+        </div>
+      }
+      @if (transferType() === 'CATERING') {
+        <div>
+          <label class="gp-form__label">
+            {{ 'GET_PASS.FORM.CATERING_EXPECTED_RETURN' | translate }}
+            <span class="gp-form__req" aria-hidden="true">*</span>
+          </label>
+          <nz-date-picker
+            class="gp-form__control gp-form__picker"
+            [ngModel]="cateringExpectedReturnDate()"
+            (ngModelChange)="cateringExpectedReturnDate.set($event)"
             nzFormat="yyyy-MM-dd"
           />
         </div>

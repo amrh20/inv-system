@@ -11,8 +11,8 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Observable, of, Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap, tap } from 'rxjs/operators';
+import { merge, Observable, of, Subject } from 'rxjs';
+import { debounceTime, finalize, map, switchMap, tap } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -40,6 +40,7 @@ import {
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { ItemListRow } from '../../items/models/item.model';
 import type { RequirementsResponse } from '../../items/models/item.model';
+import { InventoryService } from '../../inventory/services/inventory.service';
 import { ItemsService } from '../../items/services/items.service';
 import { LocationsService } from '../../master-data/services/locations.service';
 import { SuppliersService } from '../../master-data/services/suppliers.service';
@@ -49,14 +50,6 @@ import type { GrnImportPreviewData, GrnManualLineDraft } from '../models/grn.mod
 import { GrnService } from '../services/grn.service';
 
 type CreateMode = 'manual' | 'excel';
-
-type ItemSearchTier = 'match' | 'new' | 'conflict';
-
-interface CategorizedItemRow {
-  item: ItemListRow;
-  tier: ItemSearchTier;
-  conflictSupplierName?: string;
-}
 
 @Component({
   selector: 'app-grn-create',
@@ -83,6 +76,7 @@ interface CategorizedItemRow {
 })
 export class GrnCreateComponent implements OnInit {
   private readonly itemsApi = inject(ItemsService);
+  private readonly inventoryApi = inject(InventoryService);
   private readonly suppliersApi = inject(SuppliersService);
   private readonly locationsApi = inject(LocationsService);
   private readonly grnApi = inject(GrnService);
@@ -130,6 +124,8 @@ export class GrnCreateComponent implements OnInit {
   readonly invalidLineIndexes = signal<number[]>([]);
 
   private readonly search$ = new Subject<string>();
+  /** Fires when a non-empty warehouse is selected/changed — immediate fetch (no debounce). */
+  private readonly locationPrefetch$ = new Subject<void>();
   private skipDeactivate = false;
 
   readonly receivingDatePicker = computed(() => {
@@ -143,32 +139,6 @@ export class GrnCreateComponent implements OnInit {
   readonly openingBalanceBlocksGrn = computed(
     () => this.requirements()?.isOpeningBalanceAllowed === true,
   );
-
-  readonly categorizedItemRows = computed((): CategorizedItemRow[] => {
-    const sid = this.supplierId();
-    const items = this.itemResults();
-    if (!sid || items.length === 0) return [];
-    const rank: Record<ItemSearchTier, number> = { match: 0, new: 1, conflict: 2 };
-    const rows: CategorizedItemRow[] = items.map((item) => {
-      const prefId = item.supplier?.id ?? null;
-      let tier: ItemSearchTier;
-      let conflictSupplierName: string | undefined;
-      if (!prefId) {
-        tier = 'new';
-      } else if (prefId === sid) {
-        tier = 'match';
-      } else {
-        tier = 'conflict';
-        conflictSupplierName = item.supplier?.name ?? '';
-      }
-      return { item, tier, conflictSupplierName };
-    });
-    rows.sort(
-      (a, b) =>
-        rank[a.tier] - rank[b.tier] || a.item.name.localeCompare(b.item.name, undefined, { sensitivity: 'base' }),
-    );
-    return rows;
-  });
 
   readonly manualGrandTotal = computed(() =>
     this.lines().reduce(
@@ -187,7 +157,7 @@ export class GrnCreateComponent implements OnInit {
       );
   });
 
-  readonly itemSearchDisabled = computed(() => !this.supplierId());
+  readonly itemSearchDisabled = computed(() => !this.locationId().trim());
 
   ngOnInit(): void {
     this.itemsApi
@@ -201,21 +171,23 @@ export class GrnCreateComponent implements OnInit {
       });
 
     this.suppliersApi
-      .list({ take: 200 })
+      .list({ take: 10000 })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((r) => this.suppliers.set(r.suppliers));
 
     this.locationsApi
-      .list({ take: 200 })
+      .list({ take: 10000 })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((r) => this.locations.set(r.locations));
 
-    this.search$
+    merge(
+      this.search$.pipe(debounceTime(300)),
+      this.locationPrefetch$.pipe(map(() => this.itemQuery().trim())),
+    )
       .pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
         switchMap((q) => {
-          if (!q || q.length < 2 || !this.supplierId()) {
+          const loc = this.locationId().trim();
+          if (!loc) {
             return of(null).pipe(
               tap(() => {
                 this.itemResults.set([]);
@@ -225,20 +197,20 @@ export class GrnCreateComponent implements OnInit {
             );
           }
           this.itemSearchLoading.set(true);
-          return this.itemsApi.list({ search: q, take: 30, isActive: 'true' }).pipe(
-            tap(() => this.itemSearchLoading.set(false)),
+          return this.inventoryApi.getItemsByLocation(loc, { search: q, take: 10000 }).pipe(
+            tap((items) => {
+              this.itemResults.set(items);
+              if (q.trim().length > 0) {
+                this.itemDropdownOpen.set(true);
+              }
+            }),
+            finalize(() => this.itemSearchLoading.set(false)),
           );
         }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (res) => {
-          if (res === null) return;
-          this.itemResults.set(res.items);
-          this.itemDropdownOpen.set(true);
-        },
         error: () => {
-          this.itemSearchLoading.set(false);
           this.itemResults.set([]);
         },
       });
@@ -273,16 +245,25 @@ export class GrnCreateComponent implements OnInit {
     this.receivingDate.set(`${y}-${m}-${day}`);
   }
 
-  addItem(entry: CategorizedItemRow): void {
-    const item = entry.item;
-    if (this.lines().some((l) => l.itemId === item.id)) return;
-
-    if (entry.tier === 'conflict') {
-      const name = entry.conflictSupplierName?.trim() || '—';
-      this.message.warning(
-        this.translate.instant('GRN.CREATE.SUPPLIER_CONFLICT_TOAST', { supplier: name }),
-      );
+  onWarehouseChange(value: string | null | undefined): void {
+    const next = (value ?? '').trim();
+    const prev = this.locationId();
+    this.locationId.set(next);
+    if (prev === next) {
+      return;
     }
+    this.lines.set([]);
+    this.clearLineValidationUi();
+    this.itemQuery.set('');
+    this.itemResults.set([]);
+    this.itemDropdownOpen.set(false);
+    if (next) {
+      this.locationPrefetch$.next();
+    }
+  }
+
+  addItem(item: ItemListRow): void {
+    if (this.lines().some((l) => l.itemId === item.id)) return;
 
     const itemId = (item.id ?? '').trim();
     if (!this.isValidUuidString(itemId)) {
@@ -313,6 +294,9 @@ export class GrnCreateComponent implements OnInit {
     this.itemQuery.set('');
     this.itemResults.set([]);
     this.itemDropdownOpen.set(false);
+    if (this.locationId().trim()) {
+      this.locationPrefetch$.next();
+    }
   }
 
   updateLine(idx: number, field: keyof GrnManualLineDraft, value: string): void {
@@ -483,9 +467,17 @@ export class GrnCreateComponent implements OnInit {
     }
 
     this.grnApi.create(form).subscribe({
-      next: () => {
+      next: (result) => {
         this.loading.set(false);
         this.skipDeactivate = true;
+        if (result.autoPosted) {
+          const msg =
+            result.message?.trim() ||
+            this.translate.instant('GRN.CREATE_SUCCESS_POSTED');
+          this.message.success(msg);
+          void this.router.navigate(['/grn', result.id]);
+          return;
+        }
         this.message.success(this.translate.instant('GRN.CREATE_SUCCESS_REVIEW'));
         void this.router.navigate(['/grn'], { queryParams: { tab: 'VALIDATED' } });
       },

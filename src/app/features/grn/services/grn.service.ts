@@ -50,13 +50,27 @@ export class GrnService {
     );
   }
 
-  /** Multipart create — same fields as React `GrnCreateModal` `handleSubmit`. */
-  create(formData: FormData): Observable<void> {
-    return this.http.post<ApiResponse<unknown>>(this.base, formData).pipe(
+  /**
+   * Multipart create — same fields as React `GrnCreateModal` `handleSubmit`.
+   * ADMIN: backend may auto-post; check `autoPosted` and navigate to POSTED/detail.
+   */
+  create(formData: FormData): Observable<{
+    id: string;
+    autoPosted: boolean;
+    message?: string;
+  }> {
+    return this.http.post<ApiResponse<GrnDetail & { autoPosted?: boolean }>>(this.base, formData).pipe(
       map((res) => {
-        if (!res.success) {
+        if (!res.success || !res.data) {
           throw new Error(res.message || 'Create failed');
         }
+        const data = res.data;
+        const autoPosted = res.autoPosted === true || data.autoPosted === true;
+        return {
+          id: data.id,
+          autoPosted,
+          message: res.message,
+        };
       }),
     );
   }

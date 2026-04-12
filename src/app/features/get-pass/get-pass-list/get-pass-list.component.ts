@@ -14,11 +14,13 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTabChangeEvent, NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Eye, Package, Plus, RefreshCw } from 'lucide-angular';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { AuthService } from '../../../core/services/auth.service';
 import type { GetPassStatus, GetPassType } from '../../../core/models/enums';
 import type { RequirementsResponse } from '../../items/models/item.model';
 import { ItemsService } from '../../items/services/items.service';
@@ -32,8 +34,10 @@ const STATUS_FILTERS: Array<'ALL' | GetPassStatus> = [
   'PENDING_COST_CONTROL',
   'PENDING_FINANCE',
   'PENDING_GM',
+  'PENDING_SECURITY',
   'APPROVED',
   'OUT',
+  'RECEIVED_AT_DESTINATION',
   'PARTIALLY_RETURNED',
   'RETURNED',
   'CLOSED',
@@ -53,6 +57,7 @@ const TYPE_FILTERS: Array<'ALL' | GetPassType> = ['ALL', 'TEMPORARY', 'CATERING'
     NzButtonModule,
     NzSelectModule,
     NzTableModule,
+    NzTabsModule,
     NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
@@ -67,6 +72,7 @@ export class GetPassListComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly auth = inject(AuthService);
 
   readonly lucidePkg = Package;
   readonly lucidePlus = Plus;
@@ -75,6 +81,9 @@ export class GetPassListComponent implements OnInit {
 
   readonly statusFilters = STATUS_FILTERS;
   readonly typeFilters = TYPE_FILTERS;
+
+  /** 0 = outgoing (this hotel), 1 = incoming (sister hotel → this hotel). */
+  readonly listTabIndex = signal(0);
 
   readonly activeStatus = signal<(typeof STATUS_FILTERS)[number]>('ALL');
   readonly activeType = signal<(typeof TYPE_FILTERS)[number]>('ALL');
@@ -86,6 +95,28 @@ export class GetPassListComponent implements OnInit {
   readonly listError = signal('');
   /** From `GET /items/check-requirements`; `isOpeningBalanceAllowed` disables New Get Pass during OB setup. */
   readonly requirements = signal<RequirementsResponse | null>(null);
+
+  get canCreate(): boolean {
+    return this.auth.hasPermission('GET_PASS_CREATE');
+  }
+
+  /**
+   * Incoming tab: property roles + org-level viewers (parent-org context or ORG_MANAGER)
+   * so org managers can see all internal transfers across properties from one screen.
+   */
+  canViewIncoming(): boolean {
+    return (
+      this.auth.hasRole('SUPER_ADMIN', 'ADMIN', 'SECURITY', 'GENERAL_MANAGER', 'ORG_MANAGER') ||
+      this.auth.isParentOrganizationContext()
+    );
+  }
+
+  /** Show issuer / receiver columns when listing at organization root (multiple hotels). */
+  showOrgWidePropertyColumns(): boolean {
+    const t = this.auth.currentTenant();
+    const atOrgRoot = t != null && (t.parentId === null || t.parentId === undefined);
+    return this.auth.isParentOrganizationContext() || (this.auth.hasRole('ORG_MANAGER') && atOrgRoot);
+  }
 
   ngOnInit(): void {
     this.loadRequirements();
@@ -118,6 +149,13 @@ export class GetPassListComponent implements OnInit {
     this.load();
   }
 
+  onListTabChange(ev: NzTabChangeEvent): void {
+    const index = ev.index ?? 0;
+    this.listTabIndex.set(index);
+    this.page.set(1);
+    this.load();
+  }
+
   statusLabel(s: string): string {
     if (s === 'ALL') return this.translate.instant('GET_PASS.LIST.FILTER_ALL_STATUS');
     return this.translate.instant(`GET_PASS.STATUS.${s}`);
@@ -129,6 +167,14 @@ export class GetPassListComponent implements OnInit {
   }
 
   load(): void {
+    if (this.canViewIncoming() && this.listTabIndex() === 1) {
+      this.loadIncoming();
+    } else {
+      this.loadOutgoing();
+    }
+  }
+
+  private loadOutgoing(): void {
     this.loading.set(true);
     this.listError.set('');
     const st = this.activeStatus() === 'ALL' ? undefined : this.activeStatus();
@@ -154,6 +200,28 @@ export class GetPassListComponent implements OnInit {
       });
   }
 
+  private loadIncoming(): void {
+    this.loading.set(true);
+    this.listError.set('');
+    this.api
+      .getIncomingPasses({
+        page: this.page(),
+        limit: this.pageSize,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (r) => {
+          this.passes.set(r.passes);
+          this.total.set(r.total);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.listError.set(this.translate.instant('GET_PASS.LIST.ERROR_LOAD_INCOMING'));
+          this.loading.set(false);
+        },
+      });
+  }
+
   goNew(): void {
     this.router.navigate(['/get-passes/new']);
   }
@@ -169,10 +237,13 @@ export class GetPassListComponent implements OnInit {
       case 'PENDING_COST_CONTROL':
       case 'PENDING_FINANCE':
       case 'PENDING_GM':
+      case 'PENDING_SECURITY':
         return 'pending';
       case 'APPROVED':
       case 'OUT':
         return 'processing';
+      case 'RECEIVED_AT_DESTINATION':
+        return 'success';
       case 'PARTIALLY_RETURNED':
         return 'low-stock';
       case 'RETURNED':
@@ -183,6 +254,38 @@ export class GetPassListComponent implements OnInit {
       default:
         return 'pending';
     }
+  }
+
+  /**
+   * Incoming list: OUT = blue (dispatched), RECEIVED_AT_DESTINATION = amber (at gate / pending dept),
+   * destination dept accepted = green (final).
+   */
+  incomingListStatusClass(p: GetPassListRow): string {
+    if (p.destinationDeptAcceptedAt) {
+      return 'success';
+    }
+    switch (p.status) {
+      case 'OUT':
+        return 'processing';
+      case 'RECEIVED_AT_DESTINATION':
+        return 'pending';
+      default:
+        return this.statusClass(p.status);
+    }
+  }
+
+  /** Translation key for status label on Incoming tab (destination-specific wording). */
+  incomingListStatusLabelKey(p: GetPassListRow): string {
+    if (p.destinationDeptAcceptedAt) {
+      return 'GET_PASS.LIST.STATUS_INCOMING.RECEIVED_BY_DEPT';
+    }
+    if (p.status === 'OUT') {
+      return 'GET_PASS.LIST.STATUS_INCOMING.OUT';
+    }
+    if (p.status === 'RECEIVED_AT_DESTINATION') {
+      return 'GET_PASS.LIST.STATUS_INCOMING.RECEIVED_AT_DESTINATION';
+    }
+    return `GET_PASS.STATUS.${p.status}`;
   }
 
   nextPage(): void {

@@ -10,8 +10,11 @@ const ROUTE_PERMISSIONS = {
   usersCompanyManage: 'USERS_COMPANY_MANAGE',
   auditLogView: 'AUDIT_LOG_VIEW',
   inventoryView: 'INVENTORY_VIEW',
+  breakageView: 'BREAKAGE_VIEW',
+  lostItemsView: 'LOST_ITEMS_VIEW',
   settingsManage: 'SETTINGS_MANAGE',
   grnView: 'GRN_VIEW',
+  viewDashboard: 'VIEW_DASHBOARD',
 } as const;
 
 export const routes: Routes = [
@@ -19,6 +22,20 @@ export const routes: Routes = [
     path: 'login',
     loadComponent: () =>
       import('./features/auth/login/login.component').then((m) => m.LoginComponent),
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password.component').then(
+        (m) => m.ForgotPasswordComponent,
+      ),
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () =>
+      import('./features/auth/reset-password/reset-password.component').then(
+        (m) => m.ResetPasswordComponent,
+      ),
   },
   {
     path: 'admin',
@@ -64,9 +81,10 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
+        canActivate: [permissionGuard],
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
-        data: { breadcrumb: 'NAV.DASHBOARD' },
+        data: { breadcrumb: 'NAV.DASHBOARD', permission: ROUTE_PERMISSIONS.viewDashboard },
       },
       {
         path: 'items/new',
@@ -246,6 +264,10 @@ export const routes: Routes = [
       },
       {
         path: 'breakage',
+        canActivate: [permissionGuard],
+        data: {
+          permissionsAny: [ROUTE_PERMISSIONS.inventoryView, ROUTE_PERMISSIONS.breakageView],
+        },
         children: [
           {
             path: '',
@@ -264,6 +286,15 @@ export const routes: Routes = [
             data: { breadcrumb: 'BREAKAGE.DETAIL.BREADCRUMB' },
           },
         ],
+      },
+      {
+        path: 'lost-items',
+        canActivate: [permissionGuard],
+        loadComponent: () =>
+          import('./features/lost-items/lost-items-list/lost-items-list.component').then(
+            (m) => m.LostItemsListComponent,
+          ),
+        data: { breadcrumb: 'LOST_ITEMS.LIST.TITLE', permission: ROUTE_PERMISSIONS.lostItemsView },
       },
       {
         path: 'get-passes',

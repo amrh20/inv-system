@@ -123,9 +123,13 @@
           </div>
           <div nz-col nzSpan="24" nzMd="12">
             <nz-form-item>
-              <nz-form-label>{{ 'COMMON.SUPPLIER' | translate }}</nz-form-label>
-              <nz-form-control>
-                <nz-select formControlName="supplierId" nzAllowClear [nzPlaceHolder]="'COMMON.NONE' | translate">
+              <nz-form-label [nzRequired]="!isEditMode()">{{ 'COMMON.SUPPLIER' | translate }}</nz-form-label>
+              <nz-form-control [nzErrorTip]="!isEditMode() ? ('COMMON.REQUIRED' | translate) : null">
+                <nz-select
+                  formControlName="supplierId"
+                  [nzAllowClear]="isEditMode()"
+                  [nzPlaceHolder]="'ITEM_FORM.SELECT_SUPPLIER' | translate"
+                >
                   @for (s of suppliers(); track s.id) {
                     <nz-option [nzValue]="s.id" [nzLabel]="s.name" />
                   }

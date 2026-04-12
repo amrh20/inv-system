@@ -13,6 +13,7 @@ import type {
 export class AppSettingsService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/settings`;
+  private readonly inventoryBase = `${environment.apiUrl}/inventory`;
 
   getAllowOpeningBalance(): Observable<OpeningBalanceSetting> {
     return this.http.get<ApiResponse<OpeningBalanceSetting>>(`${this.base}/allowOpeningBalance`).pipe(
@@ -62,5 +63,25 @@ export class AppSettingsService {
         if (!res.success) throw new Error(res.message || 'Enable failed');
       }),
     );
+  }
+
+  /**
+   * Enables the opening-balance setup phase (OPEN + persists `isOpeningBalanceAllowed` on tenant).
+   * Preferred over POST /settings/ob-enable for SPA inventory contract.
+   */
+  patchInventoryStatus(body: {
+    isOpeningBalanceAllowed: boolean;
+    reason?: string;
+  }): Observable<InventoryStatusResponse> {
+    return this.http
+      .patch<ApiResponse<InventoryStatusResponse>>(`${this.inventoryBase}/status`, body)
+      .pipe(
+        map((res) => {
+          if (!res.success || !res.data) {
+            throw new Error(res.message || 'Inventory status update failed');
+          }
+          return res.data;
+        }),
+      );
   }
 }

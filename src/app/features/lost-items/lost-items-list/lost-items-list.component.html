@@ -1,0 +1,96 @@
+<div class="li-list">
+  <div class="li-list__header">
+    <div>
+      <h1 class="li-list__title">
+        <lucide-icon [img]="lucidePackageX" [size]="24" class="text-brand-error" />
+        {{ 'LOST_ITEMS.LIST.TITLE' | translate }}
+      </h1>
+      <p class="li-list__meta">{{ total() }} {{ 'LOST_ITEMS.LIST.RECORDS_HINT' | translate }}</p>
+    </div>
+    <div class="li-list__actions">
+      <button
+        nz-button
+        nzType="default"
+        type="button"
+        [title]="'COMMON.REFRESH' | translate"
+        (click)="load()"
+      >
+        <lucide-icon [img]="lucideRefresh" [size]="16" [class.li-list__spin]="loading()" />
+      </button>
+    </div>
+  </div>
+
+  <div class="li-list__filters">
+    <div class="li-list__search-wrap">
+      <lucide-icon [img]="lucideSearch" [size]="18" class="li-list__search-icon" />
+      <input
+        type="text"
+        nz-input
+        class="li-list__search-input"
+        [ngModel]="search()"
+        (ngModelChange)="onSearchInput($event)"
+        [placeholder]="'LOST_ITEMS.LIST.SEARCH_PH' | translate"
+      />
+    </div>
+  </div>
+
+  @if (listError()) {
+    <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
+  }
+
+  <nz-table
+    [nzData]="rows()"
+    [nzLoading]="loading()"
+    nzSize="middle"
+    [nzShowPagination]="false"
+    [nzNoResult]="noResultTpl"
+  >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'LOST_ITEMS.LIST.EMPTY_TITLE' | translate"
+        [message]="'LOST_ITEMS.LIST.EMPTY_MSG' | translate"
+      />
+    </ng-template>
+    <thead>
+      <tr>
+        <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+        <th>{{ 'LOST_ITEMS.LIST.COL_QTY' | translate }}</th>
+        <th>{{ 'COMMON.DATE' | translate }}</th>
+        <th>{{ 'LOST_ITEMS.LIST.COL_PASS' | translate }}</th>
+        <th>{{ 'LOST_ITEMS.LIST.COL_SECURITY' | translate }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.id) {
+        <tr>
+          <td>
+            <div class="li-list__item-name">{{ row.itemName }}</div>
+            @if (row.itemBarcode) {
+              <div class="li-list__item-barcode">{{ row.itemBarcode }}</div>
+            }
+          </td>
+          <td>{{ row.qtyLost }}</td>
+          <td>{{ row.date | date: 'medium' }}</td>
+          <td>{{ row.getPassRef ?? '—' }}</td>
+          <td>{{ displayUser(row) }}</td>
+        </tr>
+      }
+    </tbody>
+  </nz-table>
+
+  <div class="li-list__pager">
+    <button nz-button nzType="default" type="button" [disabled]="page() === 0" (click)="prevPage()">
+      {{ 'COMMON.BACK' | translate }}
+    </button>
+    <span>{{ 'LOST_ITEMS.LIST.PAGE' | translate: { current: page() + 1, total: total() } }}</span>
+    <button
+      nz-button
+      nzType="default"
+      type="button"
+      [disabled]="(page() + 1) * pageSize >= total()"
+      (click)="nextPage()"
+    >
+      {{ 'COMMON.NEXT' | translate }}
+    </button>
+  </div>
+</div>

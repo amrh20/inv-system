@@ -22,7 +22,7 @@
           class="grn-create-page__control"
           [nzPlaceHolder]="'GRN.CREATE.SUPPLIER_PH' | translate"
           [ngModel]="supplierId()"
-          (ngModelChange)="supplierId.set($event ?? ''); itemQuery.set(''); itemResults.set([]); itemDropdownOpen.set(false)"
+          (ngModelChange)="supplierId.set($event ?? '')"
           nzShowSearch
           nzAllowClear
         >
@@ -37,7 +37,7 @@
           class="grn-create-page__control"
           [nzPlaceHolder]="'GRN.CREATE.WAREHOUSE_PH' | translate"
           [ngModel]="locationId()"
-          (ngModelChange)="locationId.set($event ?? '')"
+          (ngModelChange)="onWarehouseChange($event)"
           nzShowSearch
           nzAllowClear
         >
@@ -114,12 +114,12 @@
                 <lucide-icon [img]="lucideSearch" [size]="16" [strokeWidth]="2" />
               }
             </ng-template>
-            @if (!itemSearchDisabled() && itemDropdownOpen() && itemQuery().length >= 2) {
+            @if (!itemSearchDisabled() && itemDropdownOpen()) {
               <div class="grn-create-page__dropdown">
-                @for (row of categorizedItemRows(); track row.item.id) {
-                  <button type="button" class="grn-create-page__dd-item" (click)="addItem(row)">
-                    @if (row.item.imageUrl) {
-                      <img [src]="row.item.imageUrl" [alt]="row.item.name" class="grn-create-page__thumb" />
+                @for (item of itemResults(); track item.id) {
+                  <button type="button" class="grn-create-page__dd-item" (click)="addItem(item)">
+                    @if (item.imageUrl) {
+                      <img [src]="item.imageUrl" [alt]="item.name" class="grn-create-page__thumb" />
                     } @else {
                       <span class="grn-create-page__thumb grn-create-page__thumb--ph">
                         <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
@@ -127,28 +127,23 @@
                     }
                     <div class="grn-create-page__dd-text">
                       <div class="grn-create-page__dd-name-row">
-                        @if (row.tier === 'match') {
-                          <span class="grn-create-page__tier" aria-hidden="true">✅</span>
-                        }
-                        <span class="grn-create-page__dd-name">{{ row.item.name }}</span>
+                        <span class="grn-create-page__dd-name">{{ item.name }}</span>
                       </div>
                       <div class="grn-create-page__dd-meta">
-                        @if (row.item.barcode) {
-                          <span class="font-mono">{{ row.item.barcode }}</span>
+                        @if (item.barcode) {
+                          <span class="font-mono">{{ item.barcode }}</span>
                         }
-                        @if (row.tier === 'new') {
-                          <span class="grn-create-page__tier-lbl">{{ 'GRN.CREATE.SUPPLIER_TIER_NEW' | translate }}</span>
+                        @if (item.code) {
+                          <span class="font-mono">{{ item.code }}</span>
                         }
-                        @if (row.tier === 'conflict' && row.conflictSupplierName) {
-                          <span class="grn-create-page__tier-conflict">{{
-                            'GRN.CREATE.SUPPLIER_BELONGS_HINT' | translate: { name: row.conflictSupplierName }
-                          }}</span>
-                        }
+                        <span class="grn-create-page__stock-hint">{{
+                          'GRN.CREATE.STOCK_AT_WAREHOUSE' | translate: { qty: item.currentStock ?? 0 }
+                        }}</span>
                       </div>
                     </div>
                   </button>
                 }
-                @if (!itemSearchLoading() && categorizedItemRows().length === 0) {
+                @if (!itemSearchLoading() && itemResults().length === 0) {
                   <div class="grn-create-page__dd-empty">{{ 'GRN.CREATE.NO_ITEMS' | translate }}</div>
                 }
               </div>

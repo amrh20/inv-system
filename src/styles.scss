@@ -74,13 +74,33 @@ body {
 
 /* --- NG-ZORRO: Inputs (Text, Number, Textarea) --- */
 .ant-input,
-.ant-input-number,
-.ant-input-affix-wrapper {
+.ant-input-number {
   height: var(--input-height) !important;
   min-height: var(--input-height) !important;
   border-radius: var(--radius-brand) !important;
   border-color: var(--border-color-input) !important;
   padding-inline: 11px !important;
+
+  &:focus,
+  &.ant-input-focused,
+  &:focus-within {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 2px var(--focus-glow) !important;
+    outline: none;
+  }
+}
+
+/* Affix wrappers (nz-input-password, nz-input-group suffix/prefix): keep flex row + centered suffix icons. */
+.ant-input-affix-wrapper {
+  height: var(--input-height) !important;
+  min-height: var(--input-height) !important;
+  border-radius: var(--radius-brand) !important;
+  border-color: var(--border-color-input) !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  /* Do not override padding here — NG-ZORRO sets default/lg/sm; global padding-inline breaks suffix alignment. */
 
   &:focus,
   &.ant-input-focused,
@@ -102,8 +122,21 @@ body {
   background: transparent !important;
 }
 
+.ant-input-affix-wrapper > .ant-input:not(textarea) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
 .ant-input-affix-wrapper .ant-input:focus {
   box-shadow: none !important;
+}
+
+/* Tailwind preflight sets svg { display: block }; keep eye icon centered in password suffix. */
+.ant-input-password-icon,
+.ant-input-password-icon .anticon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .ant-input-number-input {

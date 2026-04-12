@@ -22,7 +22,7 @@
     />
   }
 
-  <div class="par-levels-page__filters">
+  <div class="par-levels-page__filters align-items-center">
     <!-- <nz-select
       class="par-levels-page__select"
       [ngModel]="departmentId()"
@@ -167,7 +167,6 @@
             <th nzWidth="72px" nzAlign="right">{{ 'STOCK.QTY_ON_HAND' | translate }}</th>
             <th nzWidth="88px" nzAlign="right">{{ 'PAR_LEVELS.MIN_QTY' | translate }}</th>
             <th nzWidth="88px" nzAlign="right">{{ 'PAR_LEVELS.MAX_QTY' | translate }}</th>
-            <th nzWidth="100px" nzAlign="right">{{ 'PAR_LEVELS.REORDER_POINT' | translate }}</th>
             <th nzWidth="92px" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
           </tr>
         </thead>
@@ -219,23 +218,7 @@
                   />
                 </span>
               </td>
-              <td nzAlign="right" class="par-levels-cell--input">
-                <span
-                  class="par-levels-input-wrap"
-                  [class.par-levels-input-wrap--invalid]="fieldInvalid(bal, 'reorderPoint')"
-                  nz-tooltip
-                  [nzTooltipTitle]="validationTooltip(bal, 'reorderPoint')"
-                >
-                  <nz-input-number
-                    class="par-levels-input--sm"
-                    [ngClass]="{ 'par-levels-input--dirty': isFieldDirty(bal, 'reorderPoint') }"
-                    [ngModel]="getEditValue(bal, 'reorderPoint')"
-                    (ngModelChange)="handleEdit(bal.itemId, bal.locationId, 'reorderPoint', $event)"
-                    [nzMin]="0"
-                    [nzStep]="1"
-                  />
-                </span>
-              </td>
+              
               <td nzAlign="center">
                 @switch (rowStatus(bal)) {
                   @case ('low') {

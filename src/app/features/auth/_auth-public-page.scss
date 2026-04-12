@@ -1,0 +1,126 @@
+/* Minimal full-page shell for public auth flows (forgot / reset password). */
+
+.auth-public-page {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  padding-block-start: 3rem;
+  background: #ffffff;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.auth-public-page__header {
+  position: absolute;
+  inset-block-start: 1rem;
+  inset-inline-end: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-public-page__card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 6px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.auth-public-page__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--brand-dark, #0f172a);
+}
+
+.auth-public-page__subtitle {
+  margin: 0 0 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.auth-public-page__footer {
+  margin-top: 1.25rem;
+  text-align: center;
+}
+
+.auth-public-page__link {
+  font-size: 0.875rem;
+}
+
+.auth-public-page__input-icon {
+  color: rgba(15, 23, 42, 0.45);
+  flex-shrink: 0;
+}
+
+.auth-public-alert {
+  margin-bottom: 0.75rem;
+}
+
+.auth-public-submit.ant-btn {
+  height: 38px;
+  border-radius: 6px;
+}
+
+.auth-public-page .input-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.65rem;
+  padding-inline-end: 0.5rem;
+  min-height: 38px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
+  background: #fff;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:focus-within {
+    border-color: var(--brand-primary, #6366f1);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  }
+
+  .input-icon {
+    flex-shrink: 0;
+  }
+
+  input[nz-input] {
+    flex: 1;
+    min-width: 0;
+    border: none !important;
+    box-shadow: none !important;
+    height: 36px !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+
+    &:focus {
+      box-shadow: none !important;
+    }
+  }
+
+  .password-visibility-btn {
+    border: none;
+    background: transparent;
+    color: rgba(15, 23, 42, 0.4);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    flex-shrink: 0;
+    border-radius: 4px;
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: rgba(15, 23, 42, 0.65);
+    }
+  }
+}

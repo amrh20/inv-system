@@ -17,7 +17,18 @@ export class DefaultRedirectComponent {
 
   constructor() {
     const role = this.auth.currentUser()?.role;
-    const target = role === 'SUPER_ADMIN' ? '/admin/tenants' : '/dashboard';
-    this.router.navigateByUrl(target, { replaceUrl: true });
+    let target = '/forbidden';
+    if (role === 'SUPER_ADMIN') {
+      target = '/admin/tenants';
+    } else if (this.auth.hasPermission('VIEW_DASHBOARD')) {
+      target = '/dashboard';
+    } else if (this.auth.hasPermission('GET_PASS_VIEW')) {
+      target = '/get-passes';
+    } else if (this.auth.hasPermission('BREAKAGE_VIEW')) {
+      target = '/breakage';
+    } else if (this.auth.hasPermission('LOST_ITEMS_VIEW')) {
+      target = '/lost-items';
+    }
+    void this.router.navigateByUrl(target, { replaceUrl: true });
   }
 }
