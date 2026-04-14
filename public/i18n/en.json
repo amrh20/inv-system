@@ -13,7 +13,8 @@
     "EXPIRED_MESSAGE": "Your subscription has expired. Please renew to continue."
   },
   "TRANSACTIONS": {
-    "DISABLED_UNTIL_OB_FINALIZED": "Opening balance must be finalized before starting transactions."
+    "DISABLED_UNTIL_OB_FINALIZED": "Opening balance must be finalized before starting transactions.",
+    "INITIAL_SETUP_REQUIRED_BANNER": "Initial setup is locked. Please enable and finalize Opening Balance setup from Settings before creating transaction documents."
   },
   "LAYOUT": {
     "SWITCH_TO_LIGHT_MODE": "Switch to light mode",
@@ -329,14 +330,20 @@
     "CONFIRM_ACTIVATE_TITLE": "Activate item",
     "CONFIRM_TOGGLE_MESSAGE": "Are you sure you want to {{action}} \"{{name}}\"?",
     "REQUIREMENTS_WARNING": "To create items, please ensure you have at least one: {{missingLabels}}.",
-    "OPENING_BALANCE_BANNER": "Opening Balance setup is active. Enter opening quantities, then finalize opening balance in Settings to enable GRN and Get Pass.",
+    "OPENING_BALANCE_ACTIVE_BANNER": "Initial setup is active. You can continue creating and importing items while entering opening quantities.",
+    "OPENING_BALANCE_BANNER": "Initial setup is active. You can continue creating and importing items while entering opening quantities.",
+    "OPENING_BALANCE_INITIAL_SETUP_REQUIRED_BANNER": "Initial setup is locked. Enable Opening Balance setup in Settings before creating or importing items.",
+    "OPENING_BALANCE_PRODUCTION_MODE": "Production mode is active. Opening Balance setup has been finalized.",
     "OPENING_BALANCE_LINK_SETTINGS": "Open Opening Balance",
+    "COL_OPENING_QTY_SETUP": "Opening qty (setup)",
+    "TOTAL_QTY_OB_DRAFT_TOOLTIP": "Posted stock is zero until Opening Balance is finalized. Totals shown here reflect current draft setup. Draft line value (unit price × opening quantity): {{stockValue}}.",
     "REQUIREMENTS_QUICK_LINKS": "Quick links:",
     "REQUIREMENT_LABEL": {
       "UNITS": "Units",
       "CATEGORIES": "Categories",
       "VENDORS": "Suppliers",
-      "LOCATIONS": "Locations"
+      "LOCATIONS": "Locations",
+      "DEPARTMENTS": "Departments"
     }
   },
   "ITEM_FORM": {
@@ -375,13 +382,12 @@
     "ERROR_LOAD_DETAIL": "Could not load full item from the server. Some fields may be incomplete until the request succeeds.",
     "OPENING_QTY": "Opening quantity",
     "OPENING_QTY_PLACEHOLDER": "0 = no opening balance",
-    "OPENING_COST": "Opening unit cost",
-    "OPENING_COST_PLACEHOLDER": "Required if opening quantity is greater than zero",
-    "OB_FIELDS_HINT": "When opening quantity is greater than zero, an opening balance movement will be created and posted for the default store after the item is saved.",
+    "OB_FIELDS_HINT": "When opening quantity is greater than zero, unit price is required and an opening balance movement will be created and posted for the default store after the item is saved.",
+    "OB_FIELDS_EDIT_HINT": "Editing opening balance for the default store.",
     "OB_MOVEMENT_NOTES": "Opening balance from new item",
     "ERROR_OB_STORE_REQUIRED": "Select a default store to record opening balance.",
-    "ERROR_OPENING_STOCK_COST_REQUIRED": "Cost is required for opening stock",
-    "ERROR_OB_COST_REQUIRED": "Enter a valid opening unit cost (zero or greater) when opening quantity is greater than zero.",
+    "ERROR_UNIT_PRICE_REQUIRED_FOR_OPENING": "Enter a valid unit price (zero or greater) when opening quantity is greater than zero.",
+    "ERROR_UNIT_PRICE_MIN": "Unit price must be zero or greater.",
     "ERROR_OB_QTY_INVALID": "Opening quantity must be zero or greater.",
     "ERROR_OB_MOVEMENT_FAILED": "The item was saved, but the opening balance movement could not be completed. You can create an opening balance movement manually from Movements.",
     "ERROR_OB_POST_CANCELLED": "The item was saved, but the opening balance document was not posted. You can post it later from Movements.",
@@ -491,6 +497,7 @@
     "QTY_ON_HAND": "Qty on hand",
     "REORDER_STATUS": "Reorder status",
     "PAGE_TOTAL_ROWS": "Page total ({{count}} rows)",
+    "PAGE_ROW_RANGE": "Showing {{start}}–{{end}} of {{total}} rows",
     "NO_BALANCES_FOUND": "No stock balances found",
     "NO_RESULTS_TITLE": "No results found",
     "NO_RESULTS_WITH_FILTERS": "No stock balances match your search or filters. Try different criteria or clear filters to see more rows.",
@@ -605,7 +612,13 @@
     "ORG_ERROR_LOAD": "Could not load organization dashboard."
   },
   "INVENTORY": {
-    "PLACEHOLDER": "Placeholder - stock balances will live here."
+    "PLACEHOLDER": "Placeholder - stock balances will live here.",
+    "GRN": {
+      "OB_REQUIRED_BANNER": "Cannot create GRN while inventory setup is locked. Please finalize Opening Balance first."
+    },
+    "BREAKAGE": {
+      "OB_REQUIRED_BANNER": "Cannot create breakage documents while inventory setup is locked. Please finalize Opening Balance first."
+    }
   },
   "DEPARTMENTS": {
     "TITLE": "Departments",
@@ -1179,6 +1192,7 @@
       }
     },
     "STATUS": {
+      "RECEIVED_AT_DESTINATION":"Received at destination",
       "DRAFT": "Draft",
       "PENDING_DEPT": "Pending dept",
       "PENDING_COST_CONTROL": "Pending cost control",
@@ -1189,7 +1203,8 @@
       "PARTIALLY_RETURNED": "Partially returned",
       "RETURNED": "Returned",
       "CLOSED": "Closed",
-      "REJECTED": "Rejected"
+      "REJECTED": "Rejected",
+      "PENDING_SECURITY":"Pending security"
     },
     "TYPE": {
       "TEMPORARY": "Temporary",
@@ -1204,6 +1219,15 @@
       "LOST": "Lost"
     },
     "FORM": {
+      "INTERNAL_TRANSFER":"Internal transfer",
+      "RETURN_DATE_TEMP":"Expected return date",
+      "RETURN_DATE_TEMP_PH":"Select expected return date…",
+      "RETURN_DATE_CATERING":"Expected return date",
+      "RETURN_DATE_CATERING_PH":"Select expected return date…",
+      "RETURN_DATE_PERMANENT":"Expected return date",
+      "RETURN_DATE_PERMANENT_PH":"Select expected return date…",
+      "TARGET_TENANT":"Target hotel",
+      "TARGET_TENANT_PH":"Select target hotel…",
       "NEW_TITLE": "New get pass",
       "EDIT_TITLE": "Edit get pass (draft)",
       "LOADING": "Loading…",
@@ -1269,13 +1293,13 @@
       "WORKFLOW_COST_CONTROL": "Cost control",
       "WORKFLOW_FINANCE": "Finance",
       "WORKFLOW_GM": "General manager",
-      "WORKFLOW_SECURITY": "Security clearance",
+      "WORKFLOW_SECURITY": "Gate security approval",
       "WORKFLOW_APPROVED": "Approved",
       "APPROVE_DEPT": "Approve (department)",
       "VERIFY_COST_CONTROL": "Verify (cost control)",
       "SIGN_FINANCE": "Sign (finance)",
       "AUTHORIZE_GM": "Authorize (GM)",
-      "APPROVE_SECURITY": "Clear (security)",
+      "APPROVE_SECURITY": "Approve gate exit",
       "ADMIN_ACTION_LABEL": "Admin action",
       "AUDIT_TRAIL": "Approval audit trail",
       "AUDIT_TRAIL_HINT": "Who approved each stage (from system records).",
@@ -1306,7 +1330,7 @@
       "NOTES_VERIFY_CC_TITLE": "Verify (cost control)",
       "NOTES_SIGN_FINANCE_TITLE": "Sign (finance)",
       "NOTES_AUTHORIZE_GM_TITLE": "Authorize (general manager)",
-      "NOTES_APPROVE_SECURITY_TITLE": "Security clearance",
+      "NOTES_APPROVE_SECURITY_TITLE": "Approve gate exit",
       "NOTES_REJECT_TITLE": "Reject get pass",
       "CONFIRM_CHECKOUT_TITLE": "Checkout items",
       "CONFIRM_CHECKOUT_MSG": "Confirm checkout and deduct stock for this get pass?",
@@ -1828,6 +1852,7 @@
     "OB_FINALIZE_CONFIRM_TITLE": "Finalize opening balance?",
     "OB_FINALIZE_CONFIRM_MESSAGE": "This runs strict validation, locks opening balance import, and records a snapshot. GRN and Get Pass will be available afterward. This cannot be undone without re-enabling opening balance from an administrator.",
     "OB_FINALIZE_CONFIRM_OK": "Finalize & lock",
+    "OB_FINALIZE_ITEMS_REQUIRED_HINT": "You must add at least one item to the master list before you can finalize the opening balance.",
     "MSG_OB_FINALIZE_SUCCESS": "Opening balance finalized. Inventory is now operational.",
     "ERR_OB_FINALIZE": "Could not finalize opening balance.",
     "OB_FINALIZE_VALIDATION_TITLE": "Fix the issues below, then try again.",

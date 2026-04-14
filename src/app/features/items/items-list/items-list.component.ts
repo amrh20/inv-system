@@ -27,6 +27,7 @@ import {
   Download,
   EllipsisVertical,
   Eye,
+  Info,
   Package,
   Pencil,
   Plus,
@@ -46,6 +47,7 @@ import {
   type ItemCreationRequirementKey,
   type ItemDetail,
   type ItemListRow,
+  type RequirementsResponse,
 } from '../models/item.model';
 import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
@@ -82,6 +84,8 @@ import { ItemsService } from '../services/items.service';
   styleUrl: './items-list.component.scss',
 })
 export class ItemsListComponent implements OnInit {
+  private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
+
   private readonly itemsApi = inject(ItemsService);
   private readonly categoriesApi = inject(CategoriesService);
   private readonly lookups = inject(ItemMasterLookupsService);
@@ -102,6 +106,7 @@ export class ItemsListComponent implements OnInit {
   readonly lucideEye = Eye;
   readonly lucideX = X;
   readonly lucideEllipsisVertical = EllipsisVertical;
+  readonly lucideInfo = Info;
 
   /** From `GET /items/check-requirements`; disables create/import when false. */
   readonly requirementsMet = signal(true);
@@ -109,27 +114,57 @@ export class ItemsListComponent implements OnInit {
   readonly blockReason = signal<ItemCreationBlockReason | null>(null);
   /** `true` while Initial Setup / OB stage is OPEN (`isOpeningBalanceAllowed` from check-requirements). False after finalize or when locked. */
   readonly openingBalanceSetupActive = signal(false);
+  readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
+    ItemsListComponent.DEFAULT_OB_STATUS,
+  );
   readonly missingData = signal<ItemCreationRequirementKey[]>([]);
   readonly requirementsLoading = signal(true);
 
   /** Settings page route (Opening Balance controls). */
   readonly openingBalanceSettingsPath = '/settings';
 
+  /** Explicit OB OPEN phase — drives draft setup columns and Total qty hint. */
+  readonly showObDraftColumns = computed(() => this.obStatus() === 'OPEN');
+
   readonly showPrerequisitesBanner = computed(
-    () => !this.requirementsMet() && !this.requirementsLoading(),
-  );
-
-  /** Initial Setup banner only while OB stage is OPEN; hidden when finalized (`isOpeningBalanceAllowed === false`). */
-  readonly showOpeningBalanceBanner = computed(
     () =>
-      this.requirementsMet() &&
       !this.requirementsLoading() &&
-      this.openingBalanceSetupActive(),
+      this.blockReason() === 'MISSING_PREREQUISITES' &&
+      this.missingData().length > 0,
   );
 
-  /** Disables Add / Import only while prerequisites are missing or still loading (not gated by OB phase). */
+  /** Warn when tenant is in INITIAL_LOCK and needs OB setup activation first. */
+  readonly showInitialSetupRequiredBanner = computed(
+    () => !this.requirementsLoading() && this.obStatus() === 'INITIAL_LOCK',
+  );
+
+  /** Disable Add / Import only while loading, missing prerequisites, or OB is INITIAL_LOCK. */
   readonly itemCreationActionsDisabled = computed(
-    () => this.requirementsLoading() || !this.requirementsMet(),
+    () => {
+      if (this.requirementsLoading()) {
+        return true;
+      }
+
+      if (this.obStatus() === 'INITIAL_LOCK') {
+        return true;
+      }
+
+      if (this.requirementsMet()) {
+        return false;
+      }
+
+      // Keep blocking if the backend explicitly says prerequisites are missing.
+      if (this.blockReason() === 'MISSING_PREREQUISITES') {
+        return true;
+      }
+
+      // For OPEN and FINALIZED, creation actions remain enabled.
+      if (this.obStatus() === 'OPEN' || this.obStatus() === 'FINALIZED') {
+        return false;
+      }
+
+      return true;
+    },
   );
 
   /** Current page rows — mirrors React `ItemMasterPage` `items` state. */
@@ -190,7 +225,11 @@ export class ItemsListComponent implements OnInit {
   readonly sortPriceFn: NzTableSortFn<ItemListRow> = (a, b) =>
     (Number(a.unitPrice) || 0) - (Number(b.unitPrice) || 0);
 
-  readonly sortQtyFn: NzTableSortFn<ItemListRow> = (a, b) => this.totalQty(a) - this.totalQty(b);
+  readonly sortQtyFn: NzTableSortFn<ItemListRow> = (a, b) =>
+    this.displayTotalQty(a) - this.displayTotalQty(b);
+
+  readonly sortOpeningQtyFn: NzTableSortFn<ItemListRow> = (a, b) =>
+    (this.draftOpeningQtySortValue(a) ?? -1) - (this.draftOpeningQtySortValue(b) ?? -1);
 
   ngOnInit(): void {
     this.search$
@@ -231,12 +270,19 @@ export class ItemsListComponent implements OnInit {
             this.blockReason.set(null);
             this.missingData.set([]);
             this.openingBalanceSetupActive.set(false);
+            this.obStatus.set(ItemsListComponent.DEFAULT_OB_STATUS);
             return;
           }
-          const { canCreateItem, requirements: r, blockReason: br, isOpeningBalanceAllowed } = res.data;
+          const { canCreateItem, requirements: r, blockReason: br, isOpeningBalanceAllowed, obStatus } =
+            res.data;
+          const normalizedObStatus = ItemsListComponent.normalizeObStatusFromCheckRequirements(
+            obStatus,
+            isOpeningBalanceAllowed,
+          );
           this.requirementsMet.set(canCreateItem);
           this.blockReason.set(br ?? null);
-          this.openingBalanceSetupActive.set(isOpeningBalanceAllowed === true);
+          this.obStatus.set(normalizedObStatus);
+          this.openingBalanceSetupActive.set(normalizedObStatus === 'OPEN');
           this.missingData.set(getMissingItemCreationRequirements(r));
         },
         error: () => {
@@ -245,6 +291,7 @@ export class ItemsListComponent implements OnInit {
           this.blockReason.set(null);
           this.missingData.set([]);
           this.openingBalanceSetupActive.set(false);
+          this.obStatus.set(ItemsListComponent.DEFAULT_OB_STATUS);
         },
       });
   }
@@ -444,8 +491,62 @@ export class ItemsListComponent implements OnInit {
     );
   }
 
+  /**
+   * During OB OPEN: backend `displayTotalQty` (sum of DRAFT opening lines).
+   * Otherwise: on-hand total from `stockBalances`.
+   */
+  displayTotalQty(row: ItemListRow): number {
+    const raw = row.displayTotalQty;
+    if (raw != null && String(raw).trim() !== '') {
+      const n = Number(raw);
+      if (Number.isFinite(n)) {
+        return n;
+      }
+    }
+    return this.totalQty(row);
+  }
+
   formatPrice(row: ItemListRow): string {
     return (Number(row.unitPrice) || 0).toFixed(2);
+  }
+
+  draftOpeningQty(row: ItemListRow): number | null {
+    const fromApi = row.openingQuantity ?? row.openingBalanceDraftQty;
+    if (fromApi != null && String(fromApi).trim() !== '') {
+      const n = Number(fromApi);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  }
+
+  /**
+   * During OB OPEN: draft opening line value uses catalog unit price × opening quantity.
+   */
+  obDraftStockValueLine(row: ItemListRow): string {
+    const q = this.draftOpeningQty(row);
+    if (q == null || q <= 0) {
+      return '—';
+    }
+    const p = Number(row.unitPrice) || 0;
+    const total = q * p;
+    return `${this.t('COMMON.CURRENCY_SAR')} ${total.toFixed(2)}`;
+  }
+
+  private draftOpeningQtySortValue(row: ItemListRow): number | null {
+    return this.draftOpeningQty(row);
+  }
+
+  private static normalizeObStatusFromCheckRequirements(
+    obStatus: RequirementsResponse['obStatus'] | undefined,
+    isOpeningBalanceAllowed: boolean,
+  ): NonNullable<RequirementsResponse['obStatus']> {
+    if (typeof obStatus === 'string') {
+      const u = obStatus.trim().toUpperCase();
+      if (u === 'OPEN' || u === 'INITIAL_LOCK' || u === 'FINALIZED') {
+        return u;
+      }
+    }
+    return isOpeningBalanceAllowed === true ? 'OPEN' : ItemsListComponent.DEFAULT_OB_STATUS;
   }
 
   downloadTemplate(): void {

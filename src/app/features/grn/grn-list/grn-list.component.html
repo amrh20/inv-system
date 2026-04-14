@@ -43,6 +43,14 @@
     </div>
   </div>
 
+  @if (showObRequiredBanner()) {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      [nzMessage]="'INVENTORY.GRN.OB_REQUIRED_BANNER' | translate"
+    />
+  }
+
   <div class="grn-list__tabs">
     @for (tab of tabs; track tab) {
       <button

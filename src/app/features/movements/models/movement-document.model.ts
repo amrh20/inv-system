@@ -19,8 +19,9 @@ export interface MovementDocumentRow {
 /** Line as returned on GET /movements/:id (nested relations + quantities). */
 export interface MovementLineDetail {
   id?: string;
-  itemId: string;
-  item?: { name: string; barcode?: string | null } | null;
+  /** May be omitted on some API payloads when `item.id` is present instead. */
+  itemId?: string;
+  item?: { id?: string; name: string; barcode?: string | null } | null;
   locationId?: string | null;
   location?: { name: string } | null;
   qtyRequested: number | string;

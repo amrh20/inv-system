@@ -15,8 +15,8 @@
         <span
           nz-tooltip
           [nzTooltipTitle]="
-            requirements()?.isOpeningBalanceAllowed === true
-              ? ('TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED' | translate)
+            disableCreateButton()
+              ? ('TRANSACTIONS.INITIAL_SETUP_REQUIRED_BANNER' | translate)
               : null
           "
         >
@@ -24,7 +24,7 @@
             nz-button
             nzType="primary"
             type="button"
-            [disabled]="requirements()?.isOpeningBalanceAllowed === true"
+            [disabled]="disableCreateButton()"
             (click)="goNew()"
           >
             <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
@@ -34,6 +34,14 @@
       }
     </div>
   </div>
+
+  @if (obStatus() === 'INITIAL_LOCK') {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      [nzMessage]="'TRANSACTIONS.INITIAL_SETUP_REQUIRED_BANNER' | translate"
+    />
+  }
 
   @if (listError()) {
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />

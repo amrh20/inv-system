@@ -19,7 +19,7 @@
         nzType="primary"
         type="button"
         class="stock-page__export"
-        [disabled]="exporting() || balances().length === 0"
+        [disabled]="exporting() || totalRows() === 0"
         (click)="exportExcel()"
       >
         @if (exporting()) {
@@ -32,6 +32,12 @@
     </div>
   </div>
 
+  @if (showSetupInProgress()) {
+    <app-empty-state
+      [title]="'STOCK.TITLE' | translate"
+      [message]="'TRANSACTIONS.INITIAL_SETUP_REQUIRED_BANNER' | translate"
+    />
+  } @else {
   <div class="stock-page__summary">
     <div class="summary-card summary-card--blue">
       <lucide-icon [img]="lucideDollar" class="summary-card__icon" />
@@ -178,9 +184,10 @@
         ><span class="legend-swatch legend-swatch--green"></span> {{ 'STOCK.STATUS_IN_STOCK' | translate }}</span
       >
       <span class="stock-page__legend-meta">
-        {{ 'COMMON.ROWS_COUNT' | translate: { count: totalRows() } }}
-        @if (totalRows() > pageSize) {
-          {{ 'COMMON.SHOWING_FIRST' | translate: { count: pageSize } }}
+        @if (totalRows() > 0) {
+          {{ 'STOCK.PAGE_ROW_RANGE' | translate: pageRowRangeParams() }}
+        } @else {
+          {{ 'COMMON.ROWS_COUNT' | translate: { count: totalRows() } }}
         }
       </span>
     </div>
@@ -287,6 +294,21 @@
       </tbody>
     </nz-table>
 
+    @if (totalRows() > 0) {
+      <div class="stock-page__pagination">
+        <nz-pagination
+          [nzTotal]="totalRows()"
+          [nzPageIndex]="pageIndex()"
+          [nzPageSize]="pageSize()"
+          [nzShowSizeChanger]="true"
+          [nzPageSizeOptions]="pageSizeOptions"
+          [nzShowQuickJumper]="false"
+          (nzPageIndexChange)="onPageIndexChange($event)"
+          (nzPageSizeChange)="onPageSizeChange($event)"
+        />
+      </div>
+    }
+
     @if (balances().length > 0) {
       <table class="stock-page__footer-table">
         <colgroup>
@@ -312,4 +334,5 @@
       </table>
     }
   </div>
+  }
 </div>

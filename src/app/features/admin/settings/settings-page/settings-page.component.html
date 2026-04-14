@@ -261,16 +261,21 @@
                         nz-button
                         nzType="primary"
                         nzDanger
+                        nz-tooltip
                         type="button"
                         [nzLoading]="obFinalizeLoading()"
-                        [disabled]="obSaving() || obLoading()"
+                        [disabled]="obFinalizeDisabled()"
+                        [nzTooltipTitle]="obRequirementsItemsCount() === 0 ? ('SETTINGS.OB_FINALIZE_ITEMS_REQUIRED_HINT' | translate) : null"
+                        [nzTooltipTrigger]="obRequirementsItemsCount() === 0 ? 'hover' : null"
                         (click)="requestFinalizeOpeningBalance()"
                       >
                         {{ 'SETTINGS.OB_FINALIZE_BTN' | translate }}
                       </button>
-                      <!-- <span class="settings-page__ob-finalize-hint">
-                        {{ 'SETTINGS.OB_FINALIZE_WARNING_HINT' | translate }}
-                      </span> -->
+                      @if (obRequirementsItemsCount() === 0) {
+                        <span class="settings-page__ob-finalize-hint">
+                          {{ 'SETTINGS.OB_FINALIZE_ITEMS_REQUIRED_HINT' | translate }}
+                        </span>
+                      }
                     </div>
                   }
                 </div>

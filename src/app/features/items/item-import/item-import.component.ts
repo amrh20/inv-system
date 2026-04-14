@@ -42,6 +42,7 @@ import {
   type ItemImportPreviewData,
   type ItemImportPreviewRow,
   type ItemImportResult,
+  type RequirementsResponse,
 } from '../models/item.model';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
@@ -85,6 +86,8 @@ type ImportPreviewTableColumn =
   styleUrl: './item-import.component.scss',
 })
 export class ItemImportComponent implements OnInit {
+  private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
+
   @ViewChild('importFileInput') importFileInputRef?: ElementRef<HTMLInputElement>;
 
   private readonly itemsApi = inject(ItemsService);
@@ -108,18 +111,26 @@ export class ItemImportComponent implements OnInit {
   readonly missingData = signal<ItemCreationRequirementKey[]>([]);
   readonly requirementsLoading = signal(true);
   readonly openingBalanceSetupActive = signal(false);
+  /** Normalized from `GET /items/check-requirements` (aligned with Item Master list). */
+  readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
+    ItemImportComponent.DEFAULT_OB_STATUS,
+  );
   readonly openingBalanceSettingsPath = '/settings';
 
   readonly showPrerequisitesBanner = computed(
     () => !this.requirementsMet() && !this.requirementsLoading(),
   );
 
-  /** Initial Setup only; hidden after OB finalize (`isOpeningBalanceAllowed === false`). */
+  /**
+   * Initial Setup banner: hidden when OB lifecycle is `OPEN` (user is already in active opening-balance entry).
+   * Still driven by `isOpeningBalanceAllowed` for other phases where the reminder is useful.
+   */
   readonly showOpeningBalanceBanner = computed(
     () =>
       this.requirementsMet() &&
       !this.requirementsLoading() &&
-      this.openingBalanceSetupActive(),
+      this.openingBalanceSetupActive() &&
+      this.obStatus() !== 'OPEN',
   );
 
   /** Block file/preview only when prerequisites missing or loading (not gated by OB phase). */
@@ -220,12 +231,19 @@ export class ItemImportComponent implements OnInit {
             this.blockReason.set(null);
             this.missingData.set([]);
             this.openingBalanceSetupActive.set(false);
+            this.obStatus.set(ItemImportComponent.DEFAULT_OB_STATUS);
             return;
           }
-          const { canCreateItem, requirements: r, blockReason: br, isOpeningBalanceAllowed } = res.data;
+          const { canCreateItem, requirements: r, blockReason: br, isOpeningBalanceAllowed, obStatus } =
+            res.data;
+          const normalizedObStatus = ItemImportComponent.normalizeObStatusFromCheckRequirements(
+            obStatus,
+            isOpeningBalanceAllowed,
+          );
           this.requirementsMet.set(canCreateItem);
           this.blockReason.set(br ?? null);
           this.openingBalanceSetupActive.set(isOpeningBalanceAllowed === true);
+          this.obStatus.set(normalizedObStatus);
           this.missingData.set(getMissingItemCreationRequirements(r));
         },
         error: () => {
@@ -234,8 +252,22 @@ export class ItemImportComponent implements OnInit {
           this.blockReason.set(null);
           this.missingData.set([]);
           this.openingBalanceSetupActive.set(false);
+          this.obStatus.set(ItemImportComponent.DEFAULT_OB_STATUS);
         },
       });
+  }
+
+  private static normalizeObStatusFromCheckRequirements(
+    obStatus: RequirementsResponse['obStatus'] | undefined,
+    isOpeningBalanceAllowed: boolean,
+  ): NonNullable<RequirementsResponse['obStatus']> {
+    if (typeof obStatus === 'string') {
+      const u = obStatus.trim().toUpperCase();
+      if (u === 'OPEN' || u === 'INITIAL_LOCK' || u === 'FINALIZED') {
+        return u;
+      }
+    }
+    return isOpeningBalanceAllowed === true ? 'OPEN' : ItemImportComponent.DEFAULT_OB_STATUS;
   }
 
   onImportFile(event: Event): void {

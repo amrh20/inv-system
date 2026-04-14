@@ -19,6 +19,7 @@ export class StockService {
     let httpParams = new HttpParams();
     const entries: [string, string | number | undefined][] = [
       ['take', params.take],
+      ['skip', params.skip],
       ['search', params.search],
       ['locationId', params.locationId],
       ['categoryId', params.categoryId],

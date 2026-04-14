@@ -31,6 +31,23 @@ export interface ItemListRow {
   stockBalances?: Array<{ qtyOnHand: string | number }>;
   /** Qty on hand at the warehouse requested by `GET /inventory/items-by-locations/:locationId` */
   currentStock?: number;
+  /**
+   * Draft opening balance from API during OB OPEN (`GET /items`, `GET /items/:id`).
+   */
+  openingQuantity?: string | number | null;
+  /** @deprecated Backend may still send during migration; valuation uses `unitPrice` during OB OPEN. */
+  openingUnitCost?: string | number | null;
+  /**
+   * During OB OPEN: sum of DRAFT OPENING_BALANCE line qty (all locations).
+   * After finalize: same as on-hand total from stock balances.
+   */
+  displayTotalQty?: string | number | null;
+  /**
+   * Optional legacy names; prefer `openingQuantity`. Draft unit cost is deprecated in favor of catalog `unitPrice`.
+   */
+  openingBalanceDraftQty?: string | number | null;
+  /** @deprecated Prefer `unitPrice` for OB valuation. */
+  openingBalanceDraftUnitCost?: string | number | null;
 }
 
 export interface ItemDetail extends ItemListRow {
@@ -95,6 +112,13 @@ export interface RequirementsResponse {
    * Tenant OB stage: `true` when Initial Setup is OPEN (OB not finalized). Drives banners only on Item Master / import — not whether Add/Import is enabled (`canCreateItem` gates actions).
    */
   isOpeningBalanceAllowed: boolean;
+  /**
+   * Explicit Opening Balance lifecycle status from backend.
+   * - OPEN: setup active
+   * - INITIAL_LOCK: initial setup must be enabled first
+   * - FINALIZED: production mode, OB flow finalized
+   */
+  obStatus?: 'OPEN' | 'INITIAL_LOCK' | 'FINALIZED';
 }
 
 /** Quick-link routes for each prerequisite (top-level app routes). */
@@ -231,6 +255,10 @@ export interface ItemPayload {
   supplierId?: string | null;
   defaultStoreId?: string | null;
   unitPrice: number;
+  /**
+   * Sent on `POST /items` during OB setup when the form shows opening quantity (mirrors Opening quantity input).
+   */
+  openingQuantity?: number;
   isActive?: boolean;
   imageUrl?: string | null;
   itemUnits?: ItemUnitRow[];

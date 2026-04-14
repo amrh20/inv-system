@@ -71,6 +71,8 @@ const TABS: GrnListTab[] = ['All', 'VALIDATED', 'APPROVED', 'POSTED', 'REJECTED'
   styleUrl: './grn-list.component.scss',
 })
 export class GrnListComponent implements OnInit {
+  private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
+
   private readonly grnApi = inject(GrnService);
   private readonly itemsApi = inject(ItemsService);
   private readonly authService = inject(AuthService);
@@ -99,6 +101,9 @@ export class GrnListComponent implements OnInit {
   readonly tabCounts = signal({ all: 0, validated: 0, approved: 0, posted: 0, rejected: 0 });
   /** From `GET /items/check-requirements`; `isOpeningBalanceAllowed` disables New GRN during OB setup. */
   readonly requirements = signal<RequirementsResponse | null>(null);
+  readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
+    GrnListComponent.DEFAULT_OB_STATUS,
+  );
 
   readonly isAuthorizedRole = computed(() =>
     GRN_CREATE_ALLOWED_ROLES.has(this.authService.userRole()),
@@ -107,7 +112,11 @@ export class GrnListComponent implements OnInit {
   readonly showCreateButton = this.isAuthorizedRole;
 
   readonly disableCreateButton = computed(
-    () => this.requirements()?.isOpeningBalanceAllowed === true,
+    () => this.obStatus() !== 'FINALIZED',
+  );
+
+  readonly showObRequiredBanner = computed(
+    () => this.obStatus() === 'INITIAL_LOCK' || this.obStatus() === 'OPEN',
   );
 
   readonly canManageGrn = computed(() => this.authService.hasPermission('GRN_MANAGE'));
@@ -145,10 +154,20 @@ export class GrnListComponent implements OnInit {
       .pipe(first(), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          this.requirements.set(res.success && res.data ? res.data : null);
+          if (!res.success || !res.data) {
+            this.requirements.set(null);
+            this.obStatus.set(GrnListComponent.DEFAULT_OB_STATUS);
+            return;
+          }
+          const normalizedObStatus =
+            res.data.obStatus ??
+            (res.data.isOpeningBalanceAllowed ? 'OPEN' : GrnListComponent.DEFAULT_OB_STATUS);
+          this.requirements.set(res.data);
+          this.obStatus.set(normalizedObStatus);
         },
         error: () => {
           this.requirements.set(null);
+          this.obStatus.set(GrnListComponent.DEFAULT_OB_STATUS);
         },
       });
   }

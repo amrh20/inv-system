@@ -16,10 +16,28 @@ import {
   Validators,
 } from '@angular/forms';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { forkJoin, lastValueFrom, merge, of, type Observable } from 'rxjs';
-import { catchError, distinctUntilChanged, filter, finalize, first, map, startWith, switchMap, tap } from 'rxjs/operators';
+import { forkJoin, from, lastValueFrom, merge, of, type Observable } from 'rxjs';
+import {
+  catchError,
+  concatMap,
+  defaultIfEmpty,
+  distinctUntilChanged,
+  filter,
+  find,
+  finalize,
+  first,
+  map,
+  startWith,
+  switchMap,
+  tap,
+} from 'rxjs/operators';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
-import type { MovementDocumentPayload } from '../../movements/models/movement-document.model';
+import type {
+  MovementDocumentDetail,
+  MovementDocumentPayload,
+  MovementDocumentRow,
+  MovementLineDetail,
+} from '../../movements/models/movement-document.model';
 import { MovementDocumentsService } from '../../movements/services/movement-documents.service';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
@@ -53,8 +71,10 @@ import {
   type UnitOption,
 } from '../models/item.model';
 
-/** When opening quantity is positive, opening unit cost is required (re-validated when quantity changes). */
-function openingStockCostWhenQtyValidator(control: AbstractControl): ValidationErrors | null {
+type ObLifecycleStatus = NonNullable<RequirementsResponse['obStatus']>;
+
+/** When opening quantity is positive, catalog unit price is required (re-validated when quantity changes). */
+function unitPriceRequiredWhenOpeningQtyValidator(control: AbstractControl): ValidationErrors | null {
   const parent = control.parent;
   if (!parent) {
     return null;
@@ -66,11 +86,11 @@ function openingStockCostWhenQtyValidator(control: AbstractControl): ValidationE
   }
   const v = control.value;
   if (v == null || v === '' || (typeof v === 'string' && String(v).trim() === '')) {
-    return { openingStockCostRequired: true };
+    return { unitPriceRequiredForOpening: true };
   }
   const num = Number(v);
   if (Number.isNaN(num)) {
-    return { openingStockCostRequired: true };
+    return { unitPriceRequiredForOpening: true };
   }
   if (num < 0) {
     return { min: true };
@@ -102,6 +122,10 @@ function openingStockCostWhenQtyValidator(control: AbstractControl): ValidationE
   styleUrl: './item-form.component.scss',
 })
 export class ItemFormComponent {
+  private static readonly DEFAULT_OB_STATUS: ObLifecycleStatus = 'FINALIZED';
+  private static readonly MOVEMENT_LIST_PAGE = 200;
+  private static readonly MOVEMENT_LIST_MAX_PAGES = 25;
+
   /** Incremented on each route-driven reload so stale HTTP callbacks are ignored. */
   private dataLoadGen = 0;
 
@@ -157,12 +181,19 @@ export class ItemFormComponent {
   departments = signal<{ id: string; name: string }[]>([]);
   locations = signal<LocationOption[]>([]);
   readonly requirements = signal<RequirementsResponse | null>(null);
+  readonly obStatus = signal<ObLifecycleStatus>(ItemFormComponent.DEFAULT_OB_STATUS);
+  /** Draft OB document id when one exists for this item (edit mode). */
+  readonly draftOpeningBalanceDocumentId = signal<string | null>(null);
 
   readonly isEditMode = computed(() => this.editItemId() != null && this.editItemId() !== '');
+  readonly isOpeningBalanceActive = computed(() => this.obStatus() === 'OPEN');
 
   readonly showOpeningBalanceFields = computed(() => {
-    if (this.isEditMode()) {
+    if (!this.isOpeningBalanceActive()) {
       return false;
+    }
+    if (this.isEditMode()) {
+      return this.obStatus() === 'OPEN';
     }
     const req = this.requirements();
     if (!req) {
@@ -188,7 +219,7 @@ export class ItemFormComponent {
     if (this.isEditMode() || !req || this.loadingLookups() || !req.canCreateItem) {
       return false;
     }
-    return req.isOpeningBalanceAllowed === true;
+    return this.isOpeningBalanceActive();
   });
 
   readonly form: FormGroup = this.fb.group({
@@ -202,7 +233,6 @@ export class ItemFormComponent {
     defaultStoreId: ['', Validators.required],
     unitPrice: [null as number | null, [Validators.min(0)]],
     openingQty: [null as number | null],
-    openingCost: [null as number | null],
     isActive: [true],
     baseUnitId: ['', Validators.required],
   });
@@ -222,6 +252,8 @@ export class ItemFormComponent {
       this.imageFile.set(null);
       this.removeImage.set(false);
       this.extraItemUnitsSnapshot.set([]);
+      this.obStatus.set(ItemFormComponent.DEFAULT_OB_STATUS);
+      this.draftOpeningBalanceDocumentId.set(null);
       if (id) {
         this.patchForEdit({ id } as ItemListRow, gen);
       } else {
@@ -230,10 +262,6 @@ export class ItemFormComponent {
     });
 
     effect(() => {
-      if (this.isEditMode()) {
-        this.syncOpeningBalanceValidators(false);
-        return;
-      }
       this.syncOpeningBalanceValidators(this.showOpeningBalanceFields());
     });
 
@@ -268,13 +296,33 @@ export class ItemFormComponent {
       });
 
     this.form
+      .get('defaultStoreId')
+      ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const itemId = this.editItemId();
+        if (!itemId || !this.isOpeningBalanceActive()) {
+          return;
+        }
+        const gen = this.dataLoadGen;
+        const barcode = (this.form.get('barcode')?.value as string | undefined) ?? undefined;
+        this.tryHydrateDraftOpeningBalance(itemId, gen, { itemBarcode: barcode });
+      });
+
+    this.form
       .get('openingQty')
       ?.valueChanges.pipe(startWith(this.form.get('openingQty')?.value), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
         if (this.showOpeningBalanceFields()) {
-          this.form.get('openingCost')?.updateValueAndValidity({ emitEvent: false });
+          this.form.get('unitPrice')?.updateValueAndValidity({ emitEvent: false });
         }
       });
+  }
+
+  /** Used in template: when OB fields are shown and opening qty is positive, unit price is required. */
+  obOpeningQtyPositive(): boolean {
+    const v = this.form.get('openingQty')?.value;
+    const n = v != null && v !== '' ? Number(v) : 0;
+    return !Number.isNaN(n) && n > 0;
   }
 
   filteredStores(): LocationOption[] {
@@ -361,6 +409,9 @@ export class ItemFormComponent {
       ...this.extraItemUnitsSnapshot(),
     ];
 
+    const unitPriceNum =
+      raw.unitPrice != null && raw.unitPrice !== '' ? Number(raw.unitPrice) : Number.NaN;
+
     const payload: ItemPayload = {
       name: (raw.name as string).trim(),
       barcode: (raw.barcode as string) || undefined,
@@ -370,7 +421,7 @@ export class ItemFormComponent {
       subcategoryId: raw.subcategoryId || null,
       supplierId: raw.supplierId || null,
       defaultStoreId: raw.defaultStoreId || null,
-      unitPrice: raw.unitPrice != null && raw.unitPrice !== '' ? Number(raw.unitPrice) : 0,
+      unitPrice: Number.isFinite(unitPriceNum) ? unitPriceNum : 0,
       isActive: raw.isActive !== false,
       itemUnits,
     };
@@ -382,8 +433,11 @@ export class ItemFormComponent {
     const currentId = this.editItemId();
     const openingQty =
       raw.openingQty != null && raw.openingQty !== '' ? Number(raw.openingQty) : 0;
-    const openingCost =
-      raw.openingCost != null && raw.openingCost !== '' ? Number(raw.openingCost) : null;
+
+    if (!currentId && this.showOpeningBalanceFields()) {
+      const oq = Number.isFinite(openingQty) && openingQty >= 0 ? openingQty : 0;
+      payload.openingQuantity = oq;
+    }
 
     if (
       !currentId &&
@@ -399,8 +453,8 @@ export class ItemFormComponent {
         this.submitError.set(this.t('ITEM_FORM.ERROR_OB_STORE_REQUIRED'));
         return;
       }
-      if (openingCost == null || Number.isNaN(openingCost) || openingCost < 0) {
-        this.submitError.set(this.t('ITEM_FORM.ERROR_OPENING_STOCK_COST_REQUIRED'));
+      if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
+        this.submitError.set(this.t('ITEM_FORM.ERROR_UNIT_PRICE_REQUIRED_FOR_OPENING'));
         return;
       }
     }
@@ -428,15 +482,79 @@ export class ItemFormComponent {
           }
         }
 
+        if (currentId && this.isOpeningBalanceActive() && this.showOpeningBalanceFields()) {
+          const storeId = (raw.defaultStoreId as string) || '';
+          const docId = this.draftOpeningBalanceDocumentId();
+          if (docId) {
+            if (!storeId) {
+              this.submitError.set(this.t('ITEM_FORM.ERROR_OB_STORE_REQUIRED'));
+              this.saving.set(false);
+              return;
+            }
+            if (openingQty > 0) {
+              if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
+                this.submitError.set(this.t('ITEM_FORM.ERROR_UNIT_PRICE_REQUIRED_FOR_OPENING'));
+                this.saving.set(false);
+                return;
+              }
+            }
+            const qtySafe = Number.isFinite(openingQty) && openingQty > 0 ? openingQty : 0;
+            const costSafe =
+              qtySafe > 0 && Number.isFinite(unitPriceNum) && !Number.isNaN(unitPriceNum)
+                ? unitPriceNum
+                : 0;
+            try {
+              const obPayload = this.buildOpeningBalancePayload(currentId, storeId, qtySafe, costSafe);
+              await lastValueFrom(this.movementDocsApi.update(docId, obPayload));
+            } catch (e: unknown) {
+              const msg =
+                e && typeof e === 'object' && 'message' in e
+                  ? String((e as Error).message)
+                  : this.t('ITEM_FORM.ERROR_OB_MOVEMENT_FAILED');
+              this.submitError.set(msg);
+              this.saving.set(false);
+              return;
+            }
+          } else if (openingQty > 0) {
+            if (!Number.isFinite(unitPriceNum) || unitPriceNum < 0) {
+              this.submitError.set(this.t('ITEM_FORM.ERROR_UNIT_PRICE_REQUIRED_FOR_OPENING'));
+              this.saving.set(false);
+              return;
+            }
+            if (!storeId) {
+              this.submitError.set(this.t('ITEM_FORM.ERROR_OB_STORE_REQUIRED'));
+              this.saving.set(false);
+              return;
+            }
+            try {
+              const obPayload = this.buildOpeningBalancePayload(
+                currentId,
+                storeId,
+                openingQty,
+                unitPriceNum,
+              );
+              const created = await lastValueFrom(this.movementDocsApi.create(obPayload));
+              this.draftOpeningBalanceDocumentId.set(created.id);
+            } catch (e: unknown) {
+              const msg =
+                e && typeof e === 'object' && 'message' in e
+                  ? String((e as Error).message)
+                  : this.t('ITEM_FORM.ERROR_OB_MOVEMENT_FAILED');
+              this.submitError.set(msg);
+              this.saving.set(false);
+              return;
+            }
+          }
+        }
+
         if (
           !currentId &&
           saved?.id &&
           this.requirements()?.canCreateItem &&
           this.requirements()?.isOpeningBalanceAllowed &&
           openingQty > 0 &&
-          openingCost != null &&
-          !Number.isNaN(openingCost) &&
-          openingCost >= 0
+          Number.isFinite(unitPriceNum) &&
+          unitPriceNum >= 0
         ) {
           const storeId = (raw.defaultStoreId as string) || '';
           if (!storeId) {
@@ -449,7 +567,7 @@ export class ItemFormComponent {
               saved.id,
               storeId,
               openingQty,
-              openingCost,
+              unitPriceNum,
             );
             const doc = await lastValueFrom(this.movementDocsApi.create(obPayload));
             const confirmed = await lastValueFrom(
@@ -533,7 +651,6 @@ export class ItemFormComponent {
       defaultStoreId: '',
       unitPrice: null,
       openingQty: null,
-      openingCost: null,
       isActive: true,
       baseUnitId: '',
     });
@@ -553,6 +670,7 @@ export class ItemFormComponent {
             return;
           }
           this.requirements.set(reqData);
+          this.obStatus.set(this.normalizeObStatus(reqData));
           this.loadingLookups.set(false);
         },
         error: () => {
@@ -561,6 +679,7 @@ export class ItemFormComponent {
           }
           this.loadingLookups.set(false);
           this.requirements.set(null);
+          this.obStatus.set(ItemFormComponent.DEFAULT_OB_STATUS);
         },
       });
   }
@@ -603,7 +722,6 @@ export class ItemFormComponent {
         defaultStoreId: '',
         unitPrice: null,
         openingQty: null,
-        openingCost: null,
         isActive: true,
         baseUnitId: '',
       },
@@ -613,19 +731,28 @@ export class ItemFormComponent {
       .pipe(
         first(),
         switchMap(() =>
-          this.itemsApi.getItemById(row.id).pipe(catchError(() => of(null as ItemDetail | null))),
+          forkJoin({
+            detail: this.itemsApi.getItemById(row.id).pipe(catchError(() => of(null as ItemDetail | null))),
+            checkRequirements: this.itemsApi.checkRequirements().pipe(
+              map((res) => (res.success && res.data ? res.data : null)),
+              catchError(() => of(null)),
+            ),
+          }),
         ),
       )
-      .subscribe((detail) => {
+      .subscribe(({ detail, checkRequirements: reqData }) => {
         if (gen !== this.dataLoadGen) {
           return;
         }
+        this.requirements.set(reqData);
+        this.obStatus.set(this.normalizeObStatus(reqData));
         const itemRow = row;
         this.loadingLookups.set(false);
         if (!detail) {
           this.message.warning(this.t('ITEM_FORM.ERROR_LOAD_DETAIL'));
           this.subcategories.set([]);
           this.subcategoriesLoading.set(false);
+          const apiOb = ItemFormComponent.readApiOpeningSnapshot(itemRow);
           this.form.patchValue(
             {
               name: itemRow.name,
@@ -633,8 +760,7 @@ export class ItemFormComponent {
               description: itemRow.description ?? '',
               isActive: itemRow.isActive,
               unitPrice: itemRow.unitPrice != null ? Number(itemRow.unitPrice) : null,
-              openingQty: null,
-              openingCost: null,
+              openingQty: apiOb.hasApiOpening ? apiOb.qty : null,
             },
             { emitEvent: false },
           );
@@ -652,9 +778,14 @@ export class ItemFormComponent {
               if (units.length) {
                 this.applyUnitsFromApiRows(units);
               }
+              this.tryHydrateDraftOpeningBalance(itemRow.id, gen, {
+                itemBarcode: itemRow.barcode ?? undefined,
+                hasApiOpening: apiOb.hasApiOpening,
+              });
             });
           return;
         }
+        const apiObDetail = ItemFormComponent.readApiOpeningSnapshot(detail);
         this.form.patchValue(
           {
             name: detail.name,
@@ -666,8 +797,7 @@ export class ItemFormComponent {
             supplierId: detail.supplierId ?? '',
             defaultStoreId: detail.defaultStoreId ?? '',
             unitPrice: detail.unitPrice != null ? Number(detail.unitPrice) : null,
-            openingQty: null,
-            openingCost: null,
+            openingQty: apiObDetail.hasApiOpening ? apiObDetail.qty : null,
             isActive: detail.isActive !== false,
             baseUnitId: '',
           },
@@ -692,25 +822,216 @@ export class ItemFormComponent {
             if (!units.length) {
               this.patchBaseUnitFromListRow(itemRow);
             }
+            this.tryHydrateDraftOpeningBalance(itemRow.id, gen, {
+              itemBarcode: detail.barcode ?? itemRow.barcode ?? undefined,
+              hasApiOpening: apiObDetail.hasApiOpening,
+            });
           });
       });
   }
 
+  /**
+   * Reads OB setup fields returned by `GET /items` / `GET /items/:id`.
+   * When any value is present, movement hydration should not overwrite API-supplied fields.
+   */
+  private static readApiOpeningSnapshot(row: ItemListRow | ItemDetail | null): {
+    qty: number | null;
+    hasApiOpening: boolean;
+  } {
+    if (!row) {
+      return { qty: null, hasApiOpening: false };
+    }
+    const qRaw = row.openingQuantity ?? row.openingBalanceDraftQty;
+    let qty: number | null = null;
+    let hasApiOpening = false;
+    if (qRaw != null && String(qRaw).trim() !== '') {
+      const n = Number(qRaw);
+      if (Number.isFinite(n)) {
+        qty = n;
+        hasApiOpening = true;
+      }
+    }
+    return { qty, hasApiOpening };
+  }
+
+  private normalizeObStatus(reqData: RequirementsResponse | null): ObLifecycleStatus {
+    if (!reqData) {
+      return ItemFormComponent.DEFAULT_OB_STATUS;
+    }
+    const raw = reqData.obStatus;
+    if (typeof raw === 'string') {
+      const u = raw.trim().toUpperCase();
+      if (u === 'OPEN' || u === 'INITIAL_LOCK' || u === 'FINALIZED') {
+        return u;
+      }
+    }
+    return reqData.isOpeningBalanceAllowed === true ? 'OPEN' : ItemFormComponent.DEFAULT_OB_STATUS;
+  }
+
+  private tryHydrateDraftOpeningBalance(
+    itemId: string,
+    gen: number,
+    ctx?: { itemBarcode?: string | null; hasApiOpening?: boolean },
+  ): void {
+    if (!this.isOpeningBalanceActive()) {
+      return;
+    }
+    const defaultStoreId = (this.form.get('defaultStoreId')?.value as string) ?? '';
+
+    this.resolveDraftOpeningBalanceMatch$(itemId, defaultStoreId, ctx?.itemBarcode)
+      .pipe(first())
+      .subscribe((match) => {
+        if (gen !== this.dataLoadGen || !match) {
+          return;
+        }
+        this.draftOpeningBalanceDocumentId.set(match.detail.id);
+        if (ctx?.hasApiOpening) {
+          const curQty = this.form.get('openingQty')?.value;
+          const patch: { openingQty?: number } = {};
+          if ((curQty == null || curQty === '') && Number.isFinite(match.qty)) {
+            patch.openingQty = match.qty;
+          }
+          if (Object.keys(patch).length) {
+            this.form.patchValue(patch, { emitEvent: false });
+          }
+        } else {
+          this.form.patchValue(
+            {
+              openingQty: match.qty,
+            },
+            { emitEvent: false },
+          );
+        }
+        this.form.get('unitPrice')?.updateValueAndValidity({ emitEvent: false });
+      });
+  }
+
+  private resolveDraftOpeningBalanceMatch$(
+    itemId: string,
+    defaultStoreId: string,
+    itemBarcode?: string | null,
+  ): Observable<{ detail: MovementDocumentDetail; qty: number; cost: number | null } | null> {
+    return this.collectDraftOpeningBalanceDocuments$(itemBarcode).pipe(
+      switchMap((candidates) => {
+        if (candidates.length === 0) {
+          return of(null);
+        }
+        const sorted = [...candidates].sort(
+          (a, b) => new Date(b.documentDate).getTime() - new Date(a.documentDate).getTime(),
+        );
+        return from(sorted).pipe(
+          concatMap((doc) =>
+            this.movementDocsApi.getById(doc.id).pipe(
+              map((detail) => {
+                const line = this.pickOpeningBalanceLine(detail, itemId, defaultStoreId);
+                if (!line) {
+                  return null;
+                }
+                const qty = Number(line.qtyRequested ?? 0);
+                const costRaw = line.unitCost;
+                const cost = costRaw == null ? null : Number(costRaw);
+                if (!Number.isFinite(qty)) {
+                  return null;
+                }
+                return {
+                  detail,
+                  qty,
+                  cost: cost != null && Number.isFinite(cost) ? cost : null,
+                };
+              }),
+              catchError(() => of(null)),
+            ),
+          ),
+          find((m): m is NonNullable<typeof m> => m != null),
+          map((m) => m ?? null),
+          defaultIfEmpty(null),
+        );
+      }),
+    );
+  }
+
+  private collectDraftOpeningBalanceDocuments$(itemBarcode?: string | null): Observable<MovementDocumentRow[]> {
+    const pageSize = ItemFormComponent.MOVEMENT_LIST_PAGE;
+    const maxPages = ItemFormComponent.MOVEMENT_LIST_MAX_PAGES;
+    return this.movementDocsApi.list({ skip: 0, take: pageSize }).pipe(
+      switchMap((firstPage) => {
+        const total = firstPage.total ?? firstPage.documents.length;
+        const pageCount = Math.min(maxPages, Math.max(1, Math.ceil(total / pageSize)));
+        const loads: Array<Observable<{ documents: MovementDocumentRow[]; total: number }>> = [of(firstPage)];
+        for (let p = 1; p < pageCount; p++) {
+          loads.push(this.movementDocsApi.list({ skip: p * pageSize, take: pageSize }).pipe(first()));
+        }
+        return forkJoin(loads).pipe(
+          switchMap((pages) => {
+            const merged = pages.flatMap((p) => p.documents);
+            let filtered = this.filterDraftOpeningBalanceDocuments(merged);
+            if (filtered.length > 0 || !itemBarcode?.trim()) {
+              return of(filtered);
+            }
+            return this.movementDocsApi
+              .list({ skip: 0, take: pageSize, search: itemBarcode.trim() })
+              .pipe(map((res) => this.filterDraftOpeningBalanceDocuments(res.documents)));
+          }),
+        );
+      }),
+    );
+  }
+
+  private filterDraftOpeningBalanceDocuments(documents: MovementDocumentRow[]): MovementDocumentRow[] {
+    return documents.filter(
+      (d) =>
+        d.status === 'DRAFT' && String(d.movementType ?? '').toUpperCase() === 'OPENING_BALANCE',
+    );
+  }
+
+  private pickOpeningBalanceLine(
+    detail: MovementDocumentDetail,
+    itemId: string,
+    defaultStoreId: string,
+  ): MovementLineDetail | null {
+    const needle = itemId.trim();
+    const store = (defaultStoreId ?? '').trim();
+    const dest = (detail.destLocationId ?? '').trim();
+    const forItem = detail.lines.filter((l) => this.lineMovementItemId(l) === needle);
+    if (!forItem.length) {
+      return null;
+    }
+    const byDefaultStore = forItem.find((l) => (l.locationId ?? '').trim() === store);
+    if (byDefaultStore) {
+      return byDefaultStore;
+    }
+    const byDest = forItem.find((l) => (l.locationId ?? '').trim() === dest);
+    if (byDest) {
+      return byDest;
+    }
+    return forItem[0] ?? null;
+  }
+
+  private lineMovementItemId(l: MovementLineDetail): string {
+    const direct = l.itemId != null ? String(l.itemId).trim() : '';
+    if (direct) {
+      return direct;
+    }
+    const nested =
+      l.item && typeof l.item === 'object' && 'id' in l.item ? (l.item as { id?: string }).id : undefined;
+    return nested != null ? String(nested).trim() : '';
+  }
+
   private syncOpeningBalanceValidators(showOb: boolean): void {
     const openingQty = this.form.get('openingQty');
-    const openingCost = this.form.get('openingCost');
-    if (!openingQty || !openingCost) {
+    const unitPrice = this.form.get('unitPrice');
+    if (!openingQty || !unitPrice) {
       return;
     }
     if (showOb) {
       openingQty.setValidators([Validators.min(0)]);
-      openingCost.setValidators([openingStockCostWhenQtyValidator, Validators.min(0)]);
+      unitPrice.setValidators([Validators.min(0), unitPriceRequiredWhenOpeningQtyValidator]);
     } else {
       openingQty.clearValidators();
-      openingCost.clearValidators();
+      unitPrice.setValidators([Validators.min(0)]);
     }
     openingQty.updateValueAndValidity({ emitEvent: false });
-    openingCost.updateValueAndValidity({ emitEvent: false });
+    unitPrice.updateValueAndValidity({ emitEvent: false });
   }
 
 

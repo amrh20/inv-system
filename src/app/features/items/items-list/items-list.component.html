@@ -106,12 +106,12 @@
     />
   }
 
-  @if (showOpeningBalanceBanner()) {
+  @if (showInitialSetupRequiredBanner()) {
     <nz-alert
       nzType="warning"
       nzShowIcon
       class="items-alert items-alert--opening-balance"
-      [nzMessage]="'ITEMS.OPENING_BALANCE_BANNER' | translate"
+      [nzMessage]="'ITEMS.OPENING_BALANCE_INITIAL_SETUP_REQUIRED_BANNER' | translate"
       [nzDescription]="openingBalanceQuickLinksTpl"
     />
   }
@@ -241,7 +241,18 @@
         <th nzWidth="100" nzAlign="right" nzColumnKey="unitPrice" [nzSortFn]="sortPriceFn" nzShowSort>
           {{ 'COMMON.UNIT_PRICE' | translate }}
         </th>
-        <th nzWidth="100" nzAlign="right" nzColumnKey="totalQty" [nzSortFn]="sortQtyFn" nzShowSort>
+        @if (showObDraftColumns()) {
+          <th
+            nzWidth="108"
+            nzAlign="right"
+            nzColumnKey="openingQtySetup"
+            [nzSortFn]="sortOpeningQtyFn"
+            nzShowSort
+          >
+            {{ 'ITEMS.COL_OPENING_QTY_SETUP' | translate }}
+          </th>
+        }
+        <th nzWidth="100" nzAlign="right" nzColumnKey="displayTotalQty" [nzSortFn]="sortQtyFn" nzShowSort>
           {{ 'COMMON.TOTAL_QTY' | translate }}
         </th>
         <th nzWidth="140" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
@@ -256,7 +267,7 @@
               <img [src]="src" [alt]="row.name" class="thumb" />
             } @else {
               <div class="thumb thumb--placeholder">
-                <lucide-icon [img]="lucidePackage" [size]="16" />
+                <lucide-icon [img]="lucidePackage" [size]="16" [strokeWidth]="2" />
               </div>
             }
           </td>
@@ -271,13 +282,40 @@
           <td>{{ row.supplier?.name || '—' }}</td>
           <td>{{ baseUnitLabel(row) }}</td>
           <td nzAlign="right" class="num">{{ formatPrice(row) }}</td>
+          @if (showObDraftColumns()) {
+            <td nzAlign="right" class="num">
+              @if (draftOpeningQty(row) != null) {
+                {{ draftOpeningQty(row)! | number: '1.0-2' }}
+              } @else {
+                —
+              }
+            </td>
+          }
           <td nzAlign="right">
-            <span
-              class="status-badge"
-              [ngClass]="totalQty(row) > 0 ? 'status-has-stock' : 'status-no-stock'"
+            <div
+              class="total-qty-cell"
+              [class.total-qty-cell--ob-open]="showObDraftColumns()"
             >
-              {{ totalQty(row) | number: '1.0-0' }}
-            </span>
+              <span
+                class="status-badge"
+                [ngClass]="displayTotalQty(row) > 0 ? 'status-has-stock' : 'status-no-stock'"
+              >
+                {{ displayTotalQty(row) | number: '1.0-0' }}
+              </span>
+              @if (showObDraftColumns()) {
+                <lucide-icon
+                  class="total-qty-cell__hint"
+                  [img]="lucideInfo"
+                  [size]="14"
+                  [strokeWidth]="2"
+                  nz-tooltip
+                  [nzTooltipTitle]="
+                    'ITEMS.TOTAL_QTY_OB_DRAFT_TOOLTIP'
+                      | translate: { stockValue: obDraftStockValueLine(row) }
+                  "
+                />
+              }
+            </div>
           </td>
           <td nzAlign="center">
             <app-status-toggle
@@ -344,7 +382,7 @@
           <nz-descriptions-item [nzTitle]="'COMMON.SUPPLIER' | translate">{{ v.supplier?.name || '—' }}</nz-descriptions-item>
           <nz-descriptions-item [nzTitle]="'COMMON.BASE_UNIT' | translate">{{ baseUnitLabel(v) }}</nz-descriptions-item>
           <nz-descriptions-item [nzTitle]="'COMMON.UNIT_PRICE' | translate">{{ formatPrice(v) }}</nz-descriptions-item>
-          <nz-descriptions-item [nzTitle]="'COMMON.TOTAL_QTY' | translate">{{ totalQty(v) | number: '1.0-0' }}</nz-descriptions-item>
+          <nz-descriptions-item [nzTitle]="'COMMON.TOTAL_QTY' | translate">{{ displayTotalQty(v) | number: '1.0-0' }}</nz-descriptions-item>
           <nz-descriptions-item [nzTitle]="'COMMON.STATUS' | translate">
             <span
               class="status-badge"

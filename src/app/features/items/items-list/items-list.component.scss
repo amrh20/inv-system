@@ -181,6 +181,30 @@
   font-variant-numeric: tabular-nums;
 }
 
+.total-qty-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+}
+
+.total-qty-cell--ob-open .status-badge {
+  border: 1px solid rgba(250, 173, 20, 0.55);
+  background: rgba(250, 173, 20, 0.1);
+  color: #ad6800;
+}
+
+.total-qty-cell--ob-open .status-badge.status-no-stock {
+  color: rgba(173, 104, 0, 0.65);
+}
+
+.total-qty-cell__hint {
+  color: rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+  cursor: default;
+}
+
 /* Action dropdown menu items: icon + label inline, no wrap */
 .items-table ul[nz-menu] li[nz-menu-item].items-menu__item,
 .items-page__filters-toolbar ul[nz-menu] li[nz-menu-item].items-menu__item {

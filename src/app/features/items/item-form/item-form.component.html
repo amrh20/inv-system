@@ -74,8 +74,10 @@
           </div>
           <div nz-col nzSpan="24" nzMd="12">
             <nz-form-item>
-              <nz-form-label>{{ 'COMMON.UNIT_PRICE' | translate }}</nz-form-label>
-              <nz-form-control>
+              <nz-form-label [nzRequired]="showOpeningBalanceFields() && obOpeningQtyPositive()">
+                {{ 'COMMON.UNIT_PRICE' | translate }}
+              </nz-form-label>
+              <nz-form-control [nzErrorTip]="unitPriceErrorTpl">
                 <nz-input-number
                   formControlName="unitPrice"
                   [nzMin]="0"
@@ -83,6 +85,13 @@
                   [nzPlaceHolder]="'ITEM_FORM.ZERO_DECIMAL' | translate"
                   class="w-100"
                 />
+                <ng-template #unitPriceErrorTpl let-control>
+                  @if (control.hasError('unitPriceRequiredForOpening')) {
+                    {{ 'ITEM_FORM.ERROR_UNIT_PRICE_REQUIRED_FOR_OPENING' | translate }}
+                  } @else if (control.hasError('min')) {
+                    {{ 'ITEM_FORM.ERROR_UNIT_PRICE_MIN' | translate }}
+                  }
+                </ng-template>
               </nz-form-control>
             </nz-form-item>
           </div>
@@ -174,38 +183,21 @@
                     formControlName="openingQty"
                     [nzMin]="0"
                     [nzStep]="0.01"
-                    [nzPrecision]="4"
                     [nzPlaceHolder]="'ITEM_FORM.OPENING_QTY_PLACEHOLDER' | translate"
                     class="w-100"
                   />
                 </nz-form-control>
               </nz-form-item>
             </div>
-            <div nz-col nzSpan="24" nzMd="12">
-              <nz-form-item>
-                <nz-form-label [nzRequired]="(form.get('openingQty')?.value ?? 0) > 0">
-                  {{ 'ITEM_FORM.OPENING_COST' | translate }}
-                </nz-form-label>
-                <nz-form-control [nzErrorTip]="openingCostErrorTpl">
-                  <nz-input-number
-                    formControlName="openingCost"
-                    [nzMin]="0"
-                    [nzStep]="0.01"
-                    [nzPlaceHolder]="'ITEM_FORM.OPENING_COST_PLACEHOLDER' | translate"
-                    class="w-100"
-                  />
-                  <ng-template #openingCostErrorTpl let-control>
-                    @if (control.hasError('openingStockCostRequired')) {
-                      {{ 'ITEM_FORM.ERROR_OPENING_STOCK_COST_REQUIRED' | translate }}
-                    } @else if (control.hasError('min')) {
-                      {{ 'ITEM_FORM.ERROR_OB_COST_REQUIRED' | translate }}
-                    }
-                  </ng-template>
-                </nz-form-control>
-              </nz-form-item>
-            </div>
             <div nz-col nzSpan="24">
-              <p class="ob-hint">{{ 'ITEM_FORM.OB_FIELDS_HINT' | translate }}</p>
+              <p class="ob-hint">
+                {{
+                  (isEditMode()
+                    ? 'ITEM_FORM.OB_FIELDS_EDIT_HINT'
+                    : 'ITEM_FORM.OB_FIELDS_HINT'
+                  ) | translate
+                }}
+              </p>
             </div>
           }
           @if (isEditMode()) {

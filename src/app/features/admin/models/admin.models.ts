@@ -88,6 +88,8 @@ export interface OpeningBalanceSnapshotSummary {
 
 /** GET /settings/inventory-status */
 export interface InventoryStatusResponse {
+  /** Explicit OB lifecycle status from backend. */
+  obStatus?: 'OPEN' | 'INITIAL_LOCK' | 'FINALIZED';
   isOpeningBalanceAllowed: boolean;
   reason?: string | null;
   lockedAt?: string | null;

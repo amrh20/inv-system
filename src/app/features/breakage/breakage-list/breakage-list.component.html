@@ -17,12 +17,28 @@
       >
         <lucide-icon [img]="lucideRefresh" [size]="16" [class.brk-list__spin]="loading()" />
       </button>
-      <button *appHasPermission="'BREAKAGE_CREATE'" nz-button nzType="primary" type="button" (click)="openCreate()">
-        <lucide-icon [img]="lucidePlus" [size]="15" />
-        {{ 'BREAKAGE.LIST.NEW' | translate }}
-      </button>
+      <span
+        *appHasPermission="'BREAKAGE_CREATE'"
+        nz-tooltip
+        [nzTooltipTitle]="
+          disableCreateButton() ? ('INVENTORY.BREAKAGE.OB_REQUIRED_BANNER' | translate) : null
+        "
+      >
+        <button nz-button nzType="primary" type="button" [disabled]="disableCreateButton()" (click)="openCreate()">
+          <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
+          {{ 'BREAKAGE.LIST.NEW' | translate }}
+        </button>
+      </span>
     </div>
   </div>
+
+  @if (disableCreateButton()) {
+    <nz-alert
+      nzType="warning"
+      nzShowIcon
+      [nzMessage]="'INVENTORY.BREAKAGE.OB_REQUIRED_BANNER' | translate"
+    />
+  }
 
   <div class="brk-list__filters">
     <div class="brk-list__search-wrap">

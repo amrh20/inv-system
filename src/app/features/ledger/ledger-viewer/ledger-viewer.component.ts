@@ -1,6 +1,7 @@
 import { DatePipe, NgClass } from '@angular/common';
 import {
   Component,
+  computed,
   effect,
   inject,
   OnDestroy,
@@ -30,6 +31,7 @@ import { ItemsService } from '../../items/services/items.service';
 import type { LedgerEntryRow } from '../models/ledger-entry.model';
 import { LedgerService } from '../services/ledger.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import type { RequirementsResponse } from '../../items/models/item.model';
 
 const LEDGER_FETCH_TAKE = 100;
 const LEDGER_DEBOUNCE_MS = 300;
@@ -67,6 +69,8 @@ const LEDGER_MOVEMENT_TYPES = [
   styleUrl: './ledger-viewer.component.scss',
 })
 export class LedgerViewerComponent implements OnInit, OnDestroy {
+  private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
+
   readonly ledgerFetchTake = LEDGER_FETCH_TAKE;
   readonly movementTypes = LEDGER_MOVEMENT_TYPES;
 
@@ -95,9 +99,16 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
   readonly total = signal(0);
   readonly loading = signal(false);
   readonly error = signal('');
+  readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
+    LedgerViewerComponent.DEFAULT_OB_STATUS,
+  );
 
   readonly itemOptions = signal<{ id: string; label: string }[]>([]);
   readonly locations = signal<LocationOption[]>([]);
+  readonly showSetupInProgress = computed(
+    () => this.obStatus() === 'OPEN' || this.obStatus() === 'INITIAL_LOCK',
+  );
+  readonly canRenderLedger = computed(() => this.obStatus() === 'FINALIZED');
 
   private debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -113,6 +124,7 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.loadRequirements();
     this.loadLookups();
   }
 
@@ -124,6 +136,12 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
   }
 
   private scheduleLoad(): void {
+    if (!this.canRenderLedger()) {
+      this.entries.set([]);
+      this.total.set(0);
+      this.loading.set(false);
+      return;
+    }
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
     }
@@ -134,6 +152,12 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
   }
 
   loadEntries(): void {
+    if (!this.canRenderLedger()) {
+      this.entries.set([]);
+      this.total.set(0);
+      this.loading.set(false);
+      return;
+    }
     this.loading.set(true);
     this.error.set('');
     const df = this.dateFrom();
@@ -314,6 +338,25 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (l) => this.locations.set(l),
         error: () => this.locations.set([]),
+      });
+  }
+
+  private loadRequirements(): void {
+    this.itemsApi
+      .checkRequirements()
+      .pipe(first())
+      .subscribe({
+        next: (res) => {
+          if (!res.success || !res.data) {
+            this.obStatus.set(LedgerViewerComponent.DEFAULT_OB_STATUS);
+            return;
+          }
+          const normalizedObStatus =
+            res.data.obStatus ??
+            (res.data.isOpeningBalanceAllowed ? 'OPEN' : LedgerViewerComponent.DEFAULT_OB_STATUS);
+          this.obStatus.set(normalizedObStatus);
+        },
+        error: () => this.obStatus.set(LedgerViewerComponent.DEFAULT_OB_STATUS),
       });
   }
 

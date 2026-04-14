@@ -15,6 +15,7 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import type { NzTableSortFn } from 'ng-zorro-antd/table';
@@ -36,6 +37,8 @@ import {
 import type { CategoryOption, DepartmentOption, LocationOption } from '../../items/models/item.models';
 import { CategoriesService } from '../../items/services/categories.service';
 import { ItemMasterLookupsService } from '../../items/services/item-master-lookups.service';
+import { ItemsService } from '../../items/services/items.service';
+import type { RequirementsResponse } from '../../items/models/item.model';
 import type {
   StockBalanceRow,
   StockBalancesParams,
@@ -45,7 +48,8 @@ import type {
 import { StockService } from '../services/stock.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 
-const TAKE = 100;
+/** Page size options for stock balances table (must match template `nzPageSizeOptions`). */
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
 
 @Component({
   selector: 'app-stock-balances',
@@ -56,6 +60,7 @@ const TAKE = 100;
     NzAlertModule,
     NzButtonModule,
     NzInputModule,
+    NzPaginationModule,
     NzSelectModule,
     NzTableModule,
     TranslatePipe,
@@ -66,11 +71,14 @@ const TAKE = 100;
   styleUrl: './stock-balances.component.scss',
 })
 export class StockBalancesComponent implements OnInit {
-  readonly pageSize = TAKE;
+  private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
+
+  readonly pageSizeOptions: number[] = [...PAGE_SIZE_OPTIONS];
 
   private readonly stockApi = inject(StockService);
   private readonly categoriesApi = inject(CategoriesService);
   private readonly lookups = inject(ItemMasterLookupsService);
+  private readonly itemsApi = inject(ItemsService);
   private readonly message = inject(NzMessageService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
@@ -96,6 +104,9 @@ export class StockBalancesComponent implements OnInit {
   readonly summary = signal<StockBalancesSummary | null>(null);
   readonly summaryLoading = signal(false);
   readonly exporting = signal(false);
+  readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
+    StockBalancesComponent.DEFAULT_OB_STATUS,
+  );
 
   readonly searchDraft = signal('');
   readonly departmentId = signal('');
@@ -103,6 +114,10 @@ export class StockBalancesComponent implements OnInit {
   readonly categoryId = signal('');
   /** `'false'` = non-zero only, `'true'` = include zeros */
   readonly showZero = signal('false');
+
+  /** 1-based page index for `nz-pagination`. */
+  readonly pageIndex = signal(1);
+  readonly pageSize = signal(20);
 
   readonly categories = signal<CategoryOption[]>([]);
   readonly departments = signal<DepartmentOption[]>([]);
@@ -116,6 +131,10 @@ export class StockBalancesComponent implements OnInit {
     }
     return locs.filter((l) => l.departmentId === dept);
   });
+  readonly showSetupInProgress = computed(
+    () => this.obStatus() === 'OPEN' || this.obStatus() === 'INITIAL_LOCK',
+  );
+  readonly canRenderStockBalances = computed(() => this.obStatus() === 'FINALIZED');
 
   readonly pageTotals = computed(() =>
     this.balances().reduce(
@@ -164,9 +183,11 @@ export class StockBalancesComponent implements OnInit {
     this.lineValue(a) - this.lineValue(b);
 
   ngOnInit(): void {
+    this.loadRequirements();
     this.reload$
       .pipe(debounceTime(300), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
+        this.pageIndex.set(1);
         this.loadBalances();
         this.loadSummary();
       });
@@ -199,17 +220,23 @@ export class StockBalancesComponent implements OnInit {
   }
 
   refreshNow(): void {
+    if (!this.canRenderStockBalances()) {
+      return;
+    }
     this.loadBalances();
     this.loadSummary();
   }
 
   exportExcel(): void {
-    if (this.balances().length === 0) {
+    if (!this.canRenderStockBalances()) {
+      return;
+    }
+    if (this.totalRows() === 0) {
       return;
     }
     this.exporting.set(true);
     this.stockApi
-      .exportStockBalances(this.buildQueryParams())
+      .exportStockBalances(this.buildFilterParams())
       .pipe(first())
       .subscribe({
         next: (blob) => {
@@ -293,11 +320,41 @@ export class StockBalancesComponent implements OnInit {
     return Number(row.qtyOnHand) < 0;
   }
 
+  /** Params for `STOCK.PAGE_ROW_RANGE` (1-based inclusive range on current page). */
+  pageRowRangeParams(): { start: number; end: number; total: number } {
+    const total = this.totalRows();
+    if (total <= 0) {
+      return { start: 0, end: 0, total: 0 };
+    }
+    const size = this.pageSize();
+    const page = this.pageIndex();
+    const start = (page - 1) * size + 1;
+    const end = Math.min(page * size, total);
+    return { start, end, total };
+  }
+
+  onPageIndexChange(page: number): void {
+    this.pageIndex.set(page);
+    this.loadBalances();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize.set(size);
+    this.pageIndex.set(1);
+    this.loadBalances();
+  }
+
   private loadBalances(): void {
+    if (!this.canRenderStockBalances()) {
+      this.balances.set([]);
+      this.totalRows.set(0);
+      this.loading.set(false);
+      return;
+    }
     this.loading.set(true);
     this.listError.set('');
     this.stockApi
-      .getStockBalances(this.buildQueryParams())
+      .getStockBalances(this.buildListParams())
       .pipe(first())
       .subscribe({
         next: (res) => {
@@ -313,9 +370,14 @@ export class StockBalancesComponent implements OnInit {
   }
 
   private loadSummary(): void {
+    if (!this.canRenderStockBalances()) {
+      this.summary.set(null);
+      this.summaryLoading.set(false);
+      return;
+    }
     this.summaryLoading.set(true);
     this.stockApi
-      .getSummary(this.buildQueryParams())
+      .getSummary(this.buildFilterParams())
       .pipe(first())
       .subscribe({
         next: (s) => {
@@ -329,14 +391,22 @@ export class StockBalancesComponent implements OnInit {
       });
   }
 
-  private buildQueryParams(): StockBalancesParams {
+  private buildFilterParams(): StockBalancesParams {
     return {
-      take: TAKE,
       search: this.searchDraft().trim() || undefined,
       departmentId: this.departmentId() || undefined,
       locationId: this.locationId() || undefined,
       categoryId: this.categoryId() || undefined,
       showZero: this.showZero(),
+    };
+  }
+
+  private buildListParams(): StockBalancesParams {
+    const take = this.pageSize();
+    return {
+      ...this.buildFilterParams(),
+      take,
+      skip: (this.pageIndex() - 1) * take,
     };
   }
 
@@ -366,5 +436,24 @@ export class StockBalancesComponent implements OnInit {
 
   private t(key: string, params?: Record<string, unknown>): string {
     return this.translate.instant(key, params);
+  }
+
+  private loadRequirements(): void {
+    this.itemsApi
+      .checkRequirements()
+      .pipe(first())
+      .subscribe({
+        next: (res) => {
+          if (!res.success || !res.data) {
+            this.obStatus.set(StockBalancesComponent.DEFAULT_OB_STATUS);
+            return;
+          }
+          const normalizedObStatus =
+            res.data.obStatus ??
+            (res.data.isOpeningBalanceAllowed ? 'OPEN' : StockBalancesComponent.DEFAULT_OB_STATUS);
+          this.obStatus.set(normalizedObStatus);
+        },
+        error: () => this.obStatus.set(StockBalancesComponent.DEFAULT_OB_STATUS),
+      });
   }
 }

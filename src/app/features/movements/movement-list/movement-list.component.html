@@ -16,6 +16,12 @@
     </button>
   </div>
 
+  @if (showSetupInProgress()) {
+    <app-empty-state
+      [title]="'MOVEMENTS.TITLE' | translate"
+      [message]="'TRANSACTIONS.INITIAL_SETUP_REQUIRED_BANNER' | translate"
+    />
+  } @else {
   <div class="movements-page__search">
     <nz-input-group [nzPrefix]="searchPrefix">
       <input
@@ -88,4 +94,5 @@
       }
     </tbody>
   </nz-table>
+  }
 </div>

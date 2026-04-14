@@ -23,6 +23,8 @@ export interface StockBalanceRow {
 
 export interface StockBalancesParams {
   take?: number;
+  /** Offset for paginated `GET /stock-balances` (with `take`). */
+  skip?: number;
   search?: string;
   locationId?: string;
   categoryId?: string;

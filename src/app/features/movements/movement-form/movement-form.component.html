@@ -225,7 +225,7 @@
             <tr>
               <th>{{ 'COMMON.ITEM' | translate }}</th>
               <th class="col-qty text-right">{{ 'MOVEMENTS.QTY_BASE_UNIT' | translate }}</th>
-              <th class="text-right">{{ 'COMMON.UNIT_COST' | translate }}</th>
+              <th class="text-right">{{ lineCostColumnLabelKey() | translate }}</th>
               <th>{{ 'COMMON.NOTES' | translate }}</th>
               @if (!isReadOnly()) {
                 <th class="col-actions"></th>
@@ -337,7 +337,7 @@
                 <th>{{ 'COMMON.TYPE' | translate }}</th>
                 <th class="text-right">{{ 'COMMON.QTY_IN' | translate }}</th>
                 <th class="text-right">{{ 'COMMON.QTY_OUT' | translate }}</th>
-                <th class="text-right">{{ 'COMMON.UNIT_COST' | translate }}</th>
+                <th class="text-right">{{ ledgerUnitCostColumnLabelKey() | translate }}</th>
                 <th class="text-right">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
               </tr>
             </thead>

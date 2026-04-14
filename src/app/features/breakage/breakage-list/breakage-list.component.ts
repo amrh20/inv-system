@@ -1,11 +1,5 @@
 import { DatePipe, NgClass } from '@angular/common';
-import {
-  Component,
-  DestroyRef,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -16,6 +10,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { AlertTriangle, Eye, Plus, RefreshCw, Search } from 'lucide-angular';
@@ -25,6 +20,8 @@ import type { MovementStatus } from '../../../core/models/enums';
 import type { BreakageListRow } from '../models/breakage.model';
 import { BreakageService } from '../services/breakage.service';
 import { BreakageCreateModalComponent } from '../breakage-create-modal/breakage-create-modal.component';
+import type { RequirementsResponse } from '../../items/models/item.model';
+import { ItemsService } from '../../items/services/items.service';
 
 const TABS: Array<'ALL' | MovementStatus> = [
   'ALL',
@@ -47,6 +44,7 @@ const TABS: Array<'ALL' | MovementStatus> = [
     NzInputModule,
     NzSelectModule,
     NzTableModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     HasPermissionDirective,
@@ -58,9 +56,11 @@ const TABS: Array<'ALL' | MovementStatus> = [
 })
 export class BreakageListComponent implements OnInit {
   private readonly api = inject(BreakageService);
+  private readonly itemsApi = inject(ItemsService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
 
   readonly lucideAlert = AlertTriangle;
   readonly lucidePlus = Plus;
@@ -79,6 +79,13 @@ export class BreakageListComponent implements OnInit {
   readonly createOpen = signal(false);
   readonly search = signal('');
   readonly page = signal(0);
+  readonly requirements = signal<RequirementsResponse | null>(null);
+  readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
+    BreakageListComponent.DEFAULT_OB_STATUS,
+  );
+  readonly disableCreateButton = computed(
+    () => this.obStatus() === 'INITIAL_LOCK' || this.obStatus() === 'OPEN',
+  );
 
   private readonly search$ = new Subject<string>();
 
@@ -89,7 +96,32 @@ export class BreakageListComponent implements OnInit {
         this.page.set(0);
         this.load();
       });
+    this.loadRequirements();
     this.load();
+  }
+
+  private loadRequirements(): void {
+    this.itemsApi
+      .checkRequirements()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (!res.success || !res.data) {
+            this.requirements.set(null);
+            this.obStatus.set(BreakageListComponent.DEFAULT_OB_STATUS);
+            return;
+          }
+          const normalizedObStatus =
+            res.data.obStatus ??
+            (res.data.isOpeningBalanceAllowed ? 'OPEN' : BreakageListComponent.DEFAULT_OB_STATUS);
+          this.requirements.set(res.data);
+          this.obStatus.set(normalizedObStatus);
+        },
+        error: () => {
+          this.requirements.set(null);
+          this.obStatus.set(BreakageListComponent.DEFAULT_OB_STATUS);
+        },
+      });
   }
 
   setTab(tab: (typeof TABS)[number]): void {
@@ -134,6 +166,9 @@ export class BreakageListComponent implements OnInit {
   }
 
   openCreate(): void {
+    if (this.disableCreateButton()) {
+      return;
+    }
     this.createOpen.set(true);
   }
 

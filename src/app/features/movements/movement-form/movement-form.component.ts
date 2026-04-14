@@ -147,6 +147,18 @@ export class MovementFormComponent implements OnInit {
     ['OPENING_BALANCE', 'RETURN', 'RECEIVE', 'TRANSFER_IN'].includes(this.form().movementType),
   );
 
+  /** Opening balance lines use catalog unit price; other types keep generic unit cost labeling. */
+  readonly lineCostColumnLabelKey = computed(() =>
+    String(this.form().movementType).toUpperCase() === 'OPENING_BALANCE'
+      ? 'COMMON.UNIT_PRICE'
+      : 'COMMON.UNIT_COST',
+  );
+
+  readonly ledgerUnitCostColumnLabelKey = computed(() => {
+    const posted = this.currentDoc()?.movementType ?? this.form().movementType;
+    return String(posted).toUpperCase() === 'OPENING_BALANCE' ? 'COMMON.UNIT_PRICE' : 'COMMON.UNIT_COST';
+  });
+
   /** Supplier: editable for RECEIVE; read-only row only when a supplier id exists (skip empty OB). */
   readonly showSupplierSection = computed(() => {
     const sid = this.form().supplierId;
@@ -465,8 +477,9 @@ export class MovementFormComponent implements OnInit {
     const qtyBase = this.num(l.qtyInBaseUnit ?? l.qtyRequested);
     const uc = this.num(l.unitCost);
     const tv = this.num(l.totalValue) || qtyBase * uc;
+    const itemId = (l.itemId ?? l.item?.id ?? '').trim();
     return {
-      itemId: l.itemId,
+      itemId,
       locationId: l.locationId ?? null,
       qtyRequested: qtyBase,
       unitCost: uc,

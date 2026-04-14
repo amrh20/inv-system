@@ -265,6 +265,28 @@ export class GetPassDetailComponent implements OnInit {
     return this.isAdminBypass() || this.auth.hasRole('SECURITY');
   }
 
+  /**
+   * Security clearance approval button is restricted to SECURITY role only.
+   * Keep admin bypass hidden for this step until business confirms otherwise.
+   */
+  showSecurityClearanceApproveButton(): boolean {
+    const d = this.data();
+    if (!d || d.status !== 'PENDING_SECURITY') return false;
+    if (this.isViewerTargetTenant()) return false;
+    return this.auth.hasRole('SECURITY');
+  }
+
+  /** Toolbar: any visible workflow approve, or reject-only (e.g. SECURITY while clearance UI is off). */
+  showGetPassWorkflowToolbar(): boolean {
+    const approve =
+      this.showPendingDeptActions() ||
+      this.showCostControlVerifyActions() ||
+      this.showFinanceSignActions() ||
+      this.showGmAuthorizeActions() ||
+      (this.showSecurityApproveActions() && this.showSecurityClearanceApproveButton());
+    return approve || this.canRejectWorkflow();
+  }
+
   /** True when any workflow approve/reject pair is shown and the user is acting via admin role. */
   showAdminActionLabel(): boolean {
     if (!this.isAdminBypass()) return false;
@@ -273,7 +295,7 @@ export class GetPassDetailComponent implements OnInit {
       this.showCostControlVerifyActions() ||
       this.showFinanceSignActions() ||
       this.showGmAuthorizeActions() ||
-      this.showSecurityApproveActions()
+      (this.showSecurityApproveActions() && this.showSecurityClearanceApproveButton())
     );
   }
 
@@ -290,13 +312,19 @@ export class GetPassDetailComponent implements OnInit {
     );
   }
 
+  /** Reject at PENDING_SECURITY is for SECURITY role only (not admin bypass). */
   canRejectWorkflow(): boolean {
+    const d = this.data();
+    if (!d) return false;
+    if (d.status === 'PENDING_SECURITY') {
+      if (this.isViewerTargetTenant()) return false;
+      return this.auth.hasRole('SECURITY');
+    }
     return (
       this.showPendingDeptActions() ||
       this.showCostControlVerifyActions() ||
       this.showFinanceSignActions() ||
-      this.showGmAuthorizeActions() ||
-      this.showSecurityApproveActions()
+      this.showGmAuthorizeActions()
     );
   }
 

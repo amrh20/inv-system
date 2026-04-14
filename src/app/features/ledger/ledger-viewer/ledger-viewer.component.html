@@ -9,6 +9,12 @@
     </button>
   </div>
 
+  @if (showSetupInProgress()) {
+    <app-empty-state
+      [title]="'LEDGER.TITLE' | translate"
+      [message]="'TRANSACTIONS.INITIAL_SETUP_REQUIRED_BANNER' | translate"
+    />
+  } @else {
   <div class="ledger-page__filters">
     <div class="ledger-page__filters-title">
       <lucide-icon [img]="lucideFilter" class="ledger-page__icon" />
@@ -162,4 +168,5 @@
     </tbody>
   </nz-table>
   </div>
+  }
 </div>

@@ -1,6 +1,7 @@
 import { DatePipe, NgClass } from '@angular/common';
 import {
   Component,
+  computed,
   DestroyRef,
   inject,
   OnInit,
@@ -67,6 +68,8 @@ const TYPE_FILTERS: Array<'ALL' | GetPassType> = ['ALL', 'TEMPORARY', 'CATERING'
   styleUrl: './get-pass-list.component.scss',
 })
 export class GetPassListComponent implements OnInit {
+  private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
+
   private readonly api = inject(GetPassService);
   private readonly itemsApi = inject(ItemsService);
   private readonly router = inject(Router);
@@ -95,6 +98,10 @@ export class GetPassListComponent implements OnInit {
   readonly listError = signal('');
   /** From `GET /items/check-requirements`; `isOpeningBalanceAllowed` disables New Get Pass during OB setup. */
   readonly requirements = signal<RequirementsResponse | null>(null);
+  readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
+    GetPassListComponent.DEFAULT_OB_STATUS,
+  );
+  readonly disableCreateButton = computed(() => this.obStatus() === 'INITIAL_LOCK');
 
   get canCreate(): boolean {
     return this.auth.hasPermission('GET_PASS_CREATE');
@@ -129,10 +136,20 @@ export class GetPassListComponent implements OnInit {
       .pipe(first(), takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          this.requirements.set(res.success && res.data ? res.data : null);
+          if (!res.success || !res.data) {
+            this.requirements.set(null);
+            this.obStatus.set(GetPassListComponent.DEFAULT_OB_STATUS);
+            return;
+          }
+          const normalizedObStatus =
+            res.data.obStatus ??
+            (res.data.isOpeningBalanceAllowed ? 'OPEN' : GetPassListComponent.DEFAULT_OB_STATUS);
+          this.requirements.set(res.data);
+          this.obStatus.set(normalizedObStatus);
         },
         error: () => {
           this.requirements.set(null);
+          this.obStatus.set(GetPassListComponent.DEFAULT_OB_STATUS);
         },
       });
   }
@@ -223,6 +240,9 @@ export class GetPassListComponent implements OnInit {
   }
 
   goNew(): void {
+    if (this.disableCreateButton()) {
+      return;
+    }
     this.router.navigate(['/get-passes/new']);
   }
 

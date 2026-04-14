@@ -14,6 +14,7 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzSwitchModule } from 'ng-zorro-antd/switch';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Lock, Loader2, Package, Save, Settings, User as LucideUser } from 'lucide-angular';
@@ -30,6 +31,7 @@ import type { DepartmentRow } from '../../../master-data/models/department.model
 import { DepartmentsService } from '../../../master-data/services/departments.service';
 import { AppSettingsService } from '../../services/app-settings.service';
 import { UsersAdminService } from '../../services/users-admin.service';
+import { ItemsService } from '../../../items/services/items.service';
 
 @Component({
   selector: 'app-settings-page',
@@ -49,6 +51,7 @@ import { UsersAdminService } from '../../services/users-admin.service';
     NzSpinModule,
     NzSwitchModule,
     NzTabsModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     RouterLink,
@@ -62,6 +65,7 @@ export class SettingsPageComponent implements OnInit {
   private readonly usersApi = inject(UsersAdminService);
   private readonly departmentsApi = inject(DepartmentsService);
   private readonly settingsApi = inject(AppSettingsService);
+  private readonly itemsApi = inject(ItemsService);
   private readonly message = inject(NzMessageService);
   private readonly modal = inject(NzModalService);
   private readonly translate = inject(TranslateService);
@@ -108,6 +112,7 @@ export class SettingsPageComponent implements OnInit {
   obError = signal('');
   obFinalizeLoading = signal(false);
   obFinalizeValidation = signal<ObFinalizeValidationDetails | null>(null);
+  obRequirementsItemsCount = signal<number | null>(null);
   celebrateFinalize = signal(false);
 
   /** Vertical nav on ≥768px; horizontal scrollable tabs on smaller viewports. */
@@ -123,13 +128,27 @@ export class SettingsPageComponent implements OnInit {
     return r === 'ADMIN' || r === 'SUPER_ADMIN' || r === 'ORG_MANAGER';
   });
 
+  readonly isFinalizedLock = computed(() => this.obStatus()?.obStatus === 'FINALIZED');
+
   readonly obSwitchDisabled = computed(() => {
-    const s = this.obStatus();
     return (
       !this.isOpeningBalanceSwitchRole() ||
       this.obLoading() ||
       this.obSaving() ||
-      !!s?.lockedAt
+      this.isFinalizedLock()
+    );
+  });
+
+  readonly obFinalizeDisabled = computed(() => {
+    const s = this.obStatus();
+    return (
+      !this.canManageOb() ||
+      s?.isOpeningBalanceAllowed !== true ||
+      this.obFinalizeLoading() ||
+      this.obLoading() ||
+      this.obSaving() ||
+      !!s?.snapshotSummary ||
+      this.obRequirementsItemsCount() === 0
     );
   });
 
@@ -137,6 +156,7 @@ export class SettingsPageComponent implements OnInit {
     this.loadDepartments();
     this.loadProfileFromApi();
     this.loadOb();
+    this.loadObRequirements();
     this.bindSettingsTabLayoutMediaQuery();
   }
 
@@ -273,12 +293,59 @@ export class SettingsPageComponent implements OnInit {
         next: (s) => {
           this.obStatus.set(s);
           this.obLoading.set(false);
+          this.loadObRequirements();
         },
         error: () => {
           this.obStatus.set(null);
           this.obLoading.set(false);
         },
       });
+  }
+
+  private loadObRequirements(): void {
+    this.itemsApi
+      .checkRequirements()
+      .pipe(first())
+      .subscribe({
+        next: (res) => {
+          if (!res.success || !res.data) {
+            this.obRequirementsItemsCount.set(null);
+            return;
+          }
+          this.obRequirementsItemsCount.set(this.extractRequirementsItemsCount(res.data));
+        },
+        error: () => this.obRequirementsItemsCount.set(null),
+      });
+  }
+
+  private extractRequirementsItemsCount(data: unknown): number | null {
+    if (!data || typeof data !== 'object') {
+      return null;
+    }
+    const root = data as Record<string, unknown>;
+    const requirements =
+      root['requirements'] && typeof root['requirements'] === 'object'
+        ? (root['requirements'] as Record<string, unknown>)
+        : null;
+    const itemEntry =
+      requirements && requirements['items'] && typeof requirements['items'] === 'object'
+        ? (requirements['items'] as Record<string, unknown>)
+        : null;
+    if (itemEntry && typeof itemEntry['count'] === 'number') {
+      return itemEntry['count'];
+    }
+    if (itemEntry && typeof itemEntry['count'] === 'string') {
+      const parsed = Number(itemEntry['count']);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    if (requirements && typeof requirements['items'] === 'number') {
+      return requirements['items'];
+    }
+    if (requirements && typeof requirements['items'] === 'string') {
+      const parsed = Number(requirements['items']);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
   }
 
   saveProfile(): void {
@@ -454,14 +521,7 @@ export class SettingsPageComponent implements OnInit {
   }
 
   requestFinalizeOpeningBalance(): void {
-    const s = this.obStatus();
-    if (
-      !this.canManageOb() ||
-      s?.isOpeningBalanceAllowed !== true ||
-      this.obFinalizeLoading() ||
-      this.obLoading() ||
-      !!s?.snapshotSummary
-    ) {
+    if (this.obFinalizeDisabled()) {
       return;
     }
     this.obFinalizeValidation.set(null);
