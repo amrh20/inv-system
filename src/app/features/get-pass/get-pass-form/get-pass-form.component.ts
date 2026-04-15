@@ -100,9 +100,14 @@ export class GetPassFormComponent implements OnInit {
   readonly lucideTrash = Trash2;
 
   /** Applied to item line nz-select overlay so list scrolls when many options (overlay is outside component DOM). */
-  readonly itemSelectDropdownStyle: { maxHeight: string; overflowY: string } = {
-    maxHeight: '250px',
+  readonly itemSelectDropdownStyle: {
+    maxHeight: string;
+    overflowY: string;
+    overscrollBehavior: string;
+  } = {
+    maxHeight: '320px',
     overflowY: 'auto',
+    overscrollBehavior: 'contain',
   };
 
   readonly departments = signal<DepartmentRow[]>([]);
@@ -316,7 +321,7 @@ export class GetPassFormComponent implements OnInit {
       this.cateringExpectedReturnDate.set(null);
     } else if (value === 'TEMPORARY') {
       this.cateringExpectedReturnDate.set(null);
-    } else if (value === 'CATERING') {
+    } else if (value === 'CATERING' || value === 'OUTSIDE_CATERING') {
       this.temporaryReturnDate.set(null);
     }
   }
@@ -419,19 +424,24 @@ export class GetPassFormComponent implements OnInit {
   }
 
   /**
-   * Every row comes from {@link itemCatalog}; `stockMap` only supplies the "Available: X" label
-   * (0 if that location has no quantity entry for the item).
+   * Row source is stock balances for the selected location: active catalog items with on-hand > 0.
+   * Keep the currently selected item visible even if balance dropped to zero while editing.
    */
-  lineItemOptions(locationId: string): LineItemOption[] {
+  lineItemOptions(locationId: string, selectedItemId?: string): LineItemOption[] {
     if (!locationId) return [];
     const qtyByItem = this.stockMap()[locationId];
+    if (qtyByItem === undefined) return [];
+    const selected = selectedItemId?.trim() ?? '';
+    const catalogById = new Map(this.itemCatalog().map((item) => [item.id, item] as const));
     const out: LineItemOption[] = [];
-    for (const cat of this.itemCatalog()) {
-      const itemId = cat.id;
-      const rawQty = qtyByItem?.[itemId];
-      const qty = rawQty !== undefined ? Math.max(0, rawQty) : 0;
-      const name = cat.name != null ? String(cat.name).trim() : itemId;
-      const barcode = cat.barcode != null ? String(cat.barcode).trim() : '';
+    for (const [itemId, rawQty] of Object.entries(qtyByItem)) {
+      const qty = Math.max(0, Number(rawQty) || 0);
+      if (qty < 0.01 && itemId !== selected) {
+        continue;
+      }
+      const cat = catalogById.get(itemId);
+      const name = cat?.name != null ? String(cat.name).trim() : itemId;
+      const barcode = cat?.barcode != null ? String(cat.barcode).trim() : '';
       const avail = this.translate.instant('GET_PASS.FORM.ITEM_AVAILABLE_SUFFIX', {
         qty: this.formatQtyDisplay(qty),
       });
@@ -440,11 +450,7 @@ export class GetPassFormComponent implements OnInit {
         `${name} ${barcode}`.toLowerCase().trim() || itemId.toLowerCase();
       out.push({ id: itemId, label, searchText, qty });
     }
-    out.sort((a, b) => {
-      const pos = (n: number) => (n > 0 ? 1 : 0);
-      if (pos(b.qty) !== pos(a.qty)) return pos(b.qty) - pos(a.qty);
-      return a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
-    });
+    out.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
     return out;
   }
 
@@ -472,7 +478,10 @@ export class GetPassFormComponent implements OnInit {
 
   /** Location chosen but the master catalog failed to load (no rows to pick from). */
   showNoItemsInLocationMessage(line: LineDraft): boolean {
-    return !!line.locationId && this.itemCatalog().length === 0;
+    if (!line.locationId) return false;
+    const qtyByItem = this.stockMap()[line.locationId];
+    if (qtyByItem === undefined) return false;
+    return this.lineItemOptions(line.locationId, line.itemId).length === 0;
   }
 
   /** Merge fetched quantities into {@link stockMap}; catalog / dropdown options are unchanged. */
@@ -487,7 +496,7 @@ export class GetPassFormComponent implements OnInit {
       .getStockBalances({
         locationId,
         take: this.gpStockTakePerLocation,
-        showZero: 'true',
+        showZero: 'false',
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -511,7 +520,7 @@ export class GetPassFormComponent implements OnInit {
           .getStockBalances({
             locationId: locId,
             take: this.gpStockTakePerLocation,
-            showZero: 'true',
+            showZero: 'false',
           })
           .pipe(
             map((r) => ({
@@ -624,7 +633,7 @@ export class GetPassFormComponent implements OnInit {
             const raw = p.returnDate ?? p.expectedReturnDate;
             this.temporaryReturnDate.set(raw ? new Date(raw) : null);
             this.cateringExpectedReturnDate.set(null);
-          } else if (p.transferType === 'CATERING') {
+          } else if (p.transferType === 'CATERING' || p.transferType === 'OUTSIDE_CATERING') {
             this.temporaryReturnDate.set(null);
             this.cateringExpectedReturnDate.set(
               p.expectedReturnDate ? new Date(p.expectedReturnDate) : null,
@@ -673,7 +682,7 @@ export class GetPassFormComponent implements OnInit {
                       .getStockBalances({
                         locationId: locId,
                         take: this.gpStockTakePerLocation,
-                        showZero: 'true',
+                        showZero: 'false',
                       })
                       .pipe(
                         map((r) => ({
@@ -824,7 +833,7 @@ export class GetPassFormComponent implements OnInit {
       this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_RETURN_TEMP'));
       return null;
     }
-    if (tt === 'CATERING' && !this.cateringExpectedReturnDate()) {
+    if ((tt === 'CATERING' || tt === 'OUTSIDE_CATERING') && !this.cateringExpectedReturnDate()) {
       this.message.warning(this.translate.instant('GET_PASS.FORM.VALIDATION_RETURN_CATERING'));
       return null;
     }
@@ -868,7 +877,7 @@ export class GetPassFormComponent implements OnInit {
     const expectedReturnDateIso =
       tt === 'PERMANENT'
         ? null
-        : tt === 'CATERING' && caterDate
+        : (tt === 'CATERING' || tt === 'OUTSIDE_CATERING') && caterDate
           ? (caterDate as Date).toISOString()
           : tt === 'TEMPORARY' && tempDate
             ? (tempDate as Date).toISOString()

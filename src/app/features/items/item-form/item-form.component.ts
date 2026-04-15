@@ -187,13 +187,16 @@ export class ItemFormComponent {
 
   readonly isEditMode = computed(() => this.editItemId() != null && this.editItemId() !== '');
   readonly isOpeningBalanceActive = computed(() => this.obStatus() === 'OPEN');
+  readonly lockSensitiveFieldsAfterFinalize = computed(
+    () => this.isEditMode() && this.obStatus() === 'FINALIZED',
+  );
 
   readonly showOpeningBalanceFields = computed(() => {
+    if (this.isEditMode()) {
+      return this.obStatus() === 'OPEN' || this.obStatus() === 'FINALIZED';
+    }
     if (!this.isOpeningBalanceActive()) {
       return false;
-    }
-    if (this.isEditMode()) {
-      return this.obStatus() === 'OPEN';
     }
     const req = this.requirements();
     if (!req) {
@@ -263,6 +266,25 @@ export class ItemFormComponent {
 
     effect(() => {
       this.syncOpeningBalanceValidators(this.showOpeningBalanceFields());
+    });
+
+    effect(() => {
+      const lock = this.lockSensitiveFieldsAfterFinalize();
+      const unitPrice = this.form.get('unitPrice');
+      const baseUnit = this.form.get('baseUnitId');
+      const openingQty = this.form.get('openingQty');
+      if (!unitPrice || !baseUnit || !openingQty) {
+        return;
+      }
+      if (lock) {
+        unitPrice.disable({ emitEvent: false });
+        baseUnit.disable({ emitEvent: false });
+        openingQty.disable({ emitEvent: false });
+        return;
+      }
+      unitPrice.enable({ emitEvent: false });
+      baseUnit.enable({ emitEvent: false });
+      openingQty.enable({ emitEvent: false });
     });
 
     effect(() => {
@@ -398,21 +420,21 @@ export class ItemFormComponent {
     }
 
     const raw = this.form.getRawValue();
+    const sensitiveFieldsLocked = this.lockSensitiveFieldsAfterFinalize();
     const baseUnitId = (raw.baseUnitId as string) || '';
-    if (!baseUnitId.trim()) {
+    if (!sensitiveFieldsLocked && !baseUnitId.trim()) {
       this.submitError.set(this.t('ITEM_FORM.ERROR_BASE_UNIT_SELECT'));
       return;
     }
 
-    const itemUnits: ItemUnitRow[] = [
-      { unitId: baseUnitId.trim(), unitType: 'BASE', conversionRate: 1 },
-      ...this.extraItemUnitsSnapshot(),
-    ];
+    const itemUnits: ItemUnitRow[] | undefined = sensitiveFieldsLocked
+      ? undefined
+      : [{ unitId: baseUnitId.trim(), unitType: 'BASE', conversionRate: 1 }, ...this.extraItemUnitsSnapshot()];
 
     const unitPriceNum =
       raw.unitPrice != null && raw.unitPrice !== '' ? Number(raw.unitPrice) : Number.NaN;
 
-    const payload: ItemPayload = {
+    const payload: Partial<ItemPayload> = {
       name: (raw.name as string).trim(),
       barcode: (raw.barcode as string) || undefined,
       description: (raw.description as string) || undefined,
@@ -421,10 +443,12 @@ export class ItemFormComponent {
       subcategoryId: raw.subcategoryId || null,
       supplierId: raw.supplierId || null,
       defaultStoreId: raw.defaultStoreId || null,
-      unitPrice: Number.isFinite(unitPriceNum) ? unitPriceNum : 0,
       isActive: raw.isActive !== false,
-      itemUnits,
     };
+    if (!sensitiveFieldsLocked) {
+      payload.unitPrice = Number.isFinite(unitPriceNum) ? unitPriceNum : 0;
+      payload.itemUnits = itemUnits;
+    }
 
     if (this.removeImage() && !this.imageFile()) {
       payload.imageUrl = null;
@@ -461,9 +485,14 @@ export class ItemFormComponent {
 
     this.saving.set(true);
 
+    if (!currentId && sensitiveFieldsLocked) {
+      this.submitError.set(this.t('ITEM_FORM.ERROR_SAVE'));
+      return;
+    }
+
     const req$ = currentId
       ? this.itemsApi.updateItem(currentId, payload)
-      : this.itemsApi.createItem(payload);
+      : this.itemsApi.createItem(payload as ItemPayload);
 
     req$.pipe(first()).subscribe({
       next: async (saved) => {

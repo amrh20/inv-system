@@ -125,6 +125,7 @@ export class ItemsListComponent implements OnInit {
 
   /** Explicit OB OPEN phase — drives draft setup columns and Total qty hint. */
   readonly showObDraftColumns = computed(() => this.obStatus() === 'OPEN');
+  readonly deleteLockedAfterObFinalization = computed(() => this.obStatus() === 'FINALIZED');
 
   readonly showPrerequisitesBanner = computed(
     () =>
@@ -416,6 +417,10 @@ export class ItemsListComponent implements OnInit {
   }
 
   onDeleteClick(row: ItemListRow): void {
+    if (this.deleteLockedAfterObFinalization()) {
+      this.message.warning(this.t('ITEMS.DELETE_LOCKED_AFTER_OB_FINALIZED_TOOLTIP'));
+      return;
+    }
     this.confirmation
       .confirm({
         title: this.t('ITEMS.CONFIRM_DELETE_TITLE'),

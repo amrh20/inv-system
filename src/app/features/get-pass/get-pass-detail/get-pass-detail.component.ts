@@ -1,6 +1,7 @@
 import { DatePipe, NgClass } from '@angular/common';
 import {
   Component,
+  computed,
   DestroyRef,
   inject,
   OnInit,
@@ -14,12 +15,13 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzStepsModule } from 'ng-zorro-antd/steps';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { Observable } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
@@ -28,7 +30,21 @@ import type { GetPassStatus, GetPassType } from '../../../core/models/enums';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
-import type { GetPassDetail, GetPassReturnLinePayload, GetPassUserRef } from '../models/get-pass.model';
+import type {
+  DepartmentRow,
+} from '../../master-data/models/department.model';
+import type { LocationRow } from '../../master-data/models/location.model';
+import { DepartmentsService } from '../../master-data/services/departments.service';
+import { LocationsService } from '../../master-data/services/locations.service';
+import type {
+  GetPassAcceptIntoDepartmentPayload,
+  GetPassConfirmReturnArrivalPayload,
+  GetPassConfirmReturnArrivalLinePayload,
+  GetPassConfirmReceiptLinePayload,
+  GetPassDetail,
+  GetPassReturnLinePayload,
+  GetPassUserRef,
+} from '../models/get-pass.model';
 import { GetPassService } from '../services/get-pass.service';
 
 type ReturnConditionFlag = 'NONE' | 'LOST' | 'DAMAGED';
@@ -43,6 +59,23 @@ interface ReturnDraft {
   qtyAffected: number;
   returnFlag: ReturnConditionFlag;
   conditionIn: string;
+}
+
+interface ReceiptDraft {
+  lineId: string;
+  itemName: string;
+  shippedQty: number;
+  receivedQty: number;
+  condition: string;
+  discrepancyReason: string;
+}
+
+interface ReturnArrivalDraft {
+  lineId: string;
+  itemName: string;
+  outstandingQty: number;
+  receivedQty: number;
+  condition: 'Good' | 'Damaged' | 'Lost';
 }
 
 @Component({
@@ -63,6 +96,7 @@ interface ReturnDraft {
     NzStepsModule,
     NzTableModule,
     NzTagModule,
+    NzTabsModule,
     TranslatePipe,
     LucideAngularModule,
     HasPermissionDirective,
@@ -76,7 +110,8 @@ export class GetPassDetailComponent implements OnInit {
   private readonly api = inject(GetPassService);
   private readonly auth = inject(AuthService);
   private readonly confirmation = inject(ConfirmationService);
-  private readonly modal = inject(NzModalService);
+  private readonly departmentsApi = inject(DepartmentsService);
+  private readonly locationsApi = inject(LocationsService);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -100,6 +135,23 @@ export class GetPassDetailComponent implements OnInit {
   readonly returnOpen = signal(false);
   readonly returnLines = signal<ReturnDraft[]>([]);
   readonly returnGlobalNotes = signal('');
+  readonly receiptOpen = signal(false);
+  readonly receiptCondition = signal('Good');
+  readonly receiptNotes = signal('');
+  readonly receiptLines = signal<ReceiptDraft[]>([]);
+  readonly returnArrivalOpen = signal(false);
+  readonly returnArrivalLines = signal<ReturnArrivalDraft[]>([]);
+  readonly acceptDeptOpen = signal(false);
+  readonly acceptDepartments = signal<DepartmentRow[]>([]);
+  readonly acceptLocations = signal<LocationRow[]>([]);
+  readonly acceptDeptLoading = signal(false);
+  readonly acceptLocationLoading = signal(false);
+  readonly acceptTargetDepartmentId = signal('');
+  readonly acceptTargetLocationId = signal('');
+  readonly acceptSelectionTouched = signal(false);
+  readonly canSubmitAcceptIntoDept = computed(
+    () => !!this.acceptTargetDepartmentId().trim() && !!this.acceptTargetLocationId().trim(),
+  );
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -186,6 +238,9 @@ export class GetPassDetailComponent implements OnInit {
         return 'processing';
       case 'RECEIVED_AT_DESTINATION':
         return 'success';
+      case 'RETURNING':
+      case 'RETURN_RECEIVED_AT_GATE':
+        return 'pending';
       case 'PARTIALLY_RETURNED':
         return 'low-stock';
       case 'RETURNED':
@@ -196,6 +251,18 @@ export class GetPassDetailComponent implements OnInit {
       default:
         return 'pending';
     }
+  }
+
+  statusLabelKey(d: GetPassDetail): string {
+    if (d.isOverdue) return 'GET_PASS.STATUS.OVERDUE';
+    if (d.status === 'RETURNING') {
+      if (!d.destinationSecurityExitAt) return 'GET_PASS.STATUS.RETURNING_PENDING_EXIT';
+      return 'GET_PASS.STATUS.RETURNING_IN_TRANSIT';
+    }
+    if (d.status === 'RETURN_RECEIVED_AT_GATE') {
+      return 'GET_PASS.STATUS.RETURN_RECEIVED_AT_GATE';
+    }
+    return `GET_PASS.STATUS.${d.status}`;
   }
 
   /** Issuing hotel (this pass’s stock / workflow). */
@@ -348,6 +415,8 @@ export class GetPassDetailComponent implements OnInit {
       case 'APPROVED':
       case 'OUT':
       case 'RECEIVED_AT_DESTINATION':
+      case 'RETURNING':
+      case 'RETURN_RECEIVED_AT_GATE':
       case 'PARTIALLY_RETURNED':
       case 'RETURNED':
       case 'CLOSED':
@@ -371,6 +440,8 @@ export class GetPassDetailComponent implements OnInit {
       'APPROVED',
       'OUT',
       'RECEIVED_AT_DESTINATION',
+      'RETURNING',
+      'RETURN_RECEIVED_AT_GATE',
       'PARTIALLY_RETURNED',
       'RETURNED',
       'CLOSED',
@@ -427,6 +498,14 @@ export class GetPassDetailComponent implements OnInit {
     }
   }
 
+  approveConfirmHintKey(): string {
+    const d = this.data();
+    if (d?.status === 'PENDING_SECURITY') {
+      return 'GET_PASS.DETAIL.APPROVE_CONFIRM_HINT_SECURITY';
+    }
+    return 'GET_PASS.DETAIL.APPROVE_CONFIRM_HINT';
+  }
+
   approverDisplayName(ref: GetPassUserRef | null | undefined): string {
     if (!ref) return '';
     const name = `${ref.firstName ?? ''} ${ref.lastName ?? ''}`.trim();
@@ -448,21 +527,11 @@ export class GetPassDetailComponent implements OnInit {
   securityAuditShowPending(d: GetPassDetail): boolean {
     if (d.securityApprovedAt) return false;
     const legacyTerminal =
-      ['APPROVED', 'OUT', 'RECEIVED_AT_DESTINATION', 'PARTIALLY_RETURNED', 'RETURNED', 'CLOSED'].includes(
+      ['APPROVED', 'OUT', 'RECEIVED_AT_DESTINATION', 'RETURN_RECEIVED_AT_GATE', 'PARTIALLY_RETURNED', 'RETURNED', 'CLOSED'].includes(
         d.status,
       );
     if (legacyTerminal) return false;
     return true;
-  }
-
-  /**
-   * Source property: checkout after approval. Hidden for internal-transfer viewers at the receiving hotel.
-   */
-  showCheckoutButton(): boolean {
-    const d = this.data();
-    if (!d || d.status !== 'APPROVED') return false;
-    if (this.isViewerTargetTenant()) return false;
-    return this.auth.hasPermission('GET_PASS_APPROVE_EXIT');
   }
 
   canReturn(): boolean {
@@ -500,17 +569,99 @@ export class GetPassDetailComponent implements OnInit {
     return this.auth.hasPermission('GET_PASS_CONFIRM_DESTINATION');
   }
 
-  /** After gate receipt: department manager (same dept name) or org manager at destination. */
-  showAcceptIntoDeptButton(): boolean {
+  /** Destination acceptance is visible only for destination tenant managers after gate receipt. */
+  canAcceptIntoDepartment(): boolean {
     const d = this.data();
-    if (!d || !d.isInternalTransfer || !this.isViewerTargetTenant()) return false;
-    if (d.destinationDeptAcceptedAt) return false;
+    if (!d) return false;
     if (d.status !== 'RECEIVED_AT_DESTINATION') return false;
-    if (this.auth.hasRole('ORG_MANAGER')) return true;
-    if (!this.auth.hasRole('DEPT_MANAGER')) return false;
-    const passDept = d.department?.name?.trim().toLowerCase() ?? '';
-    const uDept = (this.auth.currentUser()?.department ?? '').trim().toLowerCase();
-    return !!passDept && passDept === uDept;
+    if (d.destinationDeptAcceptedAt) return false;
+    if (!this.isViewerTargetTenant()) return false;
+    return this.auth.hasRole('DEPT_MANAGER', 'ORG_MANAGER');
+  }
+
+  canShipBack(): boolean {
+    const d = this.data();
+    if (!d) return false;
+    if (!d.isInternalTransfer || !this.isViewerTargetTenant()) return false;
+    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    if (d.status !== 'RECEIVED_AT_DESTINATION') return false;
+    if (!d.destinationDeptAcceptedAt) return false;
+    return this.auth.hasRole('DEPT_MANAGER') || this.isAdminBypass();
+  }
+
+  canConfirmReturnExit(): boolean {
+    const d = this.data();
+    if (!d) return false;
+    if (!d.isInternalTransfer || !this.isViewerTargetTenant()) return false;
+    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    if (d.status !== 'RETURNING') return false;
+    if (d.destinationSecurityExitAt) return false;
+    return this.auth.hasRole('SECURITY') || this.isAdminBypass();
+  }
+
+  shipBack(): void {
+    const id = this.data()?.id;
+    if (!id) return;
+    this.confirmation
+      .confirm({
+        title: this.translate.instant('GET_PASS.DETAIL.CONFIRM_SHIP_BACK_TITLE'),
+        message: this.translate.instant('GET_PASS.DETAIL.CONFIRM_SHIP_BACK_MSG'),
+        confirmText: this.translate.instant('COMMON.CONFIRM'),
+        cancelText: this.translate.instant('COMMON.CANCEL'),
+        confirmDanger: true,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((ok) => {
+        if (ok) this.run(() => this.api.shipBack(id), 'GET_PASS.DETAIL.MSG_SHIP_BACK');
+      });
+  }
+
+  canConfirmReturnArrivalAtSource(): boolean {
+    const d = this.data();
+    const currentTenantId = this.auth.currentTenantId();
+    const sourceTenantId = d?.tenantId ?? d?.tenant?.id ?? null;
+    const hasRequiredRole = this.auth.hasRole('SECURITY', 'ADMIN');
+
+    if (!d) {
+      console.warn('Trace: No Data');
+      return false;
+    }
+    if (!d.isInternalTransfer) {
+      console.warn('Trace: Not Internal Transfer');
+      return false;
+    }
+    if (d.status !== 'RETURNING') {
+      console.warn('Trace: Status is not RETURNING. Current:', d.status);
+      return false;
+    }
+
+    // Main check under investigation for debugging.
+    if (!d.destinationSecurityExitAt) {
+      console.warn('Trace: Missing destinationSecurityExitAt stamp');
+      // return false; // Uncomment this to enforce the stamp check again.
+    }
+
+    if (sourceTenantId !== currentTenantId) {
+      console.warn('Trace: Tenant mismatch', { source: sourceTenantId, current: currentTenantId });
+      return false;
+    }
+
+    if (!hasRequiredRole) {
+      console.warn('Trace: Missing Role');
+      return false;
+    }
+
+    console.log('Trace: Success! Button should be visible.');
+    return true;
+  }
+
+  canAcceptReturnIntoDepartmentAtSource(): boolean {
+    const d = this.data();
+    if (!d) return false;
+    if (!d.isInternalTransfer || !this.isViewerIssuerTenant()) return false;
+    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    if (d.status !== 'RETURN_RECEIVED_AT_GATE') return false;
+    return this.auth.hasRole('DEPT_MANAGER') || this.isAdminBypass();
   }
 
   /** Internal transfer @ destination: simplified 3-step progress instead of issuing-hotel approval chain. */
@@ -545,10 +696,16 @@ export class GetPassDetailComponent implements OnInit {
     }
     const s = d.status;
     /** Destination list/detail only shows OUT+ from API; progress should not advance until dispatch (OUT). */
-    const afterCheckout = ['OUT', 'RECEIVED_AT_DESTINATION', 'PARTIALLY_RETURNED', 'RETURNED', 'CLOSED'].includes(
-      s,
-    );
-    const afterGate = ['RECEIVED_AT_DESTINATION', 'PARTIALLY_RETURNED', 'RETURNED', 'CLOSED'].includes(s);
+    const afterCheckout = [
+      'OUT',
+      'RECEIVED_AT_DESTINATION',
+      'RETURNING',
+      'RETURN_RECEIVED_AT_GATE',
+      'PARTIALLY_RETURNED',
+      'RETURNED',
+      'CLOSED',
+    ].includes(s);
+    const afterGate = ['RECEIVED_AT_DESTINATION', 'RETURNING', 'RETURN_RECEIVED_AT_GATE', 'PARTIALLY_RETURNED', 'RETURNED', 'CLOSED'].includes(s);
 
     if (index === 0) {
       if (afterCheckout) return 'finish';
@@ -579,70 +736,373 @@ export class GetPassDetailComponent implements OnInit {
     return err >= 0 ? err : 2;
   }
 
-  /** Gate receipt: simple confirm (default condition Good) — no extra form. */
-  confirmReceipt(): void {
-    const id = this.data()?.id;
-    if (!id || this.actionBusy()) return;
-    this.modal.confirm({
-      nzTitle: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ENTRY_TITLE'),
-      nzContent: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ENTRY_MSG'),
-      nzOkText: this.translate.instant('COMMON.CONFIRM'),
-      nzCancelText: this.translate.instant('COMMON.CANCEL'),
-      nzOnOk: () =>
-        new Promise<void>((resolve, reject) => {
-          this.actionBusy.set(true);
-          this.api
-            .confirmReceipt(id, { receivedCondition: 'Good', notes: '' })
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: (detail) => {
-                const normalized = this.normalizeDetail(detail);
-                this.data.set(normalized);
-                this.initReturnDrafts(normalized);
-                this.actionBusy.set(false);
-                this.message.success(this.translate.instant('GET_PASS.DETAIL.MSG_CONFIRM_RECEIPT'));
-                resolve();
-              },
-              error: (e: Error) => {
-                this.actionBusy.set(false);
-                this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
-                reject(e);
-              },
-            });
-        }),
+  showSourceReturnProgress(): boolean {
+    const d = this.data();
+    if (!d) return false;
+    if (!d.isInternalTransfer || !this.isViewerIssuerTenant()) return false;
+    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    return ['RETURNING', 'RETURN_RECEIVED_AT_GATE', 'CLOSED'].includes(d.status);
+  }
+
+  sourceReturnStepStatus(
+    d: GetPassDetail,
+    index: number,
+  ): 'wait' | 'process' | 'finish' | 'error' {
+    const hasShipBack = !!d.reverseAuditTrail?.shipBackAt;
+    const hasExit = !!d.destinationSecurityExitAt;
+    const hasGateArrival = d.status === 'RETURN_RECEIVED_AT_GATE' || d.status === 'CLOSED';
+    const hasDeptAcceptance = d.status === 'CLOSED' || !!d.reverseAuditTrail?.acceptReturnDeptAt;
+
+    if (index === 0) {
+      return hasShipBack ? 'finish' : 'wait';
+    }
+    if (index === 1) {
+      if (hasExit) return 'finish';
+      if (hasShipBack) return 'process';
+      return 'wait';
+    }
+    if (index === 2) {
+      if (hasGateArrival) return 'finish';
+      if (hasExit) return 'process';
+      return 'wait';
+    }
+    if (hasDeptAcceptance) return 'finish';
+    if (hasGateArrival) return 'process';
+    return 'wait';
+  }
+
+  sourceReturnNzCurrent(d: GetPassDetail): number {
+    const st = [
+      this.sourceReturnStepStatus(d, 0),
+      this.sourceReturnStepStatus(d, 1),
+      this.sourceReturnStepStatus(d, 2),
+      this.sourceReturnStepStatus(d, 3),
+    ];
+    if (st.every((x) => x === 'finish')) return 3;
+    const proc = st.indexOf('process');
+    if (proc >= 0) return proc;
+    return 0;
+  }
+
+  openConfirmReceipt(): void {
+    const d = this.data();
+    if (!d) return;
+    this.receiptCondition.set('Good');
+    this.receiptNotes.set('');
+    this.receiptLines.set(
+      (d.lines ?? []).map((line) => ({
+        lineId: line.id,
+        itemName: line.item?.name ?? line.itemId,
+        shippedQty: this.num(line.qty),
+        receivedQty: this.num(line.qty),
+        condition: line.receivedCondition ?? '',
+        discrepancyReason: line.discrepancyReason ?? '',
+      })),
+    );
+    this.receiptOpen.set(true);
+  }
+
+  updateReceiptDraft(index: number, patch: Partial<ReceiptDraft>): void {
+    this.receiptLines.update((rows) => {
+      const next = [...rows];
+      if (next[index]) next[index] = { ...next[index], ...patch };
+      return next;
     });
   }
 
+  onReceiptQtyChange(index: number, raw: number | null | undefined): void {
+    this.receiptLines.update((rows) => {
+      const next = [...rows];
+      const cur = next[index];
+      if (!cur) return next;
+      const receivedQty = Math.min(Math.max(0, Number(raw ?? 0)), cur.shippedQty);
+      next[index] = { ...cur, receivedQty };
+      return next;
+    });
+  }
+
+  receiptDiscrepancy(row: ReceiptDraft): number {
+    return Math.max(0, this.num(row.shippedQty) - this.num(row.receivedQty));
+  }
+
+  submitConfirmReceipt(): void {
+    const id = this.data()?.id;
+    if (!id || this.actionBusy()) return;
+    const payloadLines: GetPassConfirmReceiptLinePayload[] = [];
+    for (const row of this.receiptLines()) {
+      const receivedQty = this.num(row.receivedQty);
+      if (receivedQty < 0 || receivedQty > row.shippedQty) {
+        this.message.error(this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+        return;
+      }
+      payloadLines.push({
+        lineId: row.lineId,
+        receivedQty,
+        condition: row.condition.trim() || undefined,
+        discrepancyReason: row.discrepancyReason.trim() || undefined,
+      });
+    }
+
+    this.actionBusy.set(true);
+    this.api
+      .confirmReceipt(id, {
+        receivedCondition: this.receiptCondition().trim() || 'Good',
+        notes: this.receiptNotes().trim(),
+        lines: payloadLines,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detail) => {
+          const normalized = this.normalizeDetail(detail);
+          this.data.set(normalized);
+          this.initReturnDrafts(normalized);
+          this.receiptOpen.set(false);
+          this.actionBusy.set(false);
+          this.message.success(this.translate.instant('GET_PASS.DETAIL.MSG_CONFIRM_RECEIPT'));
+        },
+        error: (e: Error) => {
+          this.actionBusy.set(false);
+          this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+        },
+      });
+  }
+
+  private pickDefaultDepartmentId(departments: DepartmentRow[]): string {
+    const user = this.auth.currentUser();
+    if (!user) return '';
+    const idSet = new Set(departments.map((d) => d.id));
+    if (user.departmentId && idSet.has(user.departmentId)) {
+      return user.departmentId;
+    }
+    const label = user.department?.trim();
+    if (!label) return '';
+    const lower = label.toLowerCase();
+    const byName = departments.find((d) => d.name.trim().toLowerCase() === lower);
+    if (byName) return byName.id;
+    const byCode = departments.find((d) => d.code.trim().toLowerCase() === lower);
+    return byCode?.id ?? '';
+  }
+
+  private loadAcceptLocationsForDepartment(departmentId: string): void {
+    if (!departmentId) {
+      this.acceptLocations.set([]);
+      this.acceptTargetLocationId.set('');
+      return;
+    }
+    const captured = departmentId;
+    this.acceptLocationLoading.set(true);
+    this.locationsApi
+      .list({ departmentId: captured, slim: true, isActive: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (this.acceptTargetDepartmentId() !== captured) return;
+          this.acceptLocations.set(res.locations);
+          const keepSelected = res.locations.some((l) => l.id === this.acceptTargetLocationId());
+          if (!keepSelected) {
+            this.acceptTargetLocationId.set('');
+          }
+          this.acceptLocationLoading.set(false);
+        },
+        error: () => {
+          if (this.acceptTargetDepartmentId() !== captured) return;
+          this.acceptLocations.set([]);
+          this.acceptTargetLocationId.set('');
+          this.acceptLocationLoading.set(false);
+          this.message.error(this.translate.instant('GET_PASS.DETAIL.ERROR_ACCEPT_LOOKUPS'));
+        },
+      });
+  }
+
+  onAcceptTargetDepartmentChange(departmentId: string): void {
+    this.acceptTargetDepartmentId.set(departmentId);
+    this.acceptTargetLocationId.set('');
+    this.loadAcceptLocationsForDepartment(departmentId);
+  }
+
+  private openAcceptIntoDeptModal(): void {
+    this.acceptSelectionTouched.set(false);
+    this.acceptDeptOpen.set(true);
+    this.acceptDeptLoading.set(true);
+    this.acceptLocationLoading.set(false);
+    this.acceptDepartments.set([]);
+    this.acceptLocations.set([]);
+    this.acceptTargetDepartmentId.set('');
+    this.acceptTargetLocationId.set('');
+
+    this.departmentsApi
+      .list({ slim: true, isActive: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.acceptDepartments.set(res.departments);
+          this.acceptDeptLoading.set(false);
+          const defaultDeptId = this.pickDefaultDepartmentId(res.departments);
+          if (defaultDeptId) {
+            this.acceptTargetDepartmentId.set(defaultDeptId);
+            this.loadAcceptLocationsForDepartment(defaultDeptId);
+          }
+        },
+        error: () => {
+          this.acceptDeptLoading.set(false);
+          this.acceptDeptOpen.set(false);
+          this.message.error(this.translate.instant('GET_PASS.DETAIL.ERROR_ACCEPT_LOOKUPS'));
+        },
+      });
+  }
+
   acceptIntoDept(): void {
+    this.openAcceptIntoDeptModal();
+  }
+
+  submitAcceptIntoDept(): void {
+    const id = this.data()?.id;
+    if (!id || this.actionBusy()) return;
+    if (!this.canSubmitAcceptIntoDept()) {
+      this.acceptSelectionTouched.set(true);
+      this.message.warning(this.translate.instant('GET_PASS.DETAIL.ACCEPT_TARGET_REQUIRED'));
+      return;
+    }
+    const payload: GetPassAcceptIntoDepartmentPayload = {
+      targetDepartmentId: this.acceptTargetDepartmentId(),
+      targetLocationId: this.acceptTargetLocationId(),
+    };
+    this.actionBusy.set(true);
+    this.api
+      .acceptIntoDepartment(id, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detail) => {
+          const normalized = this.normalizeDetail(detail);
+          this.data.set(normalized);
+          this.initReturnDrafts(normalized);
+          this.acceptDeptOpen.set(false);
+          this.actionBusy.set(false);
+          this.message.success(this.translate.instant('GET_PASS.DETAIL.MSG_ACCEPT_INTO_DEPT'));
+        },
+        error: (e: Error) => {
+          this.actionBusy.set(false);
+          this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+        },
+      });
+  }
+
+  confirmReturnExit(): void {
     const id = this.data()?.id;
     if (!id) return;
     this.confirmation
       .confirm({
-        title: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ACCEPT_DEPT_TITLE'),
-        message: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ACCEPT_DEPT_MSG'),
+        title: this.translate.instant('GET_PASS.DETAIL.CONFIRM_RETURN_EXIT'),
+        message: this.translate.instant('GET_PASS.DETAIL.CONFIRM_EXIT_MSG'),
         confirmText: this.translate.instant('COMMON.CONFIRM'),
         cancelText: this.translate.instant('COMMON.CANCEL'),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((ok) => {
-        if (!ok) return;
-        this.actionBusy.set(true);
-        this.api
-          .acceptIntoDepartment(id)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (detail) => {
-              const normalized = this.normalizeDetail(detail);
-              this.data.set(normalized);
-              this.initReturnDrafts(normalized);
-              this.actionBusy.set(false);
-              this.message.success(this.translate.instant('GET_PASS.DETAIL.MSG_ACCEPT_INTO_DEPT'));
-            },
-            error: (e: Error) => {
-              this.actionBusy.set(false);
-              this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
-            },
-          });
+        if (ok) this.run(() => this.api.confirmReturnExit(id), 'GET_PASS.DETAIL.MSG_CONFIRM_RETURN_EXIT');
+      });
+  }
+
+  openReturnInspectionModal(): void {
+    const d = this.data();
+    if (!d) return;
+    this.returnArrivalLines.set(
+      (d.lines ?? []).map((line) => {
+        const total = this.num(line.qty);
+        const returned = this.num(line.qtyReturned);
+        const outstanding = Math.max(0, total - returned);
+        return {
+          lineId: line.id,
+          itemName: line.item?.name ?? line.itemId,
+          outstandingQty: outstanding,
+          receivedQty: outstanding,
+          condition: 'Good',
+        };
+      }),
+    );
+    this.returnArrivalOpen.set(true);
+  }
+
+  onReturnArrivalQtyChange(index: number, raw: number | null | undefined): void {
+    this.returnArrivalLines.update((rows) => {
+      const next = [...rows];
+      const cur = next[index];
+      if (!cur) return next;
+      const receivedQty = Math.min(Math.max(0, Number(raw ?? 0)), cur.outstandingQty);
+      next[index] = { ...cur, receivedQty };
+      return next;
+    });
+  }
+
+  updateReturnArrivalDraft(index: number, patch: Partial<ReturnArrivalDraft>): void {
+    this.returnArrivalLines.update((rows) => {
+      const next = [...rows];
+      if (next[index]) next[index] = { ...next[index], ...patch };
+      return next;
+    });
+  }
+
+  confirmReturnArrivalAtSource(): void {
+    this.openReturnInspectionModal();
+  }
+
+  submitConfirmReturnArrivalAtSource(): void {
+    const id = this.data()?.id;
+    if (!id || this.actionBusy()) return;
+    const lines: GetPassConfirmReturnArrivalLinePayload[] = [];
+    let hasPositiveQty = false;
+    for (const row of this.returnArrivalLines()) {
+      const qty = this.num(row.receivedQty);
+      if (qty > 0) hasPositiveQty = true;
+      if (qty < 0 || qty > row.outstandingQty) {
+        this.message.error(this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+        return;
+      }
+      const condition = row.condition.trim();
+      if (!condition) {
+        this.message.warning(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_CONDITION_REQUIRED'));
+        return;
+      }
+      lines.push({ lineId: row.lineId, receivedQty: qty, condition });
+    }
+    if (!hasPositiveQty) {
+      this.message.warning(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_QTY_REQUIRED'));
+      return;
+    }
+    this.actionBusy.set(true);
+    const payload: GetPassConfirmReturnArrivalPayload = { lines };
+    this.api
+      .confirmReturnArrival(id, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (detail) => {
+          const normalized = this.normalizeDetail(detail);
+          this.data.set(normalized);
+          this.initReturnDrafts(normalized);
+          this.returnArrivalOpen.set(false);
+          this.actionBusy.set(false);
+          this.message.success(this.translate.instant('GET_PASS.DETAIL.MSG_CONFIRM_RETURN_ARRIVAL'));
+        },
+        error: (e: Error) => {
+          this.actionBusy.set(false);
+          this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+        },
+      });
+  }
+
+  acceptReturnIntoDepartmentAtSource(): void {
+    const id = this.data()?.id;
+    if (!id) return;
+    this.confirmation
+      .confirm({
+        title: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ACCEPT_RETURN_DEPT_TITLE'),
+        message: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ACCEPT_RETURN_DEPT_MSG'),
+        confirmText: this.translate.instant('COMMON.CONFIRM'),
+        cancelText: this.translate.instant('COMMON.CANCEL'),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((ok) => {
+        if (ok) this.run(() => this.api.acceptReturnIntoDepartment(id), 'GET_PASS.DETAIL.MSG_ACCEPT_RETURN_DEPT');
       });
   }
 
@@ -775,22 +1235,6 @@ export class GetPassDetailComponent implements OnInit {
           error: fail,
         });
     }
-  }
-
-  checkout(): void {
-    const id = this.data()?.id;
-    if (!id) return;
-    this.confirmation
-      .confirm({
-        title: this.translate.instant('GET_PASS.DETAIL.CONFIRM_CHECKOUT_TITLE'),
-        message: this.translate.instant('GET_PASS.DETAIL.CONFIRM_CHECKOUT_MSG'),
-        confirmText: this.translate.instant('COMMON.CONFIRM'),
-        cancelText: this.translate.instant('COMMON.CANCEL'),
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((ok) => {
-        if (ok) this.run(() => this.api.checkout(id, []), 'GET_PASS.DETAIL.MSG_CHECKOUT');
-      });
   }
 
   closePass(): void {

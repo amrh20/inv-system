@@ -130,12 +130,14 @@
  * Class is set via nzDropdownClassName (overlay attaches under body).
  */
 ::ng-deep .gp-form__item-select-dropdown.ant-select-dropdown {
-  max-height: 250px !important;
+  max-height: 320px !important;
   overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 ::ng-deep .gp-form__item-select-dropdown .rc-virtual-list-holder {
-  max-height: 250px !important;
+  max-height: 320px !important;
 }
 
 .gp-form__item-empty {

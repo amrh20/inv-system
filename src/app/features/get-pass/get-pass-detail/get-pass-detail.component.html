@@ -11,8 +11,13 @@
       <lucide-icon [img]="lucidePkg" [size]="22" [strokeWidth]="2" class="text-brand-primary" />
       <h1 class="gp-d__title">{{ d.passNo }}</h1>
       <span class="status-badge" [ngClass]="'status-' + statusClass(d.status)">
-        {{ 'GET_PASS.STATUS.' + d.status | translate }}
+        {{ statusLabelKey(d) | translate }}
       </span>
+      @if (d.isOverdue) {
+        <span class="status-badge status-rejected">
+          {{ 'GET_PASS.STATUS.OVERDUE' | translate }}
+        </span>
+      }
       <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + d.transferType | translate }}</span>
     </div>
 
@@ -22,13 +27,45 @@
         {{ 'GET_PASS.DETAIL.PRINT' | translate }}
       </button>
       @if (showConfirmReceiptButton()) {
-        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="confirmReceipt()">
+        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openConfirmReceipt()">
           {{ 'GET_PASS.DETAIL.CONFIRM_RECEIPT_ENTRY' | translate }}
         </button>
       }
-      @if (showAcceptIntoDeptButton()) {
+      @if (canAcceptIntoDepartment()) {
         <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="acceptIntoDept()">
           {{ 'GET_PASS.DETAIL.ACCEPT_INTO_DEPT' | translate }}
+        </button>
+      }
+      @if (canShipBack()) {
+        <button nz-button nzDanger nzType="default" type="button" [disabled]="actionBusy()" (click)="shipBack()">
+          {{ 'GET_PASS.DETAIL.SHIP_BACK' | translate }}
+        </button>
+      }
+      @if (canConfirmReturnExit()) {
+        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="confirmReturnExit()">
+          {{ 'GET_PASS.DETAIL.CONFIRM_RETURN_EXIT' | translate }}
+        </button>
+      }
+      @if (canConfirmReturnArrivalAtSource()) {
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          [disabled]="actionBusy()"
+          (click)="openReturnInspectionModal()"
+        >
+          {{ 'GET_PASS.DETAIL.CONFIRM_ARRIVAL' | translate }}
+        </button>
+      }
+      @if (canAcceptReturnIntoDepartmentAtSource()) {
+        <button
+          nz-button
+          nzType="primary"
+          type="button"
+          [disabled]="actionBusy()"
+          (click)="acceptReturnIntoDepartmentAtSource()"
+        >
+          {{ 'GET_PASS.DETAIL.ACCEPT_RETURN_INTO_DEPT' | translate }}
         </button>
       }
       @if (canEdit()) {
@@ -139,11 +176,6 @@
           }
         }
       }
-      @if (showCheckoutButton()) {
-        <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="checkout()">
-          {{ 'GET_PASS.DETAIL.CHECKOUT' | translate }}
-        </button>
-      }
       @if (canReturn()) {
         <ng-container *appHasPermission="'GET_PASS_APPROVE_RETURN'">
           <button nz-button nzType="primary" type="button" [disabled]="actionBusy()" (click)="openReturn()">
@@ -163,285 +195,396 @@
       }
     </div>
 
-    <div class="gp-d__card">
-      <div class="gp-d__grid">
-        <div>
-          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.DEPT' | translate }}</div>
-          <div>{{ d.department?.name ?? '—' }}</div>
-        </div>
-        <div>
-          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.ENTITY' | translate }}</div>
-          <div>{{ d.borrowingEntity }}</div>
-        </div>
-        <div>
-          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.OWNER' | translate }}</div>
-          <div>
-            @if (d.createdByUser) {
-              {{ d.createdByUser.firstName }} {{ d.createdByUser.lastName }}
-            } @else {
-              —
+    <nz-tabs class="gp-d__tabs">
+      <nz-tab [nzTitle]="'GET_PASS.DETAIL.TAB_DETAILS' | translate">
+        <div class="gp-d__card">
+          <div class="gp-d__grid">
+            <div>
+              <div class="gp-d__label">{{ 'GET_PASS.DETAIL.DEPT' | translate }}</div>
+              <div>{{ d.department?.name ?? '—' }}</div>
+            </div>
+            <div>
+              <div class="gp-d__label">{{ 'GET_PASS.DETAIL.ENTITY' | translate }}</div>
+              <div>{{ d.borrowingEntity }}</div>
+            </div>
+            <div>
+              <div class="gp-d__label">{{ 'GET_PASS.DETAIL.OWNER' | translate }}</div>
+              <div>
+                @if (d.createdByUser) {
+                  {{ d.createdByUser.firstName }} {{ d.createdByUser.lastName }}
+                } @else {
+                  —
+                }
+              </div>
+            </div>
+            <div>
+              <div class="gp-d__label">{{ 'GET_PASS.DETAIL.CREATED' | translate }}</div>
+              <div>{{ d.createdAt | date: 'medium' }}</div>
+            </div>
+            @if (d.transferType !== 'PERMANENT' && d.expectedReturnDate) {
+              <div>
+                <div class="gp-d__label">{{ 'GET_PASS.DETAIL.EXPECTED' | translate }}</div>
+                <div>{{ d.expectedReturnDate | date: 'mediumDate' }}</div>
+              </div>
             }
           </div>
+          @if (d.reason) {
+            <div class="gp-d__block">
+              <div class="gp-d__label">{{ 'GET_PASS.FORM.REASON' | translate }}</div>
+              <p>{{ d.reason }}</p>
+            </div>
+          }
+          @if (d.notes) {
+            <div class="gp-d__block">
+              <div class="gp-d__label">{{ 'COMMON.NOTES' | translate }}</div>
+              <p class="gp-d__pre">{{ d.notes }}</p>
+            </div>
+          }
         </div>
-        <div>
-          <div class="gp-d__label">{{ 'GET_PASS.DETAIL.CREATED' | translate }}</div>
-          <div>{{ d.createdAt | date: 'medium' }}</div>
-        </div>
-        @if (d.transferType !== 'PERMANENT' && d.expectedReturnDate) {
-          <div>
-            <div class="gp-d__label">{{ 'GET_PASS.DETAIL.EXPECTED' | translate }}</div>
-            <div>{{ d.expectedReturnDate | date: 'mediumDate' }}</div>
+
+        @if (d.status === 'REJECTED') {
+          <nz-alert
+            nzType="error"
+            nzShowIcon
+            [nzMessage]="'GET_PASS.DETAIL.REJECTION_BANNER_TITLE' | translate"
+            [nzDescription]="
+              d.rejectionReason?.trim()
+                ? d.rejectionReason
+                : ('GET_PASS.DETAIL.REJECTION_NO_REASON' | translate)
+            "
+            class="gp-d__rejection-alert"
+          />
+        }
+
+        @if (showDestinationReceiptBanner()) {
+          <nz-alert
+            nzType="success"
+            nzShowIcon
+            class="gp-d__receipt-alert"
+            [nzMessage]="'GET_PASS.DETAIL.DESTINATION_RECEIPT_BANNER_TITLE' | translate"
+            [nzDescription]="destinationReceiptDescription(d)"
+          />
+        }
+        @if (showDestinationDeptCompleteBanner()) {
+          <nz-alert
+            nzType="success"
+            nzShowIcon
+            class="gp-d__dept-complete-alert"
+            [nzMessage]="'GET_PASS.DETAIL.DESTINATION_DEPT_COMPLETE_TITLE' | translate"
+            [nzDescription]="destinationDeptCompleteDescription(d)"
+          />
+        }
+
+        @if (showSourceReturnProgress()) {
+          <div class="gp-d__card">
+            <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.RETURN_PROGRESS' | translate }}</h2>
+            <nz-steps
+              nzSize="small"
+              nzDirection="horizontal"
+              [nzCurrent]="sourceReturnNzCurrent(d)"
+              class="gp-d__steps"
+            >
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.RETURN_STEP_SHIP_BACK' | translate"
+                [nzStatus]="sourceReturnStepStatus(d, 0)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.RETURN_STEP_EXIT' | translate"
+                [nzStatus]="sourceReturnStepStatus(d, 1)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.RETURN_STEP_GATE_ARRIVAL' | translate"
+                [nzStatus]="sourceReturnStepStatus(d, 2)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.RETURN_STEP_DEPT_ACCEPT' | translate"
+                [nzStatus]="sourceReturnStepStatus(d, 3)"
+              />
+            </nz-steps>
           </div>
         }
-      </div>
-      @if (d.reason) {
-        <div class="gp-d__block">
-          <div class="gp-d__label">{{ 'GET_PASS.FORM.REASON' | translate }}</div>
-          <p>{{ d.reason }}</p>
-        </div>
-      }
-      @if (d.notes) {
-        <div class="gp-d__block">
-          <div class="gp-d__label">{{ 'COMMON.NOTES' | translate }}</div>
-          <p class="gp-d__pre">{{ d.notes }}</p>
-        </div>
-      }
-    </div>
 
-    @if (d.status === 'REJECTED') {
-      <nz-alert
-        nzType="error"
-        nzShowIcon
-        [nzMessage]="'GET_PASS.DETAIL.REJECTION_BANNER_TITLE' | translate"
-        [nzDescription]="
-          d.rejectionReason?.trim()
-            ? d.rejectionReason
-            : ('GET_PASS.DETAIL.REJECTION_NO_REASON' | translate)
-        "
-        class="gp-d__rejection-alert"
-      />
-    }
-
-    @if (showDestinationReceiptBanner()) {
-      <nz-alert
-        nzType="success"
-        nzShowIcon
-        class="gp-d__receipt-alert"
-        [nzMessage]="'GET_PASS.DETAIL.DESTINATION_RECEIPT_BANNER_TITLE' | translate"
-        [nzDescription]="destinationReceiptDescription(d)"
-      />
-    }
-    @if (showDestinationDeptCompleteBanner()) {
-      <nz-alert
-        nzType="success"
-        nzShowIcon
-        class="gp-d__dept-complete-alert"
-        [nzMessage]="'GET_PASS.DETAIL.DESTINATION_DEPT_COMPLETE_TITLE' | translate"
-        [nzDescription]="destinationDeptCompleteDescription(d)"
-      />
-    }
-
-    @if (showInternalDestinationProgress()) {
+        @if (showInternalDestinationProgress()) {
+          <div class="gp-d__card">
+            <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.WORKFLOW_PROGRESS_DEST' | translate }}</h2>
+            <p class="gp-d__muted gp-d__audit-hint">{{ 'GET_PASS.DETAIL.WORKFLOW_PROGRESS_DEST_HINT' | translate }}</p>
+            <nz-steps
+              nzSize="small"
+              nzDirection="horizontal"
+              [nzCurrent]="internalDestinationNzCurrent(d)"
+              class="gp-d__steps"
+            >
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.INTERNAL_STEP_DISPATCHED' | translate"
+                [nzStatus]="internalDestinationStepStatus(d, 0)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.INTERNAL_STEP_GATE' | translate"
+                [nzStatus]="internalDestinationStepStatus(d, 1)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.INTERNAL_STEP_DEPT' | translate"
+                [nzDescription]="
+                  internalDestinationDeptComplete(d)
+                    ? ('GET_PASS.DETAIL.INTERNAL_STEP_DEPT_COMPLETE' | translate)
+                    : ''
+                "
+                [nzStatus]="internalDestinationStepStatus(d, 2)"
+              />
+            </nz-steps>
+          </div>
+        } @else {
+          <div class="gp-d__card">
+            <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.WORKFLOW_PROGRESS' | translate }}</h2>
+            <nz-steps nzSize="small" nzDirection="horizontal" [nzCurrent]="workflowNzCurrent(d)" class="gp-d__steps">
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_DEPT' | translate"
+                [nzStatus]="workflowStepStatus(d, 0)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_COST_CONTROL' | translate"
+                [nzStatus]="workflowStepStatus(d, 1)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_FINANCE' | translate"
+                [nzStatus]="workflowStepStatus(d, 2)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_GM' | translate"
+                [nzStatus]="workflowStepStatus(d, 3)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_SECURITY' | translate"
+                [nzStatus]="workflowStepStatus(d, 4)"
+              />
+              <nz-step
+                [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_APPROVED' | translate"
+                [nzStatus]="workflowStepStatus(d, 5)"
+              />
+            </nz-steps>
+          </div>
+        }
       <div class="gp-d__card">
-        <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.WORKFLOW_PROGRESS_DEST' | translate }}</h2>
-        <p class="gp-d__muted gp-d__audit-hint">{{ 'GET_PASS.DETAIL.WORKFLOW_PROGRESS_DEST_HINT' | translate }}</p>
-        <nz-steps
-          nzSize="small"
-          nzDirection="horizontal"
-          [nzCurrent]="internalDestinationNzCurrent(d)"
-          class="gp-d__steps"
-        >
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.INTERNAL_STEP_DISPATCHED' | translate"
-            [nzStatus]="internalDestinationStepStatus(d, 0)"
-          />
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.INTERNAL_STEP_GATE' | translate"
-            [nzStatus]="internalDestinationStepStatus(d, 1)"
-          />
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.INTERNAL_STEP_DEPT' | translate"
-            [nzDescription]="
-              internalDestinationDeptComplete(d)
-                ? ('GET_PASS.DETAIL.INTERNAL_STEP_DEPT_COMPLETE' | translate)
-                : ''
-            "
-            [nzStatus]="internalDestinationStepStatus(d, 2)"
-          />
-        </nz-steps>
-      </div>
-    } @else {
-      <div class="gp-d__card">
-        <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.WORKFLOW_PROGRESS' | translate }}</h2>
-        <nz-steps nzSize="small" nzDirection="horizontal" [nzCurrent]="workflowNzCurrent(d)" class="gp-d__steps">
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_DEPT' | translate"
-            [nzStatus]="workflowStepStatus(d, 0)"
-          />
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_COST_CONTROL' | translate"
-            [nzStatus]="workflowStepStatus(d, 1)"
-          />
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_FINANCE' | translate"
-            [nzStatus]="workflowStepStatus(d, 2)"
-          />
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_GM' | translate"
-            [nzStatus]="workflowStepStatus(d, 3)"
-          />
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_SECURITY' | translate"
-            [nzStatus]="workflowStepStatus(d, 4)"
-          />
-          <nz-step
-            [nzTitle]="'GET_PASS.DETAIL.WORKFLOW_APPROVED' | translate"
-            [nzStatus]="workflowStepStatus(d, 5)"
-          />
-        </nz-steps>
-      </div>
-    }
-
-    <div class="gp-d__card">
-      <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.AUDIT_TRAIL' | translate }}</h2>
-      <p class="gp-d__muted gp-d__audit-hint">{{ 'GET_PASS.DETAIL.AUDIT_TRAIL_HINT' | translate }}</p>
-      <table class="gp-d__audit-table">
-        <thead>
-          <tr>
-            <th>{{ 'GET_PASS.DETAIL.AUDIT_COL_STAGE' | translate }}</th>
-            <th>{{ 'GET_PASS.DETAIL.AUDIT_COL_APPROVER' | translate }}</th>
-            <th>{{ 'GET_PASS.DETAIL.AUDIT_COL_AT' | translate }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{{ 'GET_PASS.DETAIL.WORKFLOW_DEPT' | translate }}</td>
-            <td>
-              {{
-                auditApproverCell(d.deptApprover, d.deptApprovedBy) ||
-                  ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
-              }}
-            </td>
-            <td>{{ d.deptApprovedAt ? (d.deptApprovedAt | date: 'medium') : '—' }}</td>
-          </tr>
-          <tr>
-            <td>{{ 'GET_PASS.DETAIL.WORKFLOW_COST_CONTROL' | translate }}</td>
-            <td>
-              {{
-                auditApproverCell(d.costControlApprover, d.costControlApprovedBy) ||
-                  ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
-              }}
-            </td>
-            <td>{{ d.costControlApprovedAt ? (d.costControlApprovedAt | date: 'medium') : '—' }}</td>
-          </tr>
-          <tr>
-            <td>{{ 'GET_PASS.DETAIL.WORKFLOW_FINANCE' | translate }}</td>
-            <td>
-              {{
-                auditApproverCell(d.financeApprover, d.financeApprovedBy) ||
-                  ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
-              }}
-            </td>
-            <td>{{ d.financeApprovedAt ? (d.financeApprovedAt | date: 'medium') : '—' }}</td>
-          </tr>
-          <tr>
-            <td>{{ 'GET_PASS.DETAIL.WORKFLOW_GM' | translate }}</td>
-            <td>
-              {{
-                auditApproverCell(d.gmApprover, d.gmApprovedBy) ||
-                  ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
-              }}
-            </td>
-            <td>{{ d.gmApprovedAt ? (d.gmApprovedAt | date: 'medium') : '—' }}</td>
-          </tr>
-          <tr>
-            <td>{{ 'GET_PASS.DETAIL.WORKFLOW_SECURITY' | translate }}</td>
-            <td>
-              @if (d.securityApprovedAt) {
-                {{ auditApproverCell(d.securityApprover, d.securityApprovedBy) }}
-              } @else if (securityAuditShowPending(d)) {
-                {{ 'GET_PASS.DETAIL.AUDIT_PENDING' | translate }}
-              } @else {
-                —
-              }
-            </td>
-            <td>
-              @if (d.securityApprovedAt) {
-                {{ d.securityApprovedAt | date: 'medium' }}
-              } @else {
-                —
-              }
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="gp-d__card">
-      <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.LINES' | translate }}</h2>
-      <nz-table [nzData]="d.lines ?? []" [nzShowPagination]="false" nzSize="middle">
-        <thead>
-          <tr>
-            <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
-            <th>{{ 'GET_PASS.FORM.COL_LOC' | translate }}</th>
-            <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_OUT' | translate }}</th>
-            <th>{{ 'GET_PASS.FORM.COL_CONDITION' | translate }}</th>
-            <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_RET' | translate }}</th>
-            <th>{{ 'COMMON.STATUS' | translate }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (line of d.lines ?? []; track line.id) {
-            <tr>
-              <td>{{ line.item?.name }}</td>
-              <td>{{ line.location?.name }}</td>
-              <td nzAlign="right"><strong>{{ num(line.qty) }}</strong></td>
-              <td>{{ line.conditionOut ?? '—' }}</td>
-              <td nzAlign="right">{{ num(line.qtyReturned) }}</td>
-              <td>{{ ('GET_PASS.LINE_STATUS.' + (line.status ?? 'PENDING')) | translate }}</td>
-            </tr>
-          }
-        </tbody>
-      </nz-table>
-    </div>
-
-    @if (returnHistoryRows().length > 0) {
-      <div class="gp-d__card">
-        <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.RETURN_HIST' | translate }}</h2>
-        <nz-table [nzData]="returnHistoryRows()" [nzShowPagination]="false" nzSize="small">
+        <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.LINES' | translate }}</h2>
+        <nz-table [nzData]="d.lines ?? []" [nzShowPagination]="false" nzSize="middle">
           <thead>
             <tr>
               <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+              <th>{{ 'GET_PASS.FORM.COL_LOC' | translate }}</th>
+              <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_OUT' | translate }}</th>
+              <th nzAlign="right">Received</th>
+              <th nzAlign="right">Discrepancy</th>
+              <th>{{ 'GET_PASS.FORM.COL_CONDITION' | translate }}</th>
               <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_RET' | translate }}</th>
-              <th>{{ 'GET_PASS.DETAIL.FLAGS' | translate }}</th>
-              <th>{{ 'COMMON.DATE' | translate }}</th>
-              <th>{{ 'GET_PASS.DETAIL.COND_IN' | translate }}</th>
-              <th>{{ 'COMMON.NOTES' | translate }}</th>
-              <th>{{ 'GET_PASS.DETAIL.RECEIVER' | translate }}</th>
+              <th>{{ 'COMMON.STATUS' | translate }}</th>
             </tr>
           </thead>
           <tbody>
-            @for (r of returnHistoryRows(); track r.id) {
+            @for (line of d.lines ?? []; track line.id) {
               <tr>
-                <td>{{ r.itemName }}</td>
-                <td nzAlign="right">{{ r.qty }}</td>
-                <td>{{ r.flags ?? '—' }}</td>
-                <td>
-                  @if (r.returnDate) {
-                    {{ r.returnDate | date: 'medium' }}
-                  } @else {
-                    —
-                  }
-                </td>
-                <td>{{ r.conditionIn ?? '—' }}</td>
-                <td>{{ r.notes ?? '—' }}</td>
-                <td>{{ r.receiver ?? '—' }}</td>
+                <td>{{ line.item?.name }}</td>
+                <td>{{ line.location?.name }}</td>
+                <td nzAlign="right"><strong>{{ num(line.qty) }}</strong></td>
+                <td nzAlign="right">{{ num(line.qtyReceivedAtDestination ?? 0) }}</td>
+                <td nzAlign="right">{{ num(line.qtyDiscrepancyAtDestination ?? 0) }}</td>
+                <td>{{ line.conditionOut ?? '—' }}</td>
+                <td nzAlign="right">{{ num(line.qtyReturned) }}</td>
+                <td>{{ ('GET_PASS.LINE_STATUS.' + (line.status ?? 'PENDING')) | translate }}</td>
               </tr>
             }
           </tbody>
         </nz-table>
       </div>
-    }
+
+      @if (returnHistoryRows().length > 0) {
+        <div class="gp-d__card">
+          <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.RETURN_HIST' | translate }}</h2>
+          <nz-table [nzData]="returnHistoryRows()" [nzShowPagination]="false" nzSize="small">
+            <thead>
+              <tr>
+                <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+                <th nzAlign="right">{{ 'GET_PASS.DETAIL.QTY_RET' | translate }}</th>
+                <th>{{ 'GET_PASS.DETAIL.FLAGS' | translate }}</th>
+                <th>{{ 'COMMON.DATE' | translate }}</th>
+                <th>{{ 'GET_PASS.DETAIL.COND_IN' | translate }}</th>
+                <th>{{ 'COMMON.NOTES' | translate }}</th>
+                <th>{{ 'GET_PASS.DETAIL.RECEIVER' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of returnHistoryRows(); track r.id) {
+                <tr>
+                  <td>{{ r.itemName }}</td>
+                  <td nzAlign="right">{{ r.qty }}</td>
+                  <td>{{ r.flags ?? '—' }}</td>
+                  <td>
+                    @if (r.returnDate) {
+                      {{ r.returnDate | date: 'medium' }}
+                    } @else {
+                      —
+                    }
+                  </td>
+                  <td>{{ r.conditionIn ?? '—' }}</td>
+                  <td>{{ r.notes ?? '—' }}</td>
+                  <td>{{ r.receiver ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+        </div>
+      }
+      </nz-tab>
+
+      <nz-tab [nzTitle]="'GET_PASS.DETAIL.TAB_APPROVAL_LOG' | translate">
+        <div class="gp-d__card">
+          <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.AUDIT_TRAIL' | translate }}</h2>
+          <p class="gp-d__muted gp-d__audit-hint">{{ 'GET_PASS.DETAIL.AUDIT_TRAIL_HINT' | translate }}</p>
+          <table class="gp-d__audit-table">
+            <thead>
+              <tr>
+                <th>{{ 'GET_PASS.DETAIL.AUDIT_COL_STAGE' | translate }}</th>
+                <th>{{ 'GET_PASS.DETAIL.AUDIT_COL_APPROVER' | translate }}</th>
+                <th>{{ 'GET_PASS.DETAIL.AUDIT_COL_AT' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{{ 'GET_PASS.DETAIL.WORKFLOW_DEPT' | translate }}</td>
+                <td>
+                  {{
+                    auditApproverCell(d.deptApprover, d.deptApprovedBy) ||
+                      ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                  }}
+                </td>
+                <td>{{ d.deptApprovedAt ? (d.deptApprovedAt | date: 'medium') : '—' }}</td>
+              </tr>
+              <tr>
+                <td>{{ 'GET_PASS.DETAIL.WORKFLOW_COST_CONTROL' | translate }}</td>
+                <td>
+                  {{
+                    auditApproverCell(d.costControlApprover, d.costControlApprovedBy) ||
+                      ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                  }}
+                </td>
+                <td>{{ d.costControlApprovedAt ? (d.costControlApprovedAt | date: 'medium') : '—' }}</td>
+              </tr>
+              <tr>
+                <td>{{ 'GET_PASS.DETAIL.WORKFLOW_FINANCE' | translate }}</td>
+                <td>
+                  {{
+                    auditApproverCell(d.financeApprover, d.financeApprovedBy) ||
+                      ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                  }}
+                </td>
+                <td>{{ d.financeApprovedAt ? (d.financeApprovedAt | date: 'medium') : '—' }}</td>
+              </tr>
+              <tr>
+                <td>{{ 'GET_PASS.DETAIL.WORKFLOW_GM' | translate }}</td>
+                <td>
+                  {{
+                    auditApproverCell(d.gmApprover, d.gmApprovedBy) ||
+                      ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                  }}
+                </td>
+                <td>{{ d.gmApprovedAt ? (d.gmApprovedAt | date: 'medium') : '—' }}</td>
+              </tr>
+              <tr>
+                <td>{{ 'GET_PASS.DETAIL.WORKFLOW_SECURITY' | translate }}</td>
+                <td>
+                  @if (d.securityApprovedAt) {
+                    {{ auditApproverCell(d.securityApprover, d.securityApprovedBy) }}
+                  } @else if (securityAuditShowPending(d)) {
+                    {{ 'GET_PASS.DETAIL.AUDIT_PENDING' | translate }}
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  @if (d.securityApprovedAt) {
+                    {{ d.securityApprovedAt | date: 'medium' }}
+                  } @else {
+                    —
+                  }
+                </td>
+              </tr>
+              @if (d.destinationSecurityApprovedAt) {
+                <tr>
+                  <td>{{ 'GET_PASS.DETAIL.DESTINATION_SECURITY' | translate }}</td>
+                  <td>
+                    {{
+                      auditApproverCell(d.destinationSecurityApprover, d.destinationSecurityApprovedBy) ||
+                        ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                    }}
+                  </td>
+                  <td>{{ d.destinationSecurityApprovedAt | date: 'medium' }}</td>
+                </tr>
+              }
+              @if (d.destinationDeptAcceptedAt) {
+                <tr>
+                  <td>{{ 'GET_PASS.DETAIL.DESTINATION_DEPT' | translate }}</td>
+                  <td>
+                    {{
+                      auditApproverCell(d.destinationDeptAccepter, d.destinationDeptAcceptedBy) ||
+                        ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                    }}
+                  </td>
+                  <td>{{ d.destinationDeptAcceptedAt | date: 'medium' }}</td>
+                </tr>
+              }
+              @if (d.destinationSecurityExitAt) {
+                <tr>
+                  <td>{{ 'GET_PASS.DETAIL.RETURN_EXIT' | translate }}</td>
+                  <td>
+                    {{
+                      auditApproverCell(d.destinationSecurityExitByUser, d.destinationSecurityExitBy) ||
+                        ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                    }}
+                  </td>
+                  <td>{{ d.destinationSecurityExitAt | date: 'medium' }}</td>
+                </tr>
+              }
+              @if (d.reverseAuditTrail?.confirmReturnArrivalAt && d.receivedAt) {
+                <tr>
+                  <td>{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL' | translate }}</td>
+                  <td>
+                    {{ auditApproverCell(d.receivedBy, undefined) || ('GET_PASS.DETAIL.AUDIT_PENDING' | translate) }}
+                  </td>
+                  <td>{{ d.receivedAt | date: 'medium' }}</td>
+                </tr>
+              }
+              @if (d.reverseAuditTrail?.shipBackAt) {
+                <tr>
+                  <td>{{ 'GET_PASS.DETAIL.SHIP_BACK' | translate }}</td>
+                  <td>
+                    {{
+                      auditApproverCell(
+                        d.reverseAuditTrail?.shipBackByUser,
+                        d.reverseAuditTrail?.shipBackBy
+                      ) || ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                    }}
+                  </td>
+                  <td>{{ d.reverseAuditTrail?.shipBackAt | date: 'medium' }}</td>
+                </tr>
+              }
+              @if (d.reverseAuditTrail?.confirmReturnArrivalAt) {
+                <tr>
+                  <td>{{ 'GET_PASS.DETAIL.CONFIRM_ARRIVAL' | translate }}</td>
+                  <td>
+                    {{
+                      auditApproverCell(
+                        d.reverseAuditTrail?.confirmReturnArrivalByUser,
+                        d.reverseAuditTrail?.confirmReturnArrivalBy
+                      ) || ('GET_PASS.DETAIL.AUDIT_PENDING' | translate)
+                    }}
+                  </td>
+                  <td>{{ d.reverseAuditTrail?.confirmReturnArrivalAt | date: 'medium' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </nz-tab>
+    </nz-tabs>
   </div>
 }
 
@@ -467,8 +610,178 @@
         (ngModelChange)="actionNotes.set($event)"
       ></textarea>
     } @else {
-      <p class="gp-d__muted">{{ 'GET_PASS.DETAIL.APPROVE_CONFIRM_HINT' | translate }}</p>
+      <p class="gp-d__muted">{{ approveConfirmHintKey() | translate }}</p>
     }
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="returnArrivalOpen()"
+  [nzTitle]="'GET_PASS.DETAIL.CONFIRM_RETURN_ARRIVAL_TITLE' | translate"
+  [nzWidth]="980"
+  (nzOnCancel)="returnArrivalOpen.set(false)"
+  (nzOnOk)="submitConfirmReturnArrivalAtSource()"
+  [nzOkLoading]="actionBusy()"
+>
+  <ng-container *nzModalContent>
+    <p class="gp-d__muted">{{ 'GET_PASS.DETAIL.CONFIRM_RETURN_ARRIVAL_MSG' | translate }}</p>
+    <nz-table [nzData]="returnArrivalLines()" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.MAX' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_QTY' | translate }}</th>
+          <th>{{ 'GET_PASS.DETAIL.COND_IN' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of returnArrivalLines(); track row.lineId; let idx = $index) {
+          <tr>
+            <td>{{ row.itemName }}</td>
+            <td nzAlign="right">{{ row.outstandingQty }}</td>
+            <td>
+              <nz-input-number
+                [ngModel]="row.receivedQty"
+                (ngModelChange)="onReturnArrivalQtyChange(idx, $event)"
+                [nzMin]="0"
+                [nzMax]="row.outstandingQty"
+              />
+            </td>
+            <td>
+              <nz-select
+                [ngModel]="row.condition"
+                (ngModelChange)="updateReturnArrivalDraft(idx, { condition: $event ?? 'Good' })"
+              >
+                <nz-option nzValue="Good" [nzLabel]="'GET_PASS.DETAIL.RECEIVED_COND_GOOD' | translate"></nz-option>
+                <nz-option nzValue="Damaged" [nzLabel]="'GET_PASS.DETAIL.DAMAGED' | translate"></nz-option>
+                <nz-option nzValue="Lost" [nzLabel]="'GET_PASS.DETAIL.LOST' | translate"></nz-option>
+              </nz-select>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="acceptDeptOpen()"
+  [nzTitle]="'GET_PASS.DETAIL.CONFIRM_ACCEPT_DEPT_TITLE' | translate"
+  (nzOnCancel)="acceptDeptOpen.set(false)"
+  (nzOnOk)="submitAcceptIntoDept()"
+  [nzOkLoading]="actionBusy()"
+  [nzOkDisabled]="!canSubmitAcceptIntoDept()"
+>
+  <ng-container *nzModalContent>
+    <p class="gp-d__muted gp-d__modal-hint">{{ 'GET_PASS.DETAIL.CONFIRM_ACCEPT_DEPT_MSG' | translate }}</p>
+    <div class="gp-d__stack-field">
+      <label class="gp-d__label">{{ 'GET_PASS.DETAIL.ACCEPT_TARGET_DEPARTMENT' | translate }}</label>
+      <nz-select
+        nzShowSearch
+        nzAllowClear
+        [nzLoading]="acceptDeptLoading()"
+        [ngModel]="acceptTargetDepartmentId()"
+        [nzPlaceHolder]="'GET_PASS.DETAIL.ACCEPT_TARGET_DEPARTMENT_PH' | translate"
+        (ngModelChange)="onAcceptTargetDepartmentChange($event ?? '')"
+      >
+        @for (dept of acceptDepartments(); track dept.id) {
+          <nz-option [nzValue]="dept.id" [nzLabel]="dept.name"></nz-option>
+        }
+      </nz-select>
+      @if (acceptSelectionTouched() && !acceptTargetDepartmentId()) {
+        <p class="gp-d__error">{{ 'GET_PASS.DETAIL.ACCEPT_TARGET_DEPARTMENT_REQUIRED' | translate }}</p>
+      }
+    </div>
+    <div class="gp-d__stack-field">
+      <label class="gp-d__label gp-d__field-gap">{{
+        'GET_PASS.DETAIL.ACCEPT_TARGET_LOCATION' | translate
+      }}</label>
+      <nz-select
+        nzShowSearch
+        nzAllowClear
+        [nzLoading]="acceptLocationLoading()"
+        [ngModel]="acceptTargetLocationId()"
+        [nzPlaceHolder]="'GET_PASS.DETAIL.ACCEPT_TARGET_LOCATION_PH' | translate"
+        [nzDisabled]="!acceptTargetDepartmentId()"
+        (ngModelChange)="acceptTargetLocationId.set($event ?? '')"
+      >
+        @for (loc of acceptLocations(); track loc.id) {
+          <nz-option [nzValue]="loc.id" [nzLabel]="loc.name"></nz-option>
+        }
+      </nz-select>
+      @if (acceptSelectionTouched() && !acceptTargetLocationId()) {
+        <p class="gp-d__error">{{ 'GET_PASS.DETAIL.ACCEPT_TARGET_LOCATION_REQUIRED' | translate }}</p>
+      }
+    </div>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="receiptOpen()"
+  [nzTitle]="'GET_PASS.DETAIL.CONFIRM_ENTRY_TITLE' | translate"
+  [nzWidth]="980"
+  (nzOnCancel)="receiptOpen.set(false)"
+  (nzOnOk)="submitConfirmReceipt()"
+  [nzOkLoading]="actionBusy()"
+>
+  <ng-container *nzModalContent>
+    <p class="gp-d__muted">{{ 'GET_PASS.DETAIL.CONFIRM_ENTRY_MSG' | translate }}</p>
+    <label class="gp-d__label">Overall Condition</label>
+    <input
+      nz-input
+      [ngModel]="receiptCondition()"
+      (ngModelChange)="receiptCondition.set($event)"
+    />
+    <nz-table [nzData]="receiptLines()" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+          <th nzAlign="right">Shipped Qty</th>
+          <th nzAlign="right">Received Qty</th>
+          <th nzAlign="right">Discrepancy</th>
+          <th>Condition</th>
+          <th>Discrepancy Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of receiptLines(); track row.lineId; let idx = $index) {
+          <tr>
+            <td>{{ row.itemName }}</td>
+            <td nzAlign="right">{{ row.shippedQty }}</td>
+            <td>
+              <nz-input-number
+                [ngModel]="row.receivedQty"
+                (ngModelChange)="onReceiptQtyChange(idx, $event)"
+                [nzMin]="0"
+                [nzMax]="row.shippedQty"
+              />
+            </td>
+            <td nzAlign="right">{{ receiptDiscrepancy(row) }}</td>
+            <td>
+              <input
+                nz-input
+                [ngModel]="row.condition"
+                (ngModelChange)="updateReceiptDraft(idx, { condition: $event })"
+              />
+            </td>
+            <td>
+              <input
+                nz-input
+                [ngModel]="row.discrepancyReason"
+                (ngModelChange)="updateReceiptDraft(idx, { discrepancyReason: $event })"
+              />
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+    <label class="gp-d__label">{{ 'COMMON.NOTES' | translate }}</label>
+    <textarea
+      nz-input
+      rows="2"
+      [ngModel]="receiptNotes()"
+      (ngModelChange)="receiptNotes.set($event)"
+    ></textarea>
   </ng-container>
 </nz-modal>
 

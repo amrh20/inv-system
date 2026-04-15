@@ -29,7 +29,7 @@
           nzAllowClear
           [nzPlaceHolder]="'LEDGER.ALL_ITEMS' | translate"
           [ngModel]="itemId()"
-          (ngModelChange)="itemId.set($event ?? '')"
+          (ngModelChange)="onItemChange($event)"
         >
           <nz-option [nzValue]="''" [nzLabel]="'LEDGER.ALL_ITEMS' | translate" />
           @for (opt of itemOptions(); track opt.id) {
@@ -45,7 +45,7 @@
           nzAllowClear
           [nzPlaceHolder]="'LEDGER.ALL_LOCATIONS' | translate"
           [ngModel]="locationId()"
-          (ngModelChange)="locationId.set($event ?? '')"
+          (ngModelChange)="onLocationChange($event)"
         >
           <nz-option [nzValue]="''" [nzLabel]="'LEDGER.ALL_LOCATIONS' | translate" />
           @for (loc of locations(); track loc.id) {
@@ -59,7 +59,7 @@
           class="ledger-page__control"
           nzFormat="yyyy-MM-dd"
           [ngModel]="dateFrom()"
-          (ngModelChange)="dateFrom.set($event ?? null)"
+          (ngModelChange)="onDateFromChange($event)"
           [nzAllowClear]="true"
         />
       </div>
@@ -69,7 +69,7 @@
           class="ledger-page__control"
           nzFormat="yyyy-MM-dd"
           [ngModel]="dateTo()"
-          (ngModelChange)="dateTo.set($event ?? null)"
+          (ngModelChange)="onDateToChange($event)"
           [nzAllowClear]="true"
         />
       </div>
@@ -80,7 +80,7 @@
           nzAllowClear
           [nzPlaceHolder]="'LEDGER.ALL_TYPES' | translate"
           [ngModel]="movementType()"
-          (ngModelChange)="movementType.set($event ?? '')"
+          (ngModelChange)="onMovementTypeChange($event)"
         >
           <nz-option [nzValue]="''" [nzLabel]="'LEDGER.ALL_TYPES' | translate" />
           @for (t of movementTypes; track t) {
@@ -98,9 +98,6 @@
   @if (!loading()) {
     <div class="ledger-page__count">
       {{ 'LEDGER.SHOWING_ENTRIES' | translate: { shown: entries().length, total: total() } }}
-      @if (total() > ledgerFetchTake) {
-        <span class="ledger-page__cap">{{ 'LEDGER.CAPPED_AT' | translate: { cap: ledgerFetchTake } }}</span>
-      }
     </div>
   }
 
@@ -109,13 +106,17 @@
     #ledgerTable
     [nzData]="entries()"
     [nzLoading]="loading()"
+    [nzFrontPagination]="false"
     nzSize="middle"
     nzTableLayout="fixed"
     [nzScroll]="ledgerTableScroll"
     [nzShowPagination]="true"
-    [nzPageSize]="25"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex()"
+    [nzPageSize]="pageSize()"
     [nzPageSizeOptions]="[10, 25, 50, 100]"
     nzShowSizeChanger
+    (nzQueryParams)="onQueryParamsChange($event)"
     [nzNoResult]="noResultTpl"
   >
     <ng-template #noResultTpl>

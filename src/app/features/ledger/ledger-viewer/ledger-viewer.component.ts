@@ -15,6 +15,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import type { NzTableQueryParams } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import {
@@ -33,7 +34,6 @@ import { LedgerService } from '../services/ledger.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import type { RequirementsResponse } from '../../items/models/item.model';
 
-const LEDGER_FETCH_TAKE = 100;
 const LEDGER_DEBOUNCE_MS = 300;
 
 /** Movement types shown in ledger filter dropdown (aligned with React + Prisma) */
@@ -71,7 +71,6 @@ const LEDGER_MOVEMENT_TYPES = [
 export class LedgerViewerComponent implements OnInit, OnDestroy {
   private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
 
-  readonly ledgerFetchTake = LEDGER_FETCH_TAKE;
   readonly movementTypes = LEDGER_MOVEMENT_TYPES;
 
   /** Horizontal scroll — column widths sum to ~1280px; extra room for padding/borders. */
@@ -94,6 +93,8 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
   readonly dateFrom = signal<Date | null>(null);
   readonly dateTo = signal<Date | null>(null);
   readonly movementType = signal<string>('');
+  readonly pageIndex = signal(1);
+  readonly pageSize = signal(25);
 
   readonly entries = signal<LedgerEntryRow[]>([]);
   readonly total = signal(0);
@@ -119,6 +120,8 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
       this.dateFrom();
       this.dateTo();
       this.movementType();
+      this.pageIndex();
+      this.pageSize();
       this.scheduleLoad();
     });
   }
@@ -169,8 +172,8 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
         dateFrom: df ? this.formatDate(df) : undefined,
         dateTo: dt ? this.formatDate(dt) : undefined,
         movementType: this.movementType() || undefined,
-        skip: 0,
-        take: LEDGER_FETCH_TAKE,
+        skip: (this.pageIndex() - 1) * this.pageSize(),
+        take: this.pageSize(),
       })
       .pipe(first())
       .subscribe({
@@ -276,6 +279,41 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
 
   movementTypeLabel(type: string): string {
     return type ? this.t(`MOVEMENTS.TYPES.${type}`) : '';
+  }
+
+  onItemChange(value: string | null): void {
+    this.itemId.set(value ?? '');
+    this.pageIndex.set(1);
+  }
+
+  onLocationChange(value: string | null): void {
+    this.locationId.set(value ?? '');
+    this.pageIndex.set(1);
+  }
+
+  onDateFromChange(value: Date | null): void {
+    this.dateFrom.set(value ?? null);
+    this.pageIndex.set(1);
+  }
+
+  onDateToChange(value: Date | null): void {
+    this.dateTo.set(value ?? null);
+    this.pageIndex.set(1);
+  }
+
+  onMovementTypeChange(value: string | null): void {
+    this.movementType.set(value ?? '');
+    this.pageIndex.set(1);
+  }
+
+  onQueryParamsChange(params: NzTableQueryParams): void {
+    const { pageIndex, pageSize } = params;
+    if (this.pageIndex() !== pageIndex) {
+      this.pageIndex.set(pageIndex);
+    }
+    if (this.pageSize() !== pageSize) {
+      this.pageSize.set(pageSize);
+    }
   }
 
   downloadExcel(): void {

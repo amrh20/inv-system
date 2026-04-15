@@ -43,6 +43,16 @@
               />
             </div>
           }
+          @if (lockSensitiveFieldsAfterFinalize()) {
+            <div nz-col nzSpan="24">
+              <nz-alert
+                nzType="info"
+                nzShowIcon
+                class="item-form-alert"
+                [nzMessage]="'ITEM_FORM.OB_FINALIZED_LOCKED_FIELDS_HINT' | translate"
+              />
+            </div>
+          }
           <div nz-col nzSpan="24" nzMd="12">
             <nz-form-item>
               <nz-form-label nzRequired>{{ 'COMMON.ITEM_NAME' | translate }}</nz-form-label>
@@ -83,6 +93,7 @@
                   [nzMin]="0"
                   [nzStep]="0.01"
                   [nzPlaceHolder]="'ITEM_FORM.ZERO_DECIMAL' | translate"
+                  [nzDisabled]="lockSensitiveFieldsAfterFinalize()"
                   class="w-100"
                 />
                 <ng-template #unitPriceErrorTpl let-control>
@@ -184,6 +195,7 @@
                     [nzMin]="0"
                     [nzStep]="0.01"
                     [nzPlaceHolder]="'ITEM_FORM.OPENING_QTY_PLACEHOLDER' | translate"
+                    [nzDisabled]="lockSensitiveFieldsAfterFinalize()"
                     class="w-100"
                   />
                 </nz-form-control>
@@ -214,7 +226,11 @@
             <nz-form-item>
               <nz-form-label nzRequired>{{ 'COMMON.BASE_UNIT' | translate }}</nz-form-label>
               <nz-form-control [nzErrorTip]="'ITEM_FORM.ERROR_BASE_UNIT_SELECT' | translate">
-                <nz-select formControlName="baseUnitId" [nzPlaceHolder]="'COMMON.UNIT' | translate">
+                <nz-select
+                  formControlName="baseUnitId"
+                  [nzPlaceHolder]="'COMMON.UNIT' | translate"
+                  [nzDisabled]="lockSensitiveFieldsAfterFinalize()"
+                >
                   @for (u of units(); track u.id) {
                     <nz-option [nzValue]="u.id" [nzLabel]="u.name + ' (' + u.abbreviation + ')'" />
                   }

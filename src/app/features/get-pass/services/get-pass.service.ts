@@ -4,8 +4,11 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import type {
+  GetPassAcceptIntoDepartmentPayload,
+  GetPassConfirmReturnArrivalPayload,
   GetPassConfirmReceiptPayload,
   GetPassCreatePayload,
+  GetPassDiscrepancyRow,
   GetPassDetail,
   GetPassListRow,
   GetPassReturnLinePayload,
@@ -93,6 +96,22 @@ export class GetPassService {
     );
   }
 
+  /** Source hotel returns currently in reverse transit (status RETURNING). */
+  getReturningPasses(params?: { page?: number; limit?: number }): Observable<{
+    passes: GetPassListRow[];
+    total: number;
+  }> {
+    let p = new HttpParams()
+      .set('limit', String(params?.limit ?? 20))
+      .set('page', String(params?.page ?? 1));
+    return this.http.get<GetPassListHttpBody>(`${this.base}/returns`, { params: p }).pipe(
+      map((res) => ({
+        passes: res.success && Array.isArray(res.data) ? res.data : [],
+        total: res.total ?? 0,
+      })),
+    );
+  }
+
   confirmReceipt(id: string, payload: GetPassConfirmReceiptPayload): Observable<GetPassDetail> {
     return this.http
       .post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/confirm-receipt`, payload)
@@ -104,10 +123,63 @@ export class GetPassService {
       );
   }
 
-  acceptIntoDepartment(id: string): Observable<GetPassDetail> {
-    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/accept-into-department`, {}).pipe(
+  acceptIntoDepartment(
+    id: string,
+    payload: GetPassAcceptIntoDepartmentPayload,
+  ): Observable<GetPassDetail> {
+    return this.http
+      .post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/accept-into-department`, payload)
+      .pipe(
+        map((res) => {
+          if (!res.success || !res.data) throw new Error(res.message || 'Accept into department failed');
+          return res.data;
+        }),
+      );
+  }
+
+  /**
+   * Destination hotel starts reverse logistics to return items to source security.
+   */
+  shipBack(id: string): Observable<GetPassDetail> {
+    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/ship-back`, {}).pipe(
       map((res) => {
-        if (!res.success || !res.data) throw new Error(res.message || 'Accept into department failed');
+        if (!res.success || !res.data) throw new Error(res.message || 'Ship back failed');
+        return res.data;
+      }),
+    );
+  }
+
+  /**
+   * Destination hotel security confirms reverse shipment exit from gate.
+   */
+  confirmReturnExit(id: string): Observable<GetPassDetail> {
+    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/confirm-return-exit`, {}).pipe(
+      map((res) => {
+        if (!res.success || !res.data) throw new Error(res.message || 'Confirm return exit failed');
+        return res.data;
+      }),
+    );
+  }
+
+  /**
+   * Source hotel security confirms returned items arrived back.
+   */
+  confirmReturnArrival(
+    id: string,
+    payload: GetPassConfirmReturnArrivalPayload,
+  ): Observable<GetPassDetail> {
+    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/confirm-return-arrival`, payload).pipe(
+      map((res) => {
+        if (!res.success || !res.data) throw new Error(res.message || 'Confirm arrival failed');
+        return res.data;
+      }),
+    );
+  }
+
+  acceptReturnIntoDepartment(id: string): Observable<GetPassDetail> {
+    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/accept-return-into-department`, {}).pipe(
+      map((res) => {
+        if (!res.success || !res.data) throw new Error(res.message || 'Accept return into department failed');
         return res.data;
       }),
     );
@@ -175,15 +247,6 @@ export class GetPassService {
     );
   }
 
-  checkout(id: string, lines: unknown[] = []): Observable<GetPassDetail> {
-    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/checkout`, { lines }).pipe(
-      map((res) => {
-        if (!res.success || !res.data) throw new Error(res.message || 'Checkout failed');
-        return res.data;
-      }),
-    );
-  }
-
   returnItems(id: string, lines: GetPassReturnLinePayload[], notes?: string | null): Observable<GetPassDetail> {
     return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/return`, { lines, notes }).pipe(
       map((res) => {
@@ -204,5 +267,14 @@ export class GetPassService {
 
   exportPdf(id: string): Observable<Blob> {
     return this.http.get(`${this.base}/${id}/pdf`, { responseType: 'blob' });
+  }
+
+  getDiscrepancies(): Observable<GetPassDiscrepancyRow[]> {
+    return this.http.get<ApiResponse<GetPassDiscrepancyRow[]>>(`${this.base}/discrepancies`).pipe(
+      map((res) => {
+        if (!res.success || !Array.isArray(res.data)) return [];
+        return res.data;
+      }),
+    );
   }
 }

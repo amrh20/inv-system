@@ -17,15 +17,17 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTabChangeEvent, NzTabsModule } from 'ng-zorro-antd/tabs';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
+import { NzMessageService } from 'ng-zorro-antd/message';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { Eye, Package, Plus, RefreshCw } from 'lucide-angular';
+import { Check, Eye, Package, Plus, RefreshCw } from 'lucide-angular';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { AuthService } from '../../../core/services/auth.service';
+import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { GetPassStatus, GetPassType } from '../../../core/models/enums';
 import type { RequirementsResponse } from '../../items/models/item.model';
 import { ItemsService } from '../../items/services/items.service';
-import type { GetPassListRow } from '../models/get-pass.model';
+import type { GetPassDiscrepancyRow, GetPassListRow } from '../models/get-pass.model';
 import { GetPassService } from '../services/get-pass.service';
 
 const STATUS_FILTERS: Array<'ALL' | GetPassStatus> = [
@@ -39,17 +41,26 @@ const STATUS_FILTERS: Array<'ALL' | GetPassStatus> = [
   'APPROVED',
   'OUT',
   'RECEIVED_AT_DESTINATION',
+  'RETURNING',
+  'RETURN_RECEIVED_AT_GATE',
   'PARTIALLY_RETURNED',
   'RETURNED',
   'CLOSED',
   'REJECTED',
 ];
 
-const TYPE_FILTERS: Array<'ALL' | GetPassType> = ['ALL', 'TEMPORARY', 'CATERING', 'PERMANENT'];
+const TYPE_FILTERS: Array<'ALL' | GetPassType> = [
+  'ALL',
+  'TEMPORARY',
+  'CATERING',
+  'OUTSIDE_CATERING',
+  'PERMANENT',
+];
 
 @Component({
   selector: 'app-get-pass-list',
   standalone: true,
+  providers: [ConfirmationService],
   imports: [
     DatePipe,
     NgClass,
@@ -76,17 +87,19 @@ export class GetPassListComponent implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
+  private readonly confirmation = inject(ConfirmationService);
+  private readonly message = inject(NzMessageService);
 
   readonly lucidePkg = Package;
   readonly lucidePlus = Plus;
   readonly lucideRefresh = RefreshCw;
   readonly lucideEye = Eye;
+  readonly lucideCheck = Check;
 
   readonly statusFilters = STATUS_FILTERS;
   readonly typeFilters = TYPE_FILTERS;
 
-  /** 0 = outgoing (this hotel), 1 = incoming (sister hotel → this hotel). */
-  readonly listTabIndex = signal(0);
+  readonly selectedTab = signal<'OUTGOING' | 'INCOMING' | 'RETURNS' | 'CLAIMS'>('OUTGOING');
 
   readonly activeStatus = signal<(typeof STATUS_FILTERS)[number]>('ALL');
   readonly activeType = signal<(typeof TYPE_FILTERS)[number]>('ALL');
@@ -96,12 +109,15 @@ export class GetPassListComponent implements OnInit {
   readonly pageSize = 20;
   readonly loading = signal(false);
   readonly listError = signal('');
+  readonly claims = signal<GetPassDiscrepancyRow[]>([]);
   /** From `GET /items/check-requirements`; `isOpeningBalanceAllowed` disables New Get Pass during OB setup. */
   readonly requirements = signal<RequirementsResponse | null>(null);
   readonly obStatus = signal<NonNullable<RequirementsResponse['obStatus']>>(
     GetPassListComponent.DEFAULT_OB_STATUS,
   );
-  readonly disableCreateButton = computed(() => this.obStatus() === 'INITIAL_LOCK');
+  readonly disableCreateButton = computed(
+    () => this.obStatus() === 'INITIAL_LOCK' || this.obStatus() === 'OPEN',
+  );
 
   get canCreate(): boolean {
     return this.auth.hasPermission('GET_PASS_CREATE');
@@ -113,9 +129,25 @@ export class GetPassListComponent implements OnInit {
    */
   canViewIncoming(): boolean {
     return (
-      this.auth.hasRole('SUPER_ADMIN', 'ADMIN', 'SECURITY', 'GENERAL_MANAGER', 'ORG_MANAGER') ||
+      this.auth.hasRole('SUPER_ADMIN', 'ADMIN', 'SECURITY', 'GENERAL_MANAGER', 'ORG_MANAGER', 'DEPT_MANAGER') ||
       this.auth.isParentOrganizationContext()
     );
+  }
+
+  canViewClaims(): boolean {
+    return this.auth.hasRole('SUPER_ADMIN', 'COST_CONTROL', 'FINANCE_MANAGER');
+  }
+
+  availableTabs(): Array<'OUTGOING' | 'INCOMING' | 'RETURNS' | 'CLAIMS'> {
+    const tabs: Array<'OUTGOING' | 'INCOMING' | 'RETURNS' | 'CLAIMS'> = ['OUTGOING'];
+    if (this.canViewIncoming()) tabs.push('INCOMING');
+    if (this.canViewIncoming()) tabs.push('RETURNS');
+    if (this.canViewClaims()) tabs.push('CLAIMS');
+    return tabs;
+  }
+
+  selectedTabIndex(): number {
+    return Math.max(0, this.availableTabs().indexOf(this.selectedTab()));
   }
 
   /** Show issuer / receiver columns when listing at organization root (multiple hotels). */
@@ -167,8 +199,9 @@ export class GetPassListComponent implements OnInit {
   }
 
   onListTabChange(ev: NzTabChangeEvent): void {
+    const tabs = this.availableTabs();
     const index = ev.index ?? 0;
-    this.listTabIndex.set(index);
+    this.selectedTab.set(tabs[index] ?? 'OUTGOING');
     this.page.set(1);
     this.load();
   }
@@ -184,8 +217,12 @@ export class GetPassListComponent implements OnInit {
   }
 
   load(): void {
-    if (this.canViewIncoming() && this.listTabIndex() === 1) {
+    if (this.selectedTab() === 'INCOMING') {
       this.loadIncoming();
+    } else if (this.selectedTab() === 'RETURNS') {
+      this.loadReturns();
+    } else if (this.selectedTab() === 'CLAIMS') {
+      this.loadClaims();
     } else {
       this.loadOutgoing();
     }
@@ -239,6 +276,47 @@ export class GetPassListComponent implements OnInit {
       });
   }
 
+  private loadReturns(): void {
+    this.loading.set(true);
+    this.listError.set('');
+    this.api
+      .getReturningPasses({
+        page: this.page(),
+        limit: this.pageSize,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (r) => {
+          this.passes.set(r.passes);
+          this.total.set(r.total);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.listError.set(this.translate.instant('GET_PASS.LIST.ERROR_LOAD'));
+          this.loading.set(false);
+        },
+      });
+  }
+
+  private loadClaims(): void {
+    this.loading.set(true);
+    this.listError.set('');
+    this.api
+      .getDiscrepancies()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (rows) => {
+          this.claims.set(rows);
+          this.total.set(rows.length);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.listError.set(this.translate.instant('GET_PASS.LIST.ERROR_LOAD_CLAIMS'));
+          this.loading.set(false);
+        },
+      });
+  }
+
   goNew(): void {
     if (this.disableCreateButton()) {
       return;
@@ -264,6 +342,9 @@ export class GetPassListComponent implements OnInit {
         return 'processing';
       case 'RECEIVED_AT_DESTINATION':
         return 'success';
+      case 'RETURNING':
+      case 'RETURN_RECEIVED_AT_GATE':
+        return 'pending';
       case 'PARTIALLY_RETURNED':
         return 'low-stock';
       case 'RETURNED':
@@ -276,11 +357,45 @@ export class GetPassListComponent implements OnInit {
     }
   }
 
+  statusBadgeClass(p: GetPassListRow): string {
+    if (p.isOverdue) {
+      return 'status-rejected';
+    }
+    return `status-${this.statusClass(p.status)}`;
+  }
+
+  statusLabelKey(p: GetPassListRow): string {
+    if (p.isOverdue) {
+      return 'GET_PASS.STATUS.OVERDUE';
+    }
+    if (p.status === 'RETURNING') {
+      const viewerTenantId = this.auth.currentTenantId();
+      const sourceTenantId = p.tenantId ?? p.tenant?.id ?? p.sourceTenantId ?? p.sourceTenant?.id ?? null;
+      const targetTenantId = p.targetTenantId ?? p.targetTenant?.id ?? null;
+      if (viewerTenantId && sourceTenantId && viewerTenantId === sourceTenantId) {
+        return 'GET_PASS.STATUS.RETURNING_AWAITING_ARRIVAL';
+      }
+      if (viewerTenantId && targetTenantId && viewerTenantId === targetTenantId) {
+        return 'GET_PASS.STATUS.RETURNING_IN_TRANSIT';
+      }
+    }
+    return `GET_PASS.STATUS.${p.status}`;
+  }
+
   /**
    * Incoming list: OUT = blue (dispatched), RECEIVED_AT_DESTINATION = amber (at gate / pending dept),
    * destination dept accepted = green (final).
    */
   incomingListStatusClass(p: GetPassListRow): string {
+    if (p.isOverdue) {
+      return 'rejected';
+    }
+    if (p.status === 'RETURNING') {
+      return 'pending';
+    }
+    if (p.status === 'RETURN_RECEIVED_AT_GATE') {
+      return 'pending';
+    }
     if (p.destinationDeptAcceptedAt) {
       return 'success';
     }
@@ -294,13 +409,42 @@ export class GetPassListComponent implements OnInit {
     }
   }
 
+  returnsListStatusClass(p: GetPassListRow): string {
+    if (p.isOverdue) {
+      return 'rejected';
+    }
+    if (p.status === 'RETURNING') {
+      return 'pending';
+    }
+    if (p.status === 'RETURN_RECEIVED_AT_GATE') {
+      return 'pending';
+    }
+    return this.statusClass(p.status);
+  }
+
+  canQuickConfirmReturnArrival(p: GetPassListRow): boolean {
+    // Return arrival now requires per-line inspection payload, handled in detail screen modal.
+    // Keep quick action hidden from list.
+    return false;
+  }
+
+  quickConfirmReturnArrival(p: GetPassListRow): void {
+    this.goDetail(p);
+  }
+
   /** Translation key for status label on Incoming tab (destination-specific wording). */
   incomingListStatusLabelKey(p: GetPassListRow): string {
+    if (p.isOverdue) {
+      return 'GET_PASS.STATUS.OVERDUE';
+    }
+    if (p.status === 'RETURNING') {
+      return this.statusLabelKey(p);
+    }
     if (p.destinationDeptAcceptedAt) {
       return 'GET_PASS.LIST.STATUS_INCOMING.RECEIVED_BY_DEPT';
     }
     if (p.status === 'OUT') {
-      return 'GET_PASS.LIST.STATUS_INCOMING.OUT';
+      return 'GET_PASS.STATUS.PENDING_ARRIVAL';
     }
     if (p.status === 'RECEIVED_AT_DESTINATION') {
       return 'GET_PASS.LIST.STATUS_INCOMING.RECEIVED_AT_DESTINATION';

@@ -64,7 +64,7 @@ export type TransferStatus =
   | 'REJECTED';
 
 /** Prisma `GetPassType` */
-export type GetPassType = 'TEMPORARY' | 'CATERING' | 'PERMANENT';
+export type GetPassType = 'TEMPORARY' | 'CATERING' | 'OUTSIDE_CATERING' | 'PERMANENT';
 
 /** Prisma `GetPassStatus` */
 export type GetPassStatus =
@@ -77,6 +77,8 @@ export type GetPassStatus =
   | 'APPROVED'
   | 'OUT'
   | 'RECEIVED_AT_DESTINATION'
+  | 'RETURNING'
+  | 'RETURN_RECEIVED_AT_GATE'
   | 'PARTIALLY_RETURNED'
   | 'RETURNED'
   | 'CLOSED'

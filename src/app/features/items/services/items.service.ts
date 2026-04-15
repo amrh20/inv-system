@@ -91,7 +91,7 @@ export class ItemsService {
     );
   }
 
-  updateItem(id: string, body: ItemPayload): Observable<ItemDetail> {
+  updateItem(id: string, body: Partial<ItemPayload>): Observable<ItemDetail> {
     return this.http.put<ApiResponse<ItemDetail>>(`${this.base}/${id}`, body).pipe(
       map((res) => {
         if (!res.success || !res.data) {

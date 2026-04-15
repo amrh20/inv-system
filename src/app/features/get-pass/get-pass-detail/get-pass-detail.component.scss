@@ -23,6 +23,12 @@
   margin-bottom: 16px;
 }
 
+.gp-d__tabs {
+  :where(.ant-tabs-nav) {
+    margin-bottom: 16px;
+  }
+}
+
 .gp-d__card {
   background: #fff;
   border: 1px solid #f0f0f0;
@@ -145,6 +151,29 @@
 
 .gp-d__modal-hint {
   margin-bottom: 8px;
+}
+
+.gp-d__field-gap {
+  margin-top: 10px;
+}
+
+.gp-d__error {
+  margin: 4px 0 0;
+  color: #cf1322;
+  font-size: 12px;
+}
+
+.gp-d__stack-field {
+  display: block;
+
+  .gp-d__label {
+    display: block;
+  }
+
+  nz-select {
+    display: block;
+    width: 100%;
+  }
 }
 
 .gp-d__chk {

@@ -35,7 +35,7 @@
     </div>
   </div>
 
-  @if (obStatus() === 'INITIAL_LOCK') {
+  @if (disableCreateButton()) {
     <nz-alert
       nzType="warning"
       nzShowIcon
@@ -47,10 +47,10 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  @if (canViewIncoming()) {
+  @if (canViewIncoming() || canViewClaims()) {
     <nz-tabs
       class="gp-list__tabs"
-      [nzSelectedIndex]="listTabIndex()"
+      [nzSelectedIndex]="selectedTabIndex()"
       (nzSelectChange)="onListTabChange($event)"
     >
       <nz-tab [nzTitle]="'GET_PASS.LIST.TAB_OUTGOING' | translate">
@@ -110,8 +110,8 @@
                   <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
                 </td>
                 <td>
-                  <span class="status-badge" [ngClass]="'status-' + statusClass(p.status)">
-                    {{ 'GET_PASS.STATUS.' + p.status | translate }}
+                  <span class="status-badge" [ngClass]="statusBadgeClass(p)">
+                    {{ statusLabelKey(p) | translate }}
                   </span>
                 </td>
                 @if (showOrgWidePropertyColumns()) {
@@ -191,6 +191,110 @@
           </tbody>
         </nz-table>
       </nz-tab>
+      <nz-tab [nzTitle]="'GET_PASS.LIST.TAB_RETURNS' | translate">
+        <nz-table
+          #tblReturns
+          [nzData]="passes()"
+          [nzLoading]="loading()"
+          nzSize="middle"
+          [nzShowPagination]="false"
+          [nzNoResult]="emptyReturnsTpl"
+        >
+          <ng-template #emptyReturnsTpl>
+            <app-empty-state
+              [title]="'GET_PASS.LIST.EMPTY_INCOMING_TITLE' | translate"
+              [message]="'GET_PASS.LIST.EMPTY_INCOMING_MSG' | translate"
+            />
+          </ng-template>
+          <thead>
+            <tr>
+              <th>{{ 'GET_PASS.LIST.COL_PASS' | translate }}</th>
+              <th>{{ 'GET_PASS.LIST.COL_SOURCE_HOTEL' | translate }}</th>
+              <th>{{ 'GET_PASS.LIST.COL_DESTINATION_PROPERTY' | translate }}</th>
+              <th>{{ 'GET_PASS.LIST.COL_TYPE' | translate }}</th>
+              <th>{{ 'COMMON.STATUS' | translate }}</th>
+              <th>{{ 'COMMON.DATE' | translate }}</th>
+              <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of tblReturns.data; track p.id) {
+              <tr>
+                <td class="text-brand-primary gp-list__mono">{{ p.passNo }}</td>
+                <td>{{ p.tenant?.name ?? p.sourceTenant?.name ?? '—' }}</td>
+                <td>{{ p.targetTenant?.name ?? '—' }}</td>
+                <td>
+                  <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="'status-' + returnsListStatusClass(p)">
+                    {{ statusLabelKey(p) | translate }}
+                  </span>
+                </td>
+                <td>{{ (p.updatedAt || p.createdAt) | date: 'medium' }}</td>
+                <td nzAlign="right">
+                  @if (canQuickConfirmReturnArrival(p)) {
+                    <button
+                      nz-button
+                      nzType="link"
+                      type="button"
+                      nz-tooltip
+                      [nzTooltipTitle]="'GET_PASS.LIST.CONFIRM_RETURN_TOOLTIP' | translate"
+                      (click)="quickConfirmReturnArrival(p)"
+                    >
+                      <lucide-icon [img]="lucideCheck" [size]="16" [strokeWidth]="2" />
+                    </button>
+                  }
+                  <button nz-button nzType="link" type="button" (click)="goDetail(p)">
+                    <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </nz-table>
+      </nz-tab>
+      @if (canViewClaims()) {
+        <nz-tab [nzTitle]="'GET_PASS.LIST.TAB_CLAIMS' | translate">
+          <nz-table
+            #tblClaims
+            [nzData]="claims()"
+            [nzLoading]="loading()"
+            nzSize="middle"
+            [nzShowPagination]="false"
+            [nzNoResult]="emptyClaimsTpl"
+          >
+            <ng-template #emptyClaimsTpl>
+              <app-empty-state
+                [title]="'GET_PASS.LIST.EMPTY_CLAIMS_TITLE' | translate"
+                [message]="'GET_PASS.LIST.EMPTY_CLAIMS_MSG' | translate"
+              />
+            </ng-template>
+            <thead>
+              <tr>
+                <th>{{ 'GET_PASS.LIST.CLAIMS_ITEM' | translate }}</th>
+                <th>{{ 'GET_PASS.LIST.CLAIMS_FROM_HOTEL' | translate }}</th>
+                <th>{{ 'GET_PASS.LIST.CLAIMS_TO_HOTEL' | translate }}</th>
+                <th>{{ 'GET_PASS.LIST.CLAIMS_SHIPPED_QTY' | translate }}</th>
+                <th>{{ 'GET_PASS.LIST.CLAIMS_RECEIVED_QTY' | translate }}</th>
+                <th>{{ 'GET_PASS.LIST.CLAIMS_REASON' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of tblClaims.data; track row.id) {
+                <tr>
+                  <td>{{ row.item?.name ?? '—' }}</td>
+                  <td>{{ row.getPass?.tenant?.name ?? '—' }}</td>
+                  <td>{{ row.getPass?.targetTenant?.name ?? '—' }}</td>
+                  <td>{{ row.qty }}</td>
+                  <td>{{ row.qtyReceivedAtDestination ?? 0 }}</td>
+                  <td>{{ row.discrepancyReason || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+        </nz-tab>
+      }
     </nz-tabs>
   } @else {
     <div class="gp-list__filters mb-5">
@@ -247,8 +351,8 @@
               <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
             </td>
             <td>
-              <span class="status-badge" [ngClass]="'status-' + statusClass(p.status)">
-                {{ 'GET_PASS.STATUS.' + p.status | translate }}
+              <span class="status-badge" [ngClass]="statusBadgeClass(p)">
+                {{ statusLabelKey(p) | translate }}
               </span>
             </td>
             <td>{{ p.borrowingEntity }}</td>
@@ -271,7 +375,8 @@
     </nz-table>
   }
 
-  <div class="gp-list__footer">
+  @if (selectedTab() !== 'CLAIMS') {
+    <div class="gp-list__footer">
     <button nz-button type="button" [disabled]="page() <= 1" (click)="prevPage()">
       {{ 'COMMON.BACK' | translate }}
     </button>
@@ -279,5 +384,6 @@
     <button nz-button type="button" [disabled]="page() * pageSize >= total()" (click)="nextPage()">
       {{ 'COMMON.NEXT' | translate }}
     </button>
-  </div>
+    </div>
+  }
 </div>

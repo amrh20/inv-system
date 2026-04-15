@@ -30,11 +30,14 @@
         >
           <nz-option nzValue="TEMPORARY" [nzLabel]="'GET_PASS.TYPE.TEMPORARY' | translate" />
           <nz-option nzValue="CATERING" [nzLabel]="'GET_PASS.TYPE.CATERING' | translate" />
+          <nz-option nzValue="OUTSIDE_CATERING" [nzLabel]="'GET_PASS.TYPE.OUTSIDE_CATERING' | translate" />
           <nz-option nzValue="PERMANENT" [nzLabel]="'GET_PASS.TYPE.PERMANENT' | translate" />
         </nz-select>
       </div>
       <div>
-        <label class="gp-form__label">{{ 'GET_PASS.FORM.DEPT' | translate }}</label>
+        <label class="gp-form__label">{{ 'GET_PASS.FORM.DEPT' | translate }}
+          <span class="gp-form__req" aria-hidden="true">*</span>
+        </label>
         <nz-select
           class="gp-form__control"
           [ngModel]="departmentId()"
@@ -103,7 +106,7 @@
           />
         </div>
       }
-      @if (transferType() === 'CATERING') {
+      @if (transferType() === 'CATERING' || transferType() === 'OUTSIDE_CATERING') {
         <div>
           <label class="gp-form__label">
             {{ 'GET_PASS.FORM.CATERING_EXPECTED_RETURN' | translate }}
@@ -186,7 +189,7 @@
                   [nzPlaceHolder]="'GET_PASS.FORM.ITEM_PH' | translate"
                   [nzDisabled]="!line.locationId"
                 >
-                  @for (it of lineItemOptions(line.locationId); track it.id) {
+                  @for (it of lineItemOptions(line.locationId, line.itemId); track it.id) {
                     <nz-option [nzValue]="it.id" [nzLabel]="it.label" />
                   }
                 </nz-select>
