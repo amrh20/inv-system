@@ -1,3 +1,30 @@
 :host {
   display: block;
 }
+
+.detail-table__group-pair {
+  min-width: 11rem;
+}
+
+:host ::ng-deep {
+  th.text-right,
+  td.text-right,
+  th.font-mono,
+  td.font-mono {
+    font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
+  }
+
+  .detail-row:nth-child(even) td {
+    background-color: #fcfcfc;
+  }
+
+  .detail-row:hover td {
+    background-color: rgba(148, 163, 184, 0.12);
+    transition: background-color 120ms ease;
+  }
+
+  .detail-cell-static {
+    background-color: inherit;
+  }
+}

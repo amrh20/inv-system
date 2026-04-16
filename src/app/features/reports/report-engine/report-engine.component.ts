@@ -1,9 +1,18 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -42,6 +51,7 @@ import { DetailReportTableComponent, type DetailReportRow } from './report-views
     DatePipe,
     FormsModule,
     NzButtonModule,
+    NzCheckboxModule,
     NzDatePickerModule,
     NzSelectModule,
     NzSpinModule,
@@ -53,6 +63,7 @@ import { DetailReportTableComponent, type DetailReportRow } from './report-views
   ],
   templateUrl: './report-engine.component.html',
   styleUrl: './report-engine.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ReportEngineComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -62,6 +73,7 @@ export class ReportEngineComponent implements OnInit {
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   readonly lucideCalendar = Calendar;
   readonly lucideBuilding = Building2;
@@ -82,9 +94,11 @@ export class ReportEngineComponent implements OnInit {
   categories: CategoryRow[] = [];
   selectedDeptIds: string[] = [];
   categoryId = '';
+  includeSupplier = false;
+  includeLocationQtys = false;
   startDate = this.firstOfMonth();
   endDate = new Date();
-  generating = false;
+  readonly generating = signal(false);
   viewMode: 'filters' | 'result' = 'filters';
   activeReport: GeneratedReport | null = null;
 
@@ -98,17 +112,6 @@ export class ReportEngineComponent implements OnInit {
         this.departmentList = r.departments;
         this.loadCategories();
       });
-  }
-
-  titleKey(): string {
-    const map: Record<EngineReportType, string> = {
-      DETAIL: 'REPORTS.ENGINE.TITLES.DETAIL',
-      BREAKAGE: 'REPORTS.ENGINE.TITLES.BREAKAGE',
-      OMC: 'REPORTS.ENGINE.TITLES.OMC',
-      TRANSFERS: 'REPORTS.ENGINE.TITLES.TRANSFERS',
-      AGING: 'REPORTS.ENGINE.TITLES.AGING',
-    };
-    return map[this.reportType] ?? 'REPORTS.ENGINE.TITLES.DETAIL';
   }
 
   onDeptChange(): void {
@@ -134,13 +137,22 @@ export class ReportEngineComponent implements OnInit {
       this.message.error(this.translate.instant('REPORTS.ERRORS.DATE_RANGE'));
       return;
     }
-    this.generating = true;
+    this.generating.set(true);
+    this.activeReport = null;
+    this.viewMode = 'result';
+    const includeExtras = this.shouldSendIncludeFlags(this.reportType);
     this.reportsApi
       .generate({
         reportType: this.reportType,
         departmentIds: this.selectedDeptIds,
         startDate: s,
         endDate: e,
+        ...(includeExtras
+          ? {
+              includeSupplier: this.includeSupplier,
+              includeLocationQtys: this.includeLocationQtys,
+            }
+          : {}),
         ...(this.categoryId ? { categoryId: this.categoryId } : {}),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -148,14 +160,24 @@ export class ReportEngineComponent implements OnInit {
         next: (rep) => {
           this.activeReport = rep;
           this.viewMode = 'result';
-          this.generating = false;
+          this.generating.set(false);
+          this.cdr.markForCheck();
           this.message.success(this.translate.instant('REPORTS.MSG.GENERATED'));
         },
         error: (err: Error) => {
           this.message.error(err.message || this.translate.instant('REPORTS.MSG.GENERATE_FAILED'));
-          this.generating = false;
+          this.generating.set(false);
+          this.cdr.markForCheck();
         },
       });
+  }
+
+  /** Stable row identity for report tables (reduces DOM churn vs `$index`). */
+  trackGenericRow(index: number, row: Record<string, unknown>): string {
+    const id = row['id'] ?? row['documentNo'] ?? row['transferId'] ?? row['itemCode'];
+    const d = row['date'] ?? row['lastReceiveDate'] ?? '';
+    const name = row['itemName'] ?? row['location'] ?? '';
+    return `${String(id)}|${String(d)}|${String(name)}|${index}`;
   }
 
   backToFilters(): void {
@@ -203,7 +225,14 @@ export class ReportEngineComponent implements OnInit {
   }
 
   fmtQty(n: unknown): string {
-    return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+    return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  agingDaysClass(daysOld: unknown): string {
+    const days = Number(daysOld || 0);
+    if (days > 90) return 'aging-days--critical';
+    if (days > 30) return 'aging-days--warning';
+    return '';
   }
 
   private saveBlob(blob: Blob, filename: string): void {
@@ -246,6 +275,12 @@ export class ReportEngineComponent implements OnInit {
     const outQty = Number(r['outQty'] ?? 0);
     const tfrOutQty = Number(r['tfrOutQty'] ?? 0);
     const adj = Number(r['adjQty'] ?? 0);
-    return outQty + tfrOutQty + (adj < 0 ? Math.abs(adj) : 0);
+    const lostQty = Number(r['lostQty'] ?? 0);
+    const loanWriteOffQty = Number(r['loanWriteOffQty'] ?? 0);
+    return outQty + tfrOutQty + lostQty + loanWriteOffQty + (adj < 0 ? Math.abs(adj) : 0);
+  }
+
+  private shouldSendIncludeFlags(reportType: EngineReportType): boolean {
+    return ['DETAIL', 'BREAKAGE', 'OMC', 'TRANSFERS', 'AGING'].includes(reportType);
   }
 }

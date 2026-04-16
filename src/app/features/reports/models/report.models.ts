@@ -61,5 +61,5 @@ export interface ValuationRow {
 export interface ValuationPayload {
   rows: ValuationRow[];
   totalValue?: number;
-  snapshotUsed?: string | null;
+  snapshotUsed?: { id: string; year: number; month?: number | null; closedAt: string } | null;
 }

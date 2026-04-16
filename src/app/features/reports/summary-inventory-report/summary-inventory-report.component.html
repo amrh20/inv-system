@@ -1,5 +1,5 @@
 <div class="summary-report space-y-5">
-  <div class="filter-card rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+  <div class="summary-filters rounded-lg bg-slate-50/90 p-4">
     <div class="grid grid-cols-1 items-end gap-4 xl:grid-cols-5">
       <div>
         <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
@@ -154,43 +154,42 @@
       </div>
 
       <div class="overflow-x-auto">
-        <table class="w-full border-collapse text-left text-xs">
+        <table class="summary-table w-full border-collapse text-left text-xs">
           <thead>
             <tr class="text-center text-xs font-bold uppercase text-white">
               <th
                 rowspan="2"
-                class="border-b-2 border-r-2 border-[var(--ose-border)] bg-white px-4 py-2 text-left text-gray-700"
+                class="summary-head-main summary-cell text-left"
               >
                 {{ 'REPORTS.SUMMARY.GROUP_LABEL_COL' | translate }}
               </th>
               @for (g of colGroups; track g.id) {
-                <th [attr.colspan]="g.sub.length" class="border-b border-white/40 border-r-2 px-2 py-2 {{ g.headerClass }}">
+                <th [attr.colspan]="2" class="summary-head-main summary-cell text-center">
                   {{ g.labelKey | translate }}
                 </th>
               }
             </tr>
-            <tr class="border-b-2 border-[var(--ose-border)] text-xs font-semibold text-gray-500">
+            <tr class="text-xs font-semibold text-gray-600">
               @for (g of colGroups; track g.id) {
-                @for (s of g.sub; track s.k; let last = $last) {
-                  <th
-                    class="bg-surface-muted px-3 py-1.5 text-right {{ last ? 'border-r-2 border-[var(--ose-border)]' : 'border-r border-[var(--ose-border)]' }}"
-                  >
+                @for (s of g.sub; track s.k) {
+                  <th class="summary-head-sub summary-cell text-right">
                     {{ s.labelKey | translate }}
                   </th>
                 }
               }
             </tr>
           </thead>
-          <tbody class="divide-y divide-[var(--ose-border)]">
+          <tbody>
             @for (row of reportRows(); track $index) {
-              <tr class="border-b border-[var(--ose-border)] transition-colors last:border-0 hover:bg-surface-muted/50">
-                <td class="min-w-56 border-r-2 border-[var(--ose-border)] px-4 py-2 font-medium text-brand-dark">
+              <tr class="transition-colors hover:bg-surface-muted/40">
+                <td class="summary-cell summary-label min-w-56 text-brand-dark">
                   {{ row.label }}
                 </td>
                 @for (g of colGroups; track g.id) {
-                  @for (s of g.sub; track s.k; let last = $last) {
+                  @for (s of g.sub; track s.k) {
                     <td
-                      class="px-3 py-2 text-right tabular-nums {{ cellClass(row[s.k], s.signed) }} {{ last ? 'border-r-2 border-[var(--ose-border)]' : 'border-r border-[var(--ose-border)]' }}"
+                      class="summary-cell summary-number text-right {{ cellClass(row[s.k], s.signed) }}"
+                      [class.summary-closing]="isClosingColumn(g.id)"
                     >
                       @if (row[s.k] == null) {
                         —
@@ -205,12 +204,12 @@
           </tbody>
           @if (totals()) {
             <tfoot>
-              <tr class="border-t-2 border-gray-700 bg-gray-900 text-xs font-bold text-white">
-                <td class="border-r-2 border-gray-600 px-4 py-2.5">{{ 'REPORTS.SUMMARY.TOTALS' | translate }}</td>
+              <tr class="summary-totals-row text-xs font-bold text-white">
+                <td class="summary-cell">{{ 'REPORTS.SUMMARY.TOTALS' | translate }}</td>
                 @for (g of colGroups; track g.id) {
-                  @for (s of g.sub; track s.k; let last = $last) {
+                  @for (s of g.sub; track s.k) {
                     <td
-                      class="px-3 py-2.5 text-right tabular-nums {{ cellClass(totals()![s.k], s.signed) }} {{ last ? 'border-r-2 border-gray-600' : 'border-r border-gray-600' }}"
+                      class="summary-cell summary-number text-right {{ cellClass(totals()![s.k], s.signed) }}"
                     >
                       @if (totals()![s.k] == null) {
                         —
@@ -221,11 +220,11 @@
                   }
                 }
               </tr>
-              <tr class="border-t border-[var(--ose-border)] bg-surface-muted text-sm">
-                <td class="border-r border-[var(--ose-border)] px-4 py-2 font-semibold text-subtle">
+              <tr class="summary-ratio-row text-sm">
+                <td class="summary-cell font-semibold text-subtle">
                   {{ 'REPORTS.SUMMARY.VARIANCE_RATIO' | translate }}
                 </td>
-                <td colspan="2" class="border-r border-[var(--ose-border)] px-3 py-2 text-right">
+                <td colspan="2" class="summary-cell summary-number text-right">
                   <span
                     class="text-sm font-bold"
                     [class.text-red-600]="(totals()!.varianceRatio ?? 0) < 0"
@@ -234,7 +233,7 @@
                     {{ (totals()!.varianceRatio ?? 0) > 0 ? '+' : '' }}{{ totals()!.varianceRatio ?? 0 }}%
                   </span>
                 </td>
-                <td colspan="15" class="px-3 py-2 text-xs italic text-subtle">
+                <td colspan="15" class="summary-cell text-xs italic text-subtle">
                   {{ 'REPORTS.SUMMARY.VARIANCE_RATIO_HINT' | translate }}
                 </td>
               </tr>

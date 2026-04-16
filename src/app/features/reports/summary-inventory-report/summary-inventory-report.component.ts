@@ -69,8 +69,8 @@ export class SummaryInventoryReportComponent implements OnInit {
   /** Bound to nz-select multiple (ngModel cannot bind to WritableSignal). */
   selectedDeptIds: string[] = [];
   categoryId = '';
-  readonly startDate = signal<Date>(this.firstOfMonth());
-  readonly endDate = signal<Date>(new Date());
+  startDate = this.firstOfMonth();
+  endDate = new Date();
   readonly loading = signal(false);
   readonly queried = signal(false);
   readonly error = signal<string | null>(null);
@@ -100,7 +100,7 @@ export class SummaryInventoryReportComponent implements OnInit {
     },
     {
       id: 'brk',
-      labelKey: 'REPORTS.SUMMARY.COLUMNS.BREAKAGE',
+      labelKey: 'REPORTS.SUMMARY.COLUMNS.BREAKAGE_LOST',
       headerClass: 'bg-orange-700',
       sub: [
         { k: 'brkQty', labelKey: 'REPORTS.SUMMARY.COLUMNS.QTY' },
@@ -183,8 +183,8 @@ export class SummaryInventoryReportComponent implements OnInit {
   }
 
   generate(): void {
-    const s = this.toIsoDate(this.startDate());
-    const e = this.toIsoDate(this.endDate());
+    const s = this.toIsoDate(this.startDate);
+    const e = this.toIsoDate(this.endDate);
     if (!s || !e) {
       this.message.error(this.translate.instant('REPORTS.ERRORS.DATE_RANGE'));
       return;
@@ -242,8 +242,8 @@ export class SummaryInventoryReportComponent implements OnInit {
   cellClass(v: unknown, signed?: boolean): string {
     if (!signed || v == null) return '';
     const n = Number(v);
-    if (n < 0) return 'text-red-600 font-semibold';
-    if (n > 0) return 'text-emerald-700 font-semibold';
+    if (n < 0) return 'text-red-600';
+    if (n > 0) return 'text-emerald-700';
     return '';
   }
 
@@ -251,6 +251,10 @@ export class SummaryInventoryReportComponent implements OnInit {
     if (!signed || v == null) return '';
     const n = Number(v);
     return n > 0 ? '+' : '';
+  }
+
+  isClosingColumn(groupId: string): boolean {
+    return groupId === 'close';
   }
 
   private firstOfMonth(): Date {

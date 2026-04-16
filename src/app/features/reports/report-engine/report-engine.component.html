@@ -1,39 +1,29 @@
 <div class="report-engine space-y-6">
-  <div class="flex flex-wrap items-start justify-between gap-4">
-    <div>
-      <h2 class="text-xl font-bold text-brand-dark">{{ titleKey() | translate }}</h2>
-      <p class="mt-0.5 text-sm text-subtle">
-        @if (viewMode === 'result' && activeReport) {
-          {{ activeReport.reportName }}
-        } @else {
-          {{ 'REPORTS.ENGINE.SUBTITLE_GENERATE' | translate }}
-        }
-      </p>
-    </div>
-    @if (viewMode === 'result') {
-      <div class="flex flex-wrap gap-2">
-        <button type="button" nz-button (click)="backToFilters()">
+  @if (viewMode === 'result') {
+    <div class="report-engine__toolbar report-engine__toolbar--actions flex flex-wrap justify-end gap-3">
+      <div class="report-engine__actions">
+        <button type="button" nz-button nzType="default" class="report-engine__btn report-engine__btn--outline" (click)="backToFilters()">
           <lucide-icon [img]="lucideHistory" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
           {{ 'COMMON.BACK' | translate }}
         </button>
-        <button type="button" nz-button (click)="print()">
+        <button type="button" nz-button nzType="default" class="report-engine__btn report-engine__btn--outline" (click)="print()">
           <lucide-icon [img]="lucidePrint" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
           {{ 'COMMON.PRINT' | translate }}
         </button>
-        <button type="button" nz-button nzType="primary" class="!bg-brand-success border-0" (click)="downloadExcel()">
-          <lucide-icon [img]="lucideExcel" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+        <button type="button" nz-button nzType="primary" class="report-engine__btn report-engine__btn--excel" (click)="downloadExcel()">
+          <lucide-icon [img]="lucideExcel" class="report-engine__btn-icon-excel mr-1 inline h-4 w-4" [strokeWidth]="2" />
           {{ 'COMMON.EXPORT_EXCEL' | translate }}
         </button>
-        <button type="button" nz-button nzDanger (click)="downloadPdf()">
-          <lucide-icon [img]="lucidePdf" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
+        <button type="button" nz-button nzType="default" class="report-engine__btn report-engine__btn--pdf-outline" (click)="downloadPdf()">
+          <lucide-icon [img]="lucidePdf" class="report-engine__btn-icon-pdf mr-1 inline h-4 w-4" [strokeWidth]="2" />
           {{ 'REPORTS.ACTIONS.EXPORT_PDF' | translate }}
         </button>
       </div>
-    }
-  </div>
+    </div>
+  }
 
   @if (viewMode === 'filters') {
-    <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+    <div class="report-engine__filters rounded-lg bg-slate-50/90 p-4">
       <div class="grid grid-cols-1 items-end gap-4 xl:grid-cols-5">
         <div>
           <label class="mb-1.5 block text-xs font-semibold uppercase text-subtle">
@@ -86,11 +76,11 @@
             type="button"
             nz-button
             nzType="primary"
-            class="flex h-[38px] w-full items-center justify-center gap-2"
-            [disabled]="generating"
+            class="flex h-[38px] w-full items-center justify-center gap-2 rounded-lg"
+            [disabled]="generating()"
             (click)="generate()"
           >
-            @if (generating) {
+            @if (generating()) {
               <nz-spin nzSimple />
             } @else {
               <lucide-icon [img]="lucideSearch" class="h-4 w-4" [strokeWidth]="2" />
@@ -99,23 +89,45 @@
           </button>
         </div>
       </div>
+      @if (reportType === 'DETAIL' || reportType === 'BREAKAGE' || reportType === 'OMC' || reportType === 'TRANSFERS' || reportType === 'AGING') {
+        <div class="mt-4 flex flex-wrap items-center gap-4">
+          <label nz-checkbox [(ngModel)]="includeSupplier">
+            {{ 'REPORTS.ENGINE.OPTIONS.INCLUDE_SUPPLIER' | translate }}
+          </label>
+          <label nz-checkbox [(ngModel)]="includeLocationQtys">
+            {{ 'REPORTS.ENGINE.OPTIONS.INCLUDE_LOCATION_QTYS' | translate }}
+          </label>
+        </div>
+      }
     </div>
 
-    <app-empty-state
-      [title]="'REPORTS.ENGINE.EMPTY_TITLE' | translate"
-      [message]="'REPORTS.ENGINE.EMPTY_HINT' | translate"
-    />
+    <div class="report-engine__empty">
+      <app-empty-state
+        [title]="'REPORTS.ENGINE.EMPTY_TITLE' | translate"
+        [message]="'REPORTS.ENGINE.EMPTY_HINT' | translate"
+        [icon]="lucideBar"
+        [iconSize]="52"
+        [messageTone]="'caption'"
+      />
+    </div>
   }
 
-  @if (viewMode === 'result' && activeReport) {
-    <div class="overflow-hidden rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated shadow-sm print:border-none">
-      <div
-        class="bg-gradient-to-r from-blue-800 to-brand-primary px-6 py-5 text-white print:bg-brand-primary"
-      >
-        <h3 class="text-xl font-bold">{{ activeReport.reportName }}</h3>
-        <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-blue-100">
+  @if (viewMode === 'result' && generating()) {
+    <div class="report-engine__generating rounded-lg bg-white p-8">
+      <div class="report-engine__generating-inner flex min-h-[200px] flex-col items-center justify-center gap-4">
+        <nz-spin nzSimple [nzSpinning]="true" />
+        <p class="report-engine__generating-text text-center text-sm font-medium">
+          {{ 'REPORTS.MSG.GENERATING' | translate }}
+        </p>
+      </div>
+    </div>
+  } @else if (viewMode === 'result' && activeReport) {
+    <div class="report-engine__result-card overflow-hidden rounded-lg bg-white print:border-none">
+      <div class="report-engine__result-header border-b border-[var(--ose-border)] bg-white px-6 py-5 print:bg-white">
+        <h3 class="report-engine__report-title text-xl font-bold">{{ activeReport.reportName }}</h3>
+        <div class="report-engine__result-meta mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
           <span>{{ formatRange(activeReport.startDate, activeReport.endDate) }}</span>
-          <span>•</span>
+          <span class="text-slate-300">•</span>
           <span>{{ 'REPORTS.ENGINE.GENERATED_AT' | translate }} {{ activeReport.createdAt | date: 'medium' }}</span>
         </div>
       </div>
@@ -145,6 +157,8 @@
                 [nzShowPagination]="false"
                 nzSize="small"
                 [nzNoResult]="emptyBrk"
+                [nzTableLayout]="'fixed'"
+                class="report-table report-table--breakage"
               >
                 <ng-template #emptyBrk>
                   <app-empty-state
@@ -154,29 +168,29 @@
                 </ng-template>
                 <thead>
                   <tr>
-                    <th>{{ 'COMMON.DATE' | translate }}</th>
-                    <th>{{ 'COMMON.REFERENCE' | translate }}</th>
-                    <th>{{ 'COMMON.DEPARTMENT' | translate }}</th>
-                    <th>{{ 'COMMON.LOCATION' | translate }}</th>
-                    <th>{{ 'COMMON.CATEGORY' | translate }}</th>
-                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
-                    <th class="text-right">{{ 'COMMON.QTY' | translate }}</th>
-                    <th class="text-right">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
-                    <th>{{ 'COMMON.NOTES' | translate }}</th>
-                    <th>{{ 'REPORTS.BREAKAGE.CREATED_BY' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.DATE' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.REFERENCE' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.DEPARTMENT' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.LOCATION' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.CATEGORY' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'COMMON.QTY' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.NOTES' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.BREAKAGE.CREATED_BY' | translate }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (r of brkTable.data; track $index) {
-                    <tr>
+                  @for (r of brkTable.data; track trackGenericRow($index, r); let i = $index) {
+                    <tr [class.report-table__row-alt]="i % 2 === 1" class="report-table__row">
                       <td>{{ r['date'] }}</td>
                       <td class="font-mono text-xs">{{ r['documentNo'] }}</td>
                       <td>{{ r['department'] }}</td>
                       <td>{{ r['location'] }}</td>
                       <td>{{ r['category'] }}</td>
                       <td>{{ r['itemName'] }}</td>
-                      <td class="text-right font-semibold text-red-700">{{ fmtQty(r['qty']) }}</td>
-                      <td class="text-right font-semibold text-red-700">{{ fmt(r['value']) }}</td>
+                      <td class="text-right font-semibold text-red-700 report-table__num">{{ fmtQty(r['qty']) }}</td>
+                      <td class="text-right font-semibold text-red-700 report-table__num">{{ fmt(r['value']) }}</td>
                       <td class="text-subtle">{{ r['reason'] ?? '—' }}</td>
                       <td class="text-subtle">{{ r['createdBy'] ?? '—' }}</td>
                     </tr>
@@ -191,6 +205,8 @@
                 [nzShowPagination]="false"
                 nzSize="small"
                 [nzNoResult]="emptyOmc"
+                [nzTableLayout]="'fixed'"
+                class="report-table report-table--transfers"
               >
                 <ng-template #emptyOmc>
                   <app-empty-state
@@ -200,25 +216,25 @@
                 </ng-template>
                 <thead>
                   <tr>
-                    <th>{{ 'COMMON.CATEGORY' | translate }}</th>
-                    <th>{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
-                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
-                    <th class="text-right">{{ 'REPORTS.OMC.OPENING' | translate }}</th>
-                    <th class="text-right">{{ 'REPORTS.OMC.IN' | translate }}</th>
-                    <th class="text-right">{{ 'REPORTS.OMC.OUT' | translate }}</th>
-                    <th class="text-right">{{ 'REPORTS.OMC.CLOSING' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.CATEGORY' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'REPORTS.OMC.OPENING' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'REPORTS.OMC.IN' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'REPORTS.OMC.OUT' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'REPORTS.OMC.CLOSING' | translate }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (r of omcTable.data; track $index) {
-                    <tr>
+                  @for (r of omcTable.data; track trackGenericRow($index, r); let i = $index) {
+                    <tr [class.report-table__row-alt]="i % 2 === 1" class="report-table__row">
                       <td>{{ r['category'] }}</td>
                       <td class="font-mono text-xs">{{ r['itemCode'] }}</td>
                       <td>{{ r['itemName'] }}</td>
-                      <td class="text-right text-blue-700">{{ fmtQty(r['openingQty']) }}</td>
-                      <td class="text-right font-semibold text-green-700">+{{ fmtQty(omcIn(r)) }}</td>
-                      <td class="text-right font-semibold text-red-600">-{{ fmtQty(omcOut(r)) }}</td>
-                      <td class="text-right font-bold text-indigo-700">{{ fmtQty(r['closingQty']) }}</td>
+                      <td class="text-right text-blue-700 report-table__num">{{ fmtQty(r['openingQty']) }}</td>
+                      <td class="text-right font-semibold text-green-700 report-table__num">+{{ fmtQty(omcIn(r)) }}</td>
+                      <td class="text-right font-semibold text-red-600 report-table__num">-{{ fmtQty(omcOut(r)) }}</td>
+                      <td class="text-right font-bold text-indigo-700 report-table__num">{{ fmtQty(r['closingQty']) }}</td>
                     </tr>
                   }
                 </tbody>
@@ -231,6 +247,8 @@
                 [nzShowPagination]="false"
                 nzSize="small"
                 [nzNoResult]="emptyTrf"
+                [nzTableLayout]="'fixed'"
+                class="report-table"
               >
                 <ng-template #emptyTrf>
                   <app-empty-state
@@ -240,28 +258,30 @@
                 </ng-template>
                 <thead>
                   <tr>
-                    <th>{{ 'COMMON.DATE' | translate }}</th>
-                    <th>{{ 'COMMON.REFERENCE' | translate }}</th>
-                    <th>{{ 'COMMON.TYPE' | translate }}</th>
-                    <th>{{ 'REPORTS.TRF.SOURCE' | translate }}</th>
-                    <th>{{ 'REPORTS.TRF.DEST' | translate }}</th>
-                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
-                    <th class="text-right">{{ 'COMMON.QTY' | translate }}</th>
-                    <th>{{ 'REPORTS.TRF.REQUESTED_BY' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.DATE' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.REFERENCE' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.TYPE' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.TRF.SOURCE' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.TRF.DEST' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'COMMON.QTY' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.TRF.REQUESTED_BY' | translate }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (r of trfTable.data; track $index) {
-                    <tr>
+                  @for (r of trfTable.data; track trackGenericRow($index, r); let i = $index) {
+                    <tr [class.report-table__row-alt]="i % 2 === 1" class="report-table__row">
                       <td>{{ r['date'] }}</td>
                       <td class="font-mono text-xs">{{ r['documentNo'] }}</td>
                       <td>
                         <span class="status-pill">{{ r['type'] }}</span>
                       </td>
-                      <td>{{ r['source'] }}</td>
-                      <td>{{ r['destination'] }}</td>
+                      <td>{{ r['fromLocation'] || r['source'] }}</td>
+                      <td>{{ r['toLocation'] || r['destination'] }}</td>
+                      <td class="font-mono text-xs">{{ r['itemCode'] || '—' }}</td>
                       <td>{{ r['itemName'] }}</td>
-                      <td class="text-right font-semibold">{{ fmtQty(r['qty']) }}</td>
+                      <td class="text-right font-semibold report-table__num">{{ fmtQty(r['qty']) }}</td>
                       <td class="text-subtle">{{ r['requestedBy'] }}</td>
                     </tr>
                   }
@@ -275,6 +295,8 @@
                 [nzShowPagination]="false"
                 nzSize="small"
                 [nzNoResult]="emptyAge"
+                [nzTableLayout]="'fixed'"
+                class="report-table report-table--aging"
               >
                 <ng-template #emptyAge>
                   <app-empty-state
@@ -284,24 +306,32 @@
                 </ng-template>
                 <thead>
                   <tr>
-                    <th>{{ 'COMMON.LOCATION' | translate }}</th>
-                    <th>{{ 'COMMON.CATEGORY' | translate }}</th>
-                    <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
-                    <th class="text-right">{{ 'REPORTS.AGING.ON_HAND' | translate }}</th>
-                    <th>{{ 'REPORTS.AGING.LAST_RECEIPT' | translate }}</th>
-                    <th class="text-right">{{ 'REPORTS.AGING.DAYS_OLD' | translate }}</th>
-                    <th>{{ 'REPORTS.AGING.BUCKET' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.LOCATION' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.CATEGORY' | translate }}</th>
+                    <th class="report-table__head">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'REPORTS.AGING.ON_HAND' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.AGING.LAST_RECEIPT' | translate }}</th>
+                    <th class="report-table__head report-table__num">{{ 'REPORTS.AGING.DAYS_OLD' | translate }}</th>
+                    <th class="report-table__head">{{ 'REPORTS.AGING.BUCKET' | translate }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (r of ageTable.data; track $index) {
-                    <tr>
+                  @for (r of ageTable.data; track trackGenericRow($index, r); let i = $index) {
+                    <tr [class.report-table__row-alt]="i % 2 === 1" class="report-table__row">
                       <td>{{ r['location'] }}</td>
                       <td>{{ r['category'] }}</td>
                       <td>{{ r['itemName'] }}</td>
-                      <td class="text-right font-semibold">{{ fmtQty(r['qtyOnHand']) }}</td>
+                      <td class="text-right font-semibold report-table__num">{{ fmtQty(r['qtyOnHand']) }}</td>
+                      <td class="text-right font-semibold report-table__num">{{ fmt(r['value']) }}</td>
                       <td class="text-subtle">{{ r['lastReceiveDate'] }}</td>
-                      <td class="text-right">{{ r['daysOld'] }}</td>
+                      <td
+                        class="text-right font-semibold report-table__num"
+                        [class.aging-days--critical]="agingDaysClass(r['daysOld']) === 'aging-days--critical'"
+                        [class.aging-days--warning]="agingDaysClass(r['daysOld']) === 'aging-days--warning'"
+                      >
+                        {{ fmtQty(r['daysOld']) }}
+                      </td>
                       <td>
                         <span class="status-pill">{{ r['bucket'] }}</span>
                       </td>

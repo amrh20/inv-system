@@ -2,6 +2,159 @@
   display: block;
 }
 
+.report-engine__result-card {
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.report-engine__filters {
+  border: none;
+  border-radius: 8px;
+  box-shadow: none;
+  outline: none;
+}
+
+.report-engine__empty {
+  display: flex;
+  min-height: min(42vh, 360px);
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+:host ::ng-deep .report-engine__empty {
+  .empty-state {
+    padding: 32px 16px;
+  }
+
+  .empty-state__icon {
+    color: rgb(100 116 139 / 0.42);
+  }
+}
+
+.report-engine__generating {
+  box-shadow:
+    0 1px 3px 0 rgb(0 0 0 / 0.06),
+    0 1px 2px -1px rgb(0 0 0 / 0.06);
+}
+
+:host ::ng-deep .report-engine__filters {
+  .ant-picker {
+    min-height: 38px !important;
+    border-radius: 8px !important;
+  }
+
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    min-height: 38px !important;
+    border-radius: 8px !important;
+    align-items: center;
+  }
+
+  .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-item,
+  .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-placeholder {
+    line-height: 36px !important;
+  }
+}
+
+.report-engine__report-title {
+  color: #334155;
+}
+
+.report-engine__toolbar--actions {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.report-engine__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.report-engine__btn {
+  height: 38px;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.report-engine__btn--outline {
+  border-color: #e2e8f0 !important;
+  color: #334155 !important;
+  background: #fff !important;
+}
+
+.report-engine__btn--outline:hover {
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+.report-engine__btn--excel {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+  color: #fff !important;
+}
+
+.report-engine__btn--excel:hover {
+  background-color: #059669 !important;
+  border-color: #059669 !important;
+}
+
+.report-engine__btn-icon-excel {
+  color: #fff;
+}
+
+:host ::ng-deep .report-engine__btn--excel .report-engine__btn-icon-excel svg {
+  stroke: #fff;
+}
+
+.report-engine__btn--pdf-outline {
+  background-color: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+}
+
+.report-engine__btn--pdf-outline:hover {
+  background-color: #fef2f2 !important;
+  border-color: #fecdd3 !important;
+}
+
+.report-engine__btn-icon-pdf {
+  color: #e11d48;
+  opacity: 0.9;
+}
+
+:host ::ng-deep .report-engine__btn-icon-pdf svg {
+  stroke: #e11d48;
+}
+
+.report-engine__generating-inner {
+  text-align: center;
+}
+
+.report-engine__generating-text {
+  color: #64748b;
+  margin: 0;
+  max-width: 28rem;
+}
+
+:host ::ng-deep .report-engine__actions .ant-btn {
+  height: 38px;
+  min-height: 38px;
+  padding-top: 0;
+  padding-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
 .status-pill {
   display: inline-block;
   padding: 2px 8px;
@@ -10,6 +163,51 @@
   font-weight: 600;
   background: rgba(0, 0, 0, 0.06);
   color: rgba(0, 0, 0, 0.75);
+}
+
+:host ::ng-deep {
+  .report-table .ant-table-thead > tr > th.report-table__head {
+    background: #334155;
+    color: #f8fafc;
+    border-bottom: 1px solid #475569;
+  }
+
+  .report-table__num {
+    text-align: right;
+    font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
+  }
+
+  .report-table td.text-right,
+  .report-table td.report-table__num {
+    font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+      monospace;
+  }
+
+  .report-table__row-alt > td {
+    background: #fcfcfc;
+  }
+
+  .report-table--transfers .report-table__row-alt > td {
+    background: #f8fafc;
+  }
+
+  .report-table--aging .report-table__row-alt > td {
+    background: #f8fafc;
+  }
+
+  .aging-days--warning {
+    color: #c2410c;
+  }
+
+  .aging-days--critical {
+    color: #b91c1c;
+  }
+
+  .report-table__row:hover > td {
+    background: rgba(148, 163, 184, 0.12);
+    transition: background-color 120ms ease;
+  }
 }
 
 @media print {

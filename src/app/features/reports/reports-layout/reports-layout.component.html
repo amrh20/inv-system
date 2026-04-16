@@ -1,48 +1,48 @@
 <div class="reports-layout space-y-6">
   <div>
     <h1 class="text-2xl font-bold text-brand-dark">{{ 'REPORTS.ENGINE_TITLE' | translate }}</h1>
-    <p class="text-sm text-subtle mt-1">{{ 'REPORTS.ENGINE_SUBTITLE' | translate }}</p>
+    <p class="mt-1 text-sm text-subtle">{{ 'REPORTS.ENGINE_SUBTITLE' | translate }}</p>
   </div>
 
-  <div class="border-b border-[var(--ose-border)]">
-    <nav class="-mb-px flex gap-6 overflow-x-auto pb-1" aria-label="Tabs">
+  <nav class="reports-layout__tabs-nav" aria-label="Tabs">
+    <div class="reports-layout__tablist">
       @for (t of tabs; track t.path) {
         <a
           [routerLink]="t.path"
-          routerLinkActive="tab-active"
+          routerLinkActive="reports-layout__tab--active"
           [routerLinkActiveOptions]="{ exact: true }"
-          class="group inline-flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent py-4 px-1 text-sm font-medium text-subtle transition-colors hover:text-brand-dark"
+          class="reports-layout__tab"
         >
           @switch (t.icon) {
             @case ('summary') {
-              <lucide-icon [img]="lucideSummary" class="h-[18px] w-[18px]" [strokeWidth]="2" />
+              <lucide-icon [img]="lucideSummary" class="reports-layout__tab-icon h-[16px] w-[16px] shrink-0" [strokeWidth]="2" />
             }
             @case ('detail') {
-              <lucide-icon [img]="lucideDetail" class="h-[18px] w-[18px]" [strokeWidth]="2" />
+              <lucide-icon [img]="lucideDetail" class="reports-layout__tab-icon h-[16px] w-[16px] shrink-0" [strokeWidth]="2" />
             }
             @case ('breakage') {
-              <lucide-icon [img]="lucideBreakage" class="h-[18px] w-[18px]" [strokeWidth]="2" />
+              <lucide-icon [img]="lucideBreakage" class="reports-layout__tab-icon h-[16px] w-[16px] shrink-0" [strokeWidth]="2" />
             }
             @case ('omc') {
-              <lucide-icon [img]="lucideOmc" class="h-[18px] w-[18px]" [strokeWidth]="2" />
+              <lucide-icon [img]="lucideOmc" class="reports-layout__tab-icon h-[16px] w-[16px] shrink-0" [strokeWidth]="2" />
             }
             @case ('transfers') {
-              <lucide-icon [img]="lucideTransfers" class="h-[18px] w-[18px]" [strokeWidth]="2" />
+              <lucide-icon [img]="lucideTransfers" class="reports-layout__tab-icon h-[16px] w-[16px] shrink-0" [strokeWidth]="2" />
             }
             @case ('aging') {
-              <lucide-icon [img]="lucideAging" class="h-[18px] w-[18px]" [strokeWidth]="2" />
+              <lucide-icon [img]="lucideAging" class="reports-layout__tab-icon h-[16px] w-[16px] shrink-0" [strokeWidth]="2" />
             }
             @case ('valuation') {
-              <lucide-icon [img]="lucideValuation" class="h-[18px] w-[18px]" [strokeWidth]="2" />
+              <lucide-icon [img]="lucideValuation" class="reports-layout__tab-icon h-[16px] w-[16px] shrink-0" [strokeWidth]="2" />
             }
           }
-          <span>{{ t.labelKey | translate }}</span>
+          <span class="reports-layout__tab-label">{{ t.labelKey | translate }}</span>
         </a>
       }
-    </nav>
-  </div>
+    </div>
+  </nav>
 
-  <div class="rounded-[6px] bg-surface-elevated p-6 shadow-sm ring-1 ring-[var(--ose-ring)]">
+  <div class="reports-layout__content">
     <router-outlet />
   </div>
 </div>

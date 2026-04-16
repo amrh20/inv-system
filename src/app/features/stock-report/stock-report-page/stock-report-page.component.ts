@@ -8,6 +8,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
@@ -31,6 +32,7 @@ import { StockReportService } from '../services/stock-report.service';
     NzInputModule,
     NzSelectModule,
     NzSpinModule,
+    NzSwitchModule,
     NzTableModule,
     TranslatePipe,
     LucideAngularModule,
@@ -110,6 +112,7 @@ export class StockReportPageComponent implements OnInit {
         departmentId: this.departmentId,
         categoryId: this.categoryId || undefined,
         year: this.year,
+        isBlind: this.blindCount(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -319,5 +322,9 @@ export class StockReportPageComponent implements OnInit {
   showBook(n: unknown): string {
     if (this.blindCount()) return '';
     return this.fmtQty(n);
+  }
+
+  asNumber(n: unknown): number {
+    return Number(n ?? 0);
   }
 }

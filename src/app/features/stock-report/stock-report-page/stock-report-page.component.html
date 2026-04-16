@@ -34,8 +34,8 @@
   </div>
 
   @if (activeTab() === 'generate') {
-    <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
-      <div class="grid grid-cols-1 items-end gap-4 md:grid-cols-5">
+    <div class="stock-report-filter-panel rounded-[6px] bg-surface-elevated p-4 shadow-sm">
+      <div class="grid grid-cols-1 items-end gap-4 md:grid-cols-3">
         <div>
           <label class="mb-1 block text-sm font-medium text-subtle">{{ 'COMMON.DEPARTMENT' | translate }} *</label>
           <nz-select
@@ -71,45 +71,41 @@
             }
           </nz-select>
         </div>
-        <div>
-          <button
-            type="button"
-            nz-button
-            nzType="primary"
-            class="flex h-[38px] w-full items-center justify-center gap-2"
-            [disabled]="!departmentId || loading()"
-            (click)="generate()"
-          >
-            @if (loading()) {
-              <lucide-icon [img]="lucideRefresh" class="h-4 w-4 animate-spin" [strokeWidth]="2" />
-            } @else {
-              <lucide-icon [img]="lucideSearch" class="h-4 w-4" [strokeWidth]="2" />
-            }
-            {{ 'REPORTS.ACTIONS.GENERATE' | translate }}
-          </button>
-        </div>
-        <div>
-          <button
-            type="button"
-            nz-button
-            class="h-[38px] w-full"
-            [nzType]="blindCount() ? 'primary' : 'default'"
-            (click)="blindCount.update((v) => !v)"
-          >
-            {{ (blindCount() ? 'STOCK_REPORT.BLIND_ON' : 'STOCK_REPORT.BLIND') | translate }}
-          </button>
-        </div>
       </div>
-    </div>
 
-    @if (report()) {
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="stock-report-primary-actions mt-4 flex flex-wrap items-center justify-end gap-3 border-t border-[var(--ose-border)] pt-4">
         <button
           type="button"
           nz-button
           nzType="primary"
-          class="!bg-brand-success border-0"
-          [disabled]="saving()"
+          class="stock-report-toolbar-btn flex min-w-[168px] items-center justify-center gap-2"
+          [disabled]="!departmentId || loading()"
+          (click)="generate()"
+        >
+          @if (loading()) {
+            <lucide-icon [img]="lucideRefresh" class="h-4 w-4 animate-spin" [strokeWidth]="2" />
+          } @else {
+            <lucide-icon [img]="lucideSearch" class="h-4 w-4" [strokeWidth]="2" />
+          }
+          {{ 'REPORTS.ACTIONS.GENERATE' | translate }}
+        </button>
+
+        <div class="stock-report-blind-toggle flex h-[38px] shrink-0 items-center gap-2 rounded-[6px] border border-[var(--ose-border)] bg-white px-3">
+          <span class="text-sm font-medium text-subtle whitespace-nowrap">
+            {{ (blindCount() ? 'STOCK_REPORT.BLIND_ON' : 'STOCK_REPORT.BLIND') | translate }}
+          </span>
+          <nz-switch [ngModel]="blindCount()" (ngModelChange)="blindCount.set($event)" [nzDisabled]="loading()" />
+        </div>
+      </div>
+    </div>
+
+    <div class="stock-report-action-bar flex flex-wrap items-center gap-3 rounded-[6px] bg-surface-elevated p-3 shadow-sm">
+        <button
+          type="button"
+          nz-button
+          nzType="primary"
+          class="stock-report-toolbar-btn !bg-brand-success h-[38px] border-0"
+          [disabled]="!report() || saving()"
           (click)="saveDraft()"
         >
           @if (saving()) {
@@ -119,80 +115,102 @@
           }
           {{ 'STOCK_REPORT.SAVE_DRAFT' | translate }}
         </button>
-        <button type="button" nz-button (click)="exportExcel()">
+        <button
+          type="button"
+          nz-button
+          nzType="default"
+          class="stock-report-toolbar-btn h-[38px]"
+          [disabled]="!departmentId || loading()"
+          (click)="exportExcel()"
+        >
           <lucide-icon [img]="lucideDownload" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
           {{ 'STOCK_REPORT.EXPORT' | translate }}
         </button>
-        <label class="inline-flex cursor-pointer items-center gap-2 rounded-[6px] border border-[var(--ose-border)] px-3 py-1.5 text-sm">
-          <lucide-icon [img]="lucideUpload" class="h-4 w-4" [strokeWidth]="2" />
+        <input
+          #stockUploadInput
+          type="file"
+          accept=".xlsx,.xls"
+          class="hidden"
+          [disabled]="uploading()"
+          (change)="onUploadFile($event)"
+        />
+        <button
+          type="button"
+          nz-button
+          nzType="default"
+          class="stock-report-toolbar-btn h-[38px]"
+          [disabled]="!departmentId || uploading()"
+          (click)="stockUploadInput.click()"
+        >
+          <lucide-icon [img]="lucideUpload" class="mr-1 inline h-4 w-4" [strokeWidth]="2" />
           {{ 'STOCK_REPORT.UPLOAD' | translate }}
-          <input type="file" accept=".xlsx,.xls" class="hidden" [disabled]="uploading()" (change)="onUploadFile($event)" />
-        </label>
-      </div>
+        </button>
+    </div>
 
+    @if (report()) {
       @if (blindCount()) {
-        <div class="rounded-[6px] border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+        <div class="rounded-[6px] bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 shadow-sm">
           {{ 'STOCK_REPORT.BLIND_HINT' | translate }}
         </div>
       }
 
-      <div class="overflow-hidden rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated shadow-sm">
+      <div class="stock-table-wrap overflow-hidden rounded-[6px] bg-surface-elevated shadow-sm">
         <div class="max-h-[calc(100vh-240px)] overflow-auto">
-          <table class="min-w-[900px] border-collapse text-left text-sm">
+          <table class="stock-table min-w-[900px] border-collapse text-left text-sm">
             <thead>
-              <tr class="border-b border-[var(--ose-border)] bg-surface-muted text-xs font-semibold uppercase text-subtle">
-                <th class="sticky left-0 z-[2] bg-surface-muted px-2 py-2">{{ 'COMMON.ITEM_NAME' | translate }}</th>
-                <th class="px-2 py-2">{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
-                <th class="px-2 py-2 text-right">{{ 'COMMON.UNIT_PRICE' | translate }}</th>
-                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_OPEN' | translate }}</th>
-                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_GRN' | translate }}</th>
-                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_BRK' | translate }}</th>
-                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_PASS' | translate }}</th>
-                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_THEOR' | translate }}</th>
+              <tr class="stock-table-head">
+                <th class="text-col sticky left-0 z-[2]">{{ 'COMMON.ITEM_NAME' | translate }}</th>
+                <th class="text-col">{{ 'REPORTS.DETAIL.COL_CODE' | translate }}</th>
+                <th class="num-col">{{ 'COMMON.UNIT_PRICE' | translate }}</th>
+                <th class="num-col">{{ 'STOCK_REPORT.COL_OPEN' | translate }}</th>
+                <th class="num-col">{{ 'STOCK_REPORT.COL_GRN' | translate }}</th>
+                <th class="num-col">{{ 'STOCK_REPORT.COL_BRK' | translate }}</th>
+                <th class="num-col">{{ 'STOCK_REPORT.COL_PASS' | translate }}</th>
+                <th class="num-col">{{ 'STOCK_REPORT.COL_THEOR' | translate }}</th>
                 @for (loc of report()!.locations; track loc.id) {
-                  <th class="px-2 py-2 text-center">{{ loc.name }}</th>
+                  <th class="num-col">{{ loc.name }}</th>
                 }
                 @for (loc of report()!.locations; track loc.id) {
-                  <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_COUNT' | translate }} {{ loc.name }}</th>
-                  <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_VAR' | translate }}</th>
+                  <th class="num-col">{{ 'STOCK_REPORT.COL_COUNT' | translate }} {{ loc.name }}</th>
+                  <th class="num-col">{{ 'STOCK_REPORT.COL_VAR' | translate }}</th>
                 }
-                <th class="px-2 py-2 text-center">{{ 'STOCK_REPORT.COL_FVAR_Q' | translate }}</th>
-                <th class="px-2 py-2 text-right">{{ 'STOCK_REPORT.COL_FVAR_V' | translate }}</th>
+                <th class="num-col">{{ 'STOCK_REPORT.COL_FVAR_Q' | translate }}</th>
+                <th class="num-col">{{ 'STOCK_REPORT.COL_FVAR_V' | translate }}</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-[var(--ose-border)]">
+            <tbody>
               @for (item of report()!.items; track item.itemId; let idx = $index) {
-                <tr [class.bg-surface-muted]="idx % 2 === 1">
-                  <td class="sticky left-0 z-[1] max-w-[260px] bg-inherit px-2 py-2 font-medium">
+                <tr class="stock-row" [class.stock-row-even]="idx % 2 === 1">
+                  <td class="text-col sticky left-0 z-[1] max-w-[260px] bg-inherit font-medium">
                     <div class="truncate">{{ item.name }}</div>
                     @if (item.barcode) {
                       <div class="truncate font-mono text-xs text-subtle">{{ item.barcode }}</div>
                     }
                   </td>
-                  <td class="px-2 py-2 font-mono text-xs text-subtle">{{ item.code || '—' }}</td>
-                  <td class="px-2 py-2 text-right font-mono">{{ showBook(item.unitPrice) }}</td>
-                  <td class="px-2 py-2 text-center font-mono">{{ showBook(item.openStock) }}</td>
-                  <td class="px-2 py-2 text-center font-mono">{{ showBook(item.grnQty) }}</td>
-                  <td class="px-2 py-2 text-center font-mono text-red-700">{{ showBook(item.breakages) }}</td>
-                  <td class="px-2 py-2 text-center font-mono">{{ showBook(item.totalOutOnPass) }}</td>
-                  <td class="px-2 py-2 text-center font-mono font-semibold">{{ showBook(item.theorQty) }}</td>
+                  <td class="text-col code-col">{{ item.code || '—' }}</td>
+                  <td class="num-col">{{ showBook(item.unitPrice) }}</td>
+                  <td class="num-col">{{ showBook(item.openStock) }}</td>
+                  <td class="num-col">{{ showBook(item.grnQty) }}</td>
+                  <td class="num-col stock-report-breakage">{{ showBook(item.breakages) }}</td>
+                  <td class="num-col">{{ showBook(item.totalOutOnPass) }}</td>
+                  <td class="num-col">{{ showBook(item.theorQty) }}</td>
                   @for (loc of report()!.locations; track loc.id) {
-                    <td class="px-2 py-2 text-center font-mono">{{ showBook(item.locationQtys?.[loc.id]) }}</td>
+                    <td class="num-col">{{ showBook(item.locationQtys?.[loc.id]) }}</td>
                   }
                   @for (loc of report()!.locations; track loc.id) {
-                    <td class="px-2 py-2 text-center">
+                    <td class="num-col">
                       <input
                         nz-input
                         type="number"
-                        class="min-w-[72px] text-center"
+                        class="count-input"
                         [ngModel]="getCount(item.itemId, loc.id)"
                         (ngModelChange)="setCount(item.itemId, loc.id, $event)"
                       />
                     </td>
                     <td
-                      class="px-2 py-2 text-center font-mono font-semibold"
-                      [class.text-green-700]="(varQty(item.itemId, loc.id, item) ?? 0) > 0"
-                      [class.text-red-700]="(varQty(item.itemId, loc.id, item) ?? 0) < 0"
+                      class="num-col"
+                      [class.stock-variance-pos]="(varQty(item.itemId, loc.id, item) ?? 0) > 0"
+                      [class.stock-variance-neg]="(varQty(item.itemId, loc.id, item) ?? 0) < 0"
                     >
                       @if (varQty(item.itemId, loc.id, item) === null) {
                         —
@@ -201,8 +219,20 @@
                       }
                     </td>
                   }
-                  <td class="px-2 py-2 text-center font-mono font-semibold">{{ showBook(item.varianceQty) }}</td>
-                  <td class="px-2 py-2 text-right font-mono">{{ showBook(item.varianceValue) }}</td>
+                  <td
+                    class="num-col"
+                    [class.stock-variance-neg]="asNumber(item.varianceQty) < 0"
+                    [class.stock-variance-pos]="asNumber(item.varianceQty) > 0"
+                  >
+                    {{ showBook(item.varianceQty) }}
+                  </td>
+                  <td
+                    class="num-col"
+                    [class.stock-variance-neg]="asNumber(item.varianceValue) < 0"
+                    [class.stock-variance-pos]="asNumber(item.varianceValue) > 0"
+                  >
+                    {{ showBook(item.varianceValue) }}
+                  </td>
                 </tr>
               }
             </tbody>
@@ -210,11 +240,12 @@
         </div>
       </div>
 
-      <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-muted p-4">
-        <label class="mb-2 block text-sm font-bold text-brand-dark">{{ 'STOCK_REPORT.MGMT_NOTES' | translate }}</label>
+      <div class="stock-report-notes rounded-[6px] bg-surface-elevated p-3 shadow-sm">
+        <label class="mb-1.5 block text-sm font-medium text-brand-dark">{{ 'STOCK_REPORT.MGMT_NOTES' | translate }}</label>
         <textarea
           nz-input
-          rows="3"
+          class="stock-report-notes-input"
+          rows="2"
           [(ngModel)]="managementNotes"
           [placeholder]="'STOCK_REPORT.MGMT_NOTES_PH' | translate"
         ></textarea>

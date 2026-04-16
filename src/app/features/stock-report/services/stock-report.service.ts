@@ -13,9 +13,10 @@ export class StockReportService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/stock-report`;
 
-  getReport(params: { departmentId: string; categoryId?: string; year: number }): Observable<StockReportData> {
+  getReport(params: { departmentId: string; categoryId?: string; year: number; isBlind?: boolean }): Observable<StockReportData> {
     let p = new HttpParams().set('departmentId', params.departmentId).set('year', String(params.year));
     if (params.categoryId) p = p.set('categoryId', params.categoryId);
+    if (params.isBlind) p = p.set('isBlind', 'true');
     return this.http.get<StockReportData>(this.base, { params: p });
   }
 

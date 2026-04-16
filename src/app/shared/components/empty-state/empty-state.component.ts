@@ -1,6 +1,9 @@
 import { Component, input } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { Box } from 'lucide-angular';
+import { BarChart3, Box } from 'lucide-angular';
+
+/** Icons supported by `icon` input (extend when needed) */
+export type EmptyStateIcon = typeof Box | typeof BarChart3;
 
 @Component({
   selector: 'app-empty-state',
@@ -8,10 +11,12 @@ import { Box } from 'lucide-angular';
   imports: [LucideAngularModule],
   template: `
     <div class="empty-state">
-      <lucide-icon [img]="boxIcon" [size]="48" class="empty-state__icon" [strokeWidth]="2" />
+      <lucide-icon [img]="icon()" [size]="iconSize()" class="empty-state__icon" [strokeWidth]="2" />
       <p class="empty-state__title">{{ title() }}</p>
       @if (message()) {
-        <p class="empty-state__message">{{ message() }}</p>
+        <p class="empty-state__message" [class.empty-state__message--caption]="messageTone() === 'caption'">
+          {{ message() }}
+        </p>
       }
     </div>
   `,
@@ -46,6 +51,13 @@ import { Box } from 'lucide-angular';
         color: rgba(0, 0, 0, 0.45);
         max-width: 320px;
       }
+
+      .empty-state__message--caption {
+        font-size: 0.75rem;
+        line-height: 1.5;
+        color: #94a3b8;
+        max-width: 28rem;
+      }
     `,
   ],
 })
@@ -56,5 +68,12 @@ export class EmptyStateComponent {
   /** Optional description or hint text */
   readonly message = input<string>('');
 
-  protected readonly boxIcon = Box;
+  /** Lucide icon (default: Box) */
+  readonly icon = input<EmptyStateIcon>(Box);
+
+  /** Icon size in px */
+  readonly iconSize = input(48);
+
+  /** Use smaller, muted styling for secondary hint lines */
+  readonly messageTone = input<'default' | 'caption'>('default');
 }

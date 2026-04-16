@@ -2,10 +2,110 @@
   display: block;
 }
 
+.summary-filters {
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
+:host ::ng-deep .summary-filters {
+  .ant-picker {
+    min-height: 38px !important;
+    border-radius: 8px !important;
+  }
+
+  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+    min-height: 38px !important;
+    border-radius: 8px !important;
+    align-items: center;
+  }
+
+  .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-item,
+  .ant-select-single:not(.ant-select-customize-input) .ant-select-selector .ant-select-selection-placeholder {
+    line-height: 36px !important;
+  }
+}
+
+.summary-table {
+  border: 1px solid #eee;
+}
+
+.summary-table tbody tr:nth-child(even) {
+  background: #fcfcfc;
+}
+
+.summary-table tbody tr:hover {
+  background: #f5f8fc;
+}
+
+.summary-cell {
+  border: 1px solid #eee;
+  padding: 10px 12px;
+}
+
+.summary-head-main {
+  background: #334155;
+  color: #fff;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.summary-head-sub {
+  background: #f1f5f9;
+  color: #475569;
+  position: sticky;
+  top: 40px;
+  z-index: 19;
+}
+
+.summary-label {
+  text-align: left;
+}
+
+.summary-number {
+  text-align: right;
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-closing {
+  font-weight: 700;
+}
+
+.summary-totals-row {
+  background: #334155;
+  color: #fff;
+}
+
+.summary-ratio-row {
+  background: #f8fafc;
+}
+
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  .summary-filters {
+    display: none !important;
+  }
+
   .no-print {
     display: none !important;
   }
+
+  #summary-report-print {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .summary-table {
+    width: 100% !important;
+  }
+
   .summary-report table {
     font-size: 9px;
   }

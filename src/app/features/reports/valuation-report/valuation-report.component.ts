@@ -1,5 +1,14 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -9,7 +18,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { Coins, Info, Search } from 'lucide-angular';
+import { Info, Search } from 'lucide-angular';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import type { CategoryRow } from '../../master-data/models/category.model';
 import type { DepartmentRow } from '../../master-data/models/department.model';
@@ -35,7 +44,8 @@ import { InventoryReportsService } from '../services/inventory-reports.service';
     EmptyStateComponent,
   ],
   templateUrl: './valuation-report.component.html',
-  styles: [`:host { display: block; }`],
+  styleUrls: ['./valuation-report.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ValuationReportComponent implements OnInit {
   private readonly reportsApi = inject(InventoryReportsService);
@@ -45,8 +55,8 @@ export class ValuationReportComponent implements OnInit {
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  readonly lucideCoins = Coins;
   readonly lucideSearch = Search;
   readonly lucideInfo = Info;
 
@@ -57,12 +67,12 @@ export class ValuationReportComponent implements OnInit {
   selectedDept = '';
   selectedLoc = '';
   selectedCat = '';
-  loading = false;
-  queried = false;
-  error: string | null = null;
+  readonly loading = signal(false);
+  readonly queried = signal(false);
+  readonly error = signal<string | null>(null);
   rows = signal<ValuationRow[]>([]);
   totalValue = signal(0);
-  snapshotUsed = signal<{ year: number; month?: number | null; closedAt: string } | null>(null);
+  snapshotUsed = signal<{ id: string; year: number; month?: number | null; closedAt: string } | null>(null);
 
   readonly filteredLocations = computed(() => {
     const dept = this.selectedDept;
@@ -112,8 +122,9 @@ export class ValuationReportComponent implements OnInit {
       this.message.error(this.translate.instant('REPORTS.VALUATION.ERRORS.DATE'));
       return;
     }
-    this.loading = true;
-    this.error = null;
+    this.loading.set(true);
+    this.error.set(null);
+    this.queried.set(false);
     this.reportsApi
       .getValuation({
         asOfDate: asOf,
@@ -127,14 +138,16 @@ export class ValuationReportComponent implements OnInit {
           this.rows.set(data.rows ?? []);
           this.totalValue.set(Number(data.totalValue ?? 0));
           this.snapshotUsed.set(
-            (data.snapshotUsed as { year: number; month?: number | null; closedAt: string } | null) ?? null,
+            (data.snapshotUsed as { id: string; year: number; month?: number | null; closedAt: string } | null) ?? null,
           );
-          this.queried = true;
-          this.loading = false;
+          this.queried.set(true);
+          this.loading.set(false);
+          this.cdr.markForCheck();
         },
         error: (e: Error) => {
-          this.error = e.message;
-          this.loading = false;
+          this.error.set(e.message);
+          this.loading.set(false);
+          this.cdr.markForCheck();
         },
       });
   }

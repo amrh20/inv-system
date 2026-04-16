@@ -42,6 +42,8 @@ export class InventoryReportsService {
     startDate: string;
     endDate: string;
     categoryId?: string;
+    includeSupplier?: boolean;
+    includeLocationQtys?: boolean;
   }): Observable<GeneratedReport> {
     return this.http.post<ApiResponse<GeneratedReport>>(`${this.base}/generate`, body).pipe(
       map((res) => {
@@ -81,11 +83,13 @@ export class InventoryReportsService {
     departmentIds?: string;
     locationIds?: string;
     categoryId?: string;
+    snapshotId?: string;
   }): Observable<ValuationPayload> {
     let p = new HttpParams().set('asOfDate', params.asOfDate);
     if (params.departmentIds) p = p.set('departmentIds', params.departmentIds);
     if (params.locationIds) p = p.set('locationIds', params.locationIds);
     if (params.categoryId) p = p.set('categoryId', params.categoryId);
+    if (params.snapshotId) p = p.set('snapshotId', params.snapshotId);
     return this.http.get<ApiResponse<ValuationPayload>>(`${this.base}/valuation`, { params: p }).pipe(
       map((res) => {
         if (!res.success || !res.data) {

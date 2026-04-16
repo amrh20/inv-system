@@ -1549,7 +1549,7 @@
     "ENGINE_SUBTITLE": "تحليلات قابلة للتصدير ومطابقة النظام",
     "BREADCRUMB_SUMMARY": "تقرير ملخص",
     "BREADCRUMB_DETAIL": "تقرير تفصيلي",
-    "BREADCRUMB_BREAKAGE": "الكسر ",
+    "BREADCRUMB_BREAKAGE": "الكسر والفاقد",
     "BREADCRUMB_OMC": "حركة المخزون (OMC)",
     "BREADCRUMB_TRANSFERS": "سجل التحويلات",
     "BREADCRUMB_AGING": "تقدير أعمار المخزون",
@@ -1557,7 +1557,7 @@
     "TABS": {
       "SUMMARY": "تقرير ملخص",
       "DETAIL": "تقرير تفصيلي",
-      "BREAKAGE": "الكسر ",
+      "BREAKAGE": "الكسر والفاقد",
       "OMC": "حركة المخزون (OMC)",
       "TRANSFERS": "سجل التحويلات",
       "AGING": "تقدير أعمار المخزون",
@@ -1579,11 +1579,12 @@
     },
     "MSG": {
       "GENERATED": "تم إنشاء التقرير.",
-      "GENERATE_FAILED": "فشل إنشاء التقرير."
+      "GENERATE_FAILED": "فشل إنشاء التقرير.",
+      "GENERATING": "جارٍ إنشاء التقرير..."
     },
     "SUMMARY": {
       "EMPTY_TITLE": "اختر الفترة ثم انقر إنشاء التقرير",
-      "EMPTY_HINT": "يعرض: Opening → GRN → Breakage → Gate Pass → Theoretical → Physical Count → Variance → Closing",
+      "EMPTY_HINT": "يعرض: Opening → GRN → Breakage & Lost → Gate Pass → Theoretical → Physical Count → Variance → Closing",
       "NO_DATA_TITLE": "لا توجد بيانات مخزون لهذه الفترة",
       "NO_DATA_HINT": "تأكد من وجود أصناف في القسم أو الفئة المحددة ووجود حركات دفترية.",
       "TABLE_TITLE": "ملخص المخزون",
@@ -1598,6 +1599,7 @@
         "OPENING_STOCK": "Opening stock",
         "PURCHASES_GRN": "Purchases (GRN)",
         "BREAKAGE": "Breakage",
+        "BREAKAGE_LOST": "Breakage & Lost",
         "GATE_PASS": "Gate pass",
         "THEORETICAL_BALANCE": "Theoretical balance",
         "PHYSICAL_COUNT": "Physical count",
@@ -1614,9 +1616,13 @@
       "NO_ROWS_TITLE": "لا توجد بيانات",
       "NO_ROWS_HINT": "لا توجد بيانات مطابقة للفلاتر.",
       "GENERATED_AT": "تاريخ الإنشاء",
+      "OPTIONS": {
+        "INCLUDE_SUPPLIER": "تضمين بيانات المورد",
+        "INCLUDE_LOCATION_QTYS": "تضمين كميات المواقع"
+      },
       "TITLES": {
         "DETAIL": "تقرير تفصيلي",
-        "BREAKAGE": "الكسر",
+        "BREAKAGE": "الكسر والفاقد",
         "OMC": "حركة المخزون",
         "TRANSFERS": "سجل التحويلات",
         "AGING": "تقدير أعمار المخزون"
@@ -1635,7 +1641,7 @@
       "COL_OPEN_VALUE": "Open value",
       "COL_GRN_QTY": "GRN qty",
       "COL_GRN_VALUE": "GRN value",
-      "COL_BREAKAGES": "Breakages",
+      "COL_BREAKAGES": "الكسر والفاقد",
       "COL_GATE_PASS": "Gate pass",
       "COL_THEORETICAL": "Theoretical",
       "COL_THEOR_VALUE": "Theor. value",
@@ -1779,6 +1785,9 @@
     "CONFIRM_CLOSE_MSG": "إقفال {{period}}؟ سيأخذ لقطة لجميع الأرصدة الحالية.",
     "CONFIRM_REOPEN_TITLE": "إعادة فتح الفترة",
     "CONFIRM_REOPEN_MSG": "إعادة فتح {{period}}؟ سيسمح بالتعديل مرة أخرى.",
+    "SUMMARY_TITLE": "ملخص الإقفال",
+    "SNAPSHOT_SUCCESS": "نجاح اللقطة: تم تجميد {{count}} صنف.",
+    "TOTAL_INVENTORY_VALUE": "إجمالي قيمة المخزون: {{value}} rsa.",
     "MSG": {
       "CLOSED": "تم إقفال الفترة.",
       "REOPENED": "تم إعادة فتح الفترة."

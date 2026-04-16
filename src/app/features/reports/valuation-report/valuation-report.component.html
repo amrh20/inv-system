@@ -1,23 +1,5 @@
 <div class="valuation-report space-y-6">
-  <div class="flex flex-wrap items-start justify-between gap-4">
-    <div class="flex items-start gap-3">
-      <div class="flex h-10 w-10 items-center justify-center rounded-[6px] bg-emerald-100">
-        <lucide-icon [img]="lucideCoins" class="h-5 w-5 text-emerald-600" [strokeWidth]="2" />
-      </div>
-      <div>
-        <h2 class="text-xl font-bold text-brand-dark">{{ 'REPORTS.VALUATION.TITLE' | translate }}</h2>
-        <p class="text-sm text-subtle">{{ 'REPORTS.VALUATION.SUBTITLE' | translate }}</p>
-      </div>
-    </div>
-    @if (queried && rows().length > 0) {
-      <button type="button" nz-button nzType="primary" class="!bg-brand-success border-0" (click)="exportExcel()">
-        {{ 'COMMON.EXPORT_EXCEL' | translate }}
-      </button>
-    }
-  </div>
-
-  <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-5 shadow-sm">
-    <h3 class="mb-4 text-sm font-semibold text-brand-dark">{{ 'REPORTS.VALUATION.PARAMS' | translate }}</h3>
+  <div class="valuation-report__filters rounded-lg bg-slate-50/90 p-5">
     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <div>
         <label class="mb-1 block text-xs font-medium text-subtle">
@@ -66,16 +48,21 @@
         </nz-select>
       </div>
     </div>
-    <div class="mt-4 flex justify-end">
+    <div class="mt-4 flex flex-wrap items-center justify-end gap-3">
+      @if (queried() && rows().length > 0) {
+        <button type="button" nz-button nzType="primary" class="!bg-brand-success border-0" (click)="exportExcel()">
+          {{ 'COMMON.EXPORT_EXCEL' | translate }}
+        </button>
+      }
       <button
         type="button"
         nz-button
         nzType="primary"
         class="!bg-brand-success border-0"
-        [disabled]="loading"
+        [disabled]="loading()"
         (click)="run()"
       >
-        @if (loading) {
+        @if (loading()) {
           <nz-spin nzSimple class="mr-2 inline" />
         } @else {
           <lucide-icon [img]="lucideSearch" class="mr-2 inline h-4 w-4" [strokeWidth]="2" />
@@ -85,7 +72,7 @@
     </div>
   </div>
 
-  @if (queried && snapshotUsed()) {
+  @if (queried() && snapshotUsed()) {
     <div class="flex items-start gap-3 rounded-[6px] border border-blue-200 bg-blue-50 px-4 py-3">
       <lucide-icon [img]="lucideInfo" class="mt-0.5 h-4 w-4 shrink-0 text-blue-500" [strokeWidth]="2" />
       <p class="text-sm text-blue-800">
@@ -99,18 +86,18 @@
     </div>
   }
 
-  @if (queried && !snapshotUsed() && rows().length > 0) {
+  @if (queried() && !snapshotUsed() && rows().length > 0) {
     <div class="flex items-start gap-3 rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3">
       <lucide-icon [img]="lucideInfo" class="mt-0.5 h-4 w-4 shrink-0 text-amber-500" [strokeWidth]="2" />
       <p class="text-sm text-amber-900">{{ 'REPORTS.VALUATION.NO_SNAPSHOT' | translate }}</p>
     </div>
   }
 
-  @if (error) {
-    <div class="rounded-[6px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</div>
+  @if (error()) {
+    <div class="rounded-[6px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ error() }}</div>
   }
 
-  @if (queried && rows().length > 0) {
+  @if (queried() && rows().length > 0) {
     <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
       <div class="rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
         <p class="text-xs uppercase tracking-wide text-subtle">{{ 'REPORTS.VALUATION.CARD_ITEMS' | translate }}</p>
@@ -130,7 +117,7 @@
     </div>
   }
 
-  @if (queried) {
+  @if (queried()) {
     <div class="overflow-hidden rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated shadow-sm">
       @if (rows().length === 0) {
         <app-empty-state
@@ -139,8 +126,8 @@
         />
       } @else {
         <div class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="border-b border-[var(--ose-border)] bg-surface-muted text-xs font-semibold uppercase tracking-wide text-subtle">
+          <table class="min-w-full text-sm valuation-table">
+            <thead class="valuation-table__head text-xs font-semibold uppercase tracking-wide">
               <tr>
                 <th class="px-4 py-3 text-left">{{ 'COMMON.DEPARTMENT' | translate }}</th>
                 <th class="px-4 py-3 text-left">{{ 'COMMON.LOCATION' | translate }}</th>
@@ -162,8 +149,8 @@
                     SAR {{ fmt(deptGroupTotal(entry.rows)) }}
                   </td>
                 </tr>
-                @for (row of entry.rows; track $index) {
-                  <tr class="hover:bg-surface-muted/50">
+                @for (row of entry.rows; track $index; let i = $index) {
+                  <tr class="hover:bg-surface-muted/50" [class.valuation-table__row-alt]="i % 2 === 1">
                     <td class="px-4 py-2.5 text-xs text-subtle">{{ row['department'] }}</td>
                     <td class="px-4 py-2.5 text-brand-dark">{{ row['location'] }}</td>
                     <td class="px-4 py-2.5 text-xs text-subtle">{{ row['category'] }}</td>
@@ -200,7 +187,7 @@
     </div>
   }
 
-  @if (!queried && !loading) {
+  @if (!queried() && !loading()) {
     <app-empty-state
       [title]="'REPORTS.VALUATION.INITIAL_TITLE' | translate"
       [message]="'REPORTS.VALUATION.INITIAL_HINT' | translate"

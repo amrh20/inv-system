@@ -1557,7 +1557,7 @@
     "ENGINE_SUBTITLE": "Exportable analytics and system reconciliation",
     "BREADCRUMB_SUMMARY": "Summary report",
     "BREADCRUMB_DETAIL": "Detail report",
-    "BREADCRUMB_BREAKAGE": "Breakage",
+    "BREADCRUMB_BREAKAGE": "Breakage & Lost",
     "BREADCRUMB_LOST_ITEMS": "Lost items",
     "BREADCRUMB_OMC": "OMC (movement)",
     "BREADCRUMB_TRANSFERS": "Transfer history",
@@ -1566,7 +1566,7 @@
     "TABS": {
       "SUMMARY": "Summary Report",
       "DETAIL": "Detail Report",
-      "BREAKAGE": "Breakage",
+      "BREAKAGE": "Breakage & Lost",
       "LOST_ITEMS": "Lost items",
       "OMC": "OMC (Movement)",
       "TRANSFERS": "Transfer History",
@@ -1589,11 +1589,12 @@
     },
     "MSG": {
       "GENERATED": "Report generated.",
-      "GENERATE_FAILED": "Failed to generate report."
+      "GENERATE_FAILED": "Failed to generate report.",
+      "GENERATING": "Generating report..."
     },
     "SUMMARY": {
       "EMPTY_TITLE": "Select period and click Generate Report",
-      "EMPTY_HINT": "Shows: Opening → GRN → Breakage → Gate Pass → Theoretical → Physical Count → Variance → Closing",
+      "EMPTY_HINT": "Shows: Opening → GRN → Breakage & Lost → Gate Pass → Theoretical → Physical Count → Variance → Closing",
       "NO_DATA_TITLE": "No inventory data for this period",
       "NO_DATA_HINT": "Ensure items exist in the selected department or category and have ledger entries.",
       "TABLE_TITLE": "Summary inventory",
@@ -1607,7 +1608,8 @@
       "COLUMNS": {
         "OPENING_STOCK": "Opening stock",
         "PURCHASES_GRN": "Purchases (GRN)",
-        "BREAKAGE": "Breakage",
+        "BREAKAGE": "Breakage & Lost",
+        "BREAKAGE_LOST": "Breakage & Lost",
         "GATE_PASS": "Gate pass",
         "THEORETICAL_BALANCE": "Theoretical balance",
         "PHYSICAL_COUNT": "Physical count",
@@ -1624,6 +1626,10 @@
       "NO_ROWS_TITLE": "No rows",
       "NO_ROWS_HINT": "No data matched the selected filters.",
       "GENERATED_AT": "Generated",
+      "OPTIONS": {
+        "INCLUDE_SUPPLIER": "Include supplier details",
+        "INCLUDE_LOCATION_QTYS": "Include location quantities"
+      },
       "TITLES": {
         "DETAIL": "Detail report",
         "BREAKAGE": "Breakage",
@@ -1645,7 +1651,7 @@
       "COL_OPEN_VALUE": "Open value",
       "COL_GRN_QTY": "GRN qty",
       "COL_GRN_VALUE": "GRN value",
-      "COL_BREAKAGES": "Breakages",
+      "COL_BREAKAGES": "Breakage & Lost",
       "COL_GATE_PASS": "Gate pass",
       "COL_THEORETICAL": "Theoretical",
       "COL_THEOR_VALUE": "Theor. value",
@@ -1789,6 +1795,9 @@
     "CONFIRM_CLOSE_MSG": "Close {{period}}? This will snapshot all current balances.",
     "CONFIRM_REOPEN_TITLE": "Reopen period",
     "CONFIRM_REOPEN_MSG": "Reopen {{period}}? This allows modifications again.",
+    "SUMMARY_TITLE": "Close Summary",
+    "SNAPSHOT_SUCCESS": "Snapshot Success: {{count}} items frozen.",
+    "TOTAL_INVENTORY_VALUE": "Total Inventory Value: {{value}} rsa.",
     "MSG": {
       "CLOSED": "Period closed.",
       "REOPENED": "Period reopened."

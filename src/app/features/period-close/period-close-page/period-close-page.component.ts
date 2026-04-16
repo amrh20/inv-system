@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -22,6 +22,7 @@ import { PeriodCloseService } from '../services/period-close.service';
   standalone: true,
   imports: [
     DatePipe,
+    DecimalPipe,
     FormsModule,
     NzButtonModule,
     NzInputModule,
@@ -55,6 +56,7 @@ export class PeriodClosePageComponent implements OnInit {
   readonly closing = signal(false);
   readonly periods = signal<PeriodCloseRow[]>([]);
   readonly showForm = signal(false);
+  readonly closeSummary = signal<{ frozenItems: number; totalInventoryValue: number } | null>(null);
   year = new Date().getFullYear();
   month: number | '' = '';
   notes = '';
@@ -91,6 +93,7 @@ export class PeriodClosePageComponent implements OnInit {
 
   toggleForm(): void {
     this.showForm.update((v) => !v);
+    if (!this.showForm()) this.closeSummary.set(null);
   }
 
   confirmClose(): void {
@@ -118,7 +121,8 @@ export class PeriodClosePageComponent implements OnInit {
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (res) => {
+          this.closeSummary.set(this.extractCloseSummary(res));
           this.message.success(this.translate.instant('PERIOD_CLOSE.MSG.CLOSED'));
           this.showForm.set(false);
           this.notes = '';
@@ -130,6 +134,36 @@ export class PeriodClosePageComponent implements OnInit {
           this.closing.set(false);
         },
       });
+  }
+
+  private extractCloseSummary(res: unknown): { frozenItems: number; totalInventoryValue: number } {
+    const payload = (res ?? {}) as Record<string, unknown>;
+    const frozenRaw =
+      payload['snapshotSuccess'] ??
+      payload['snapshotCount'] ??
+      payload['snapshotItems'] ??
+      payload['itemsFrozen'] ??
+      payload['frozenItems'] ??
+      payload['frozenItemsCount'];
+    const totalRaw =
+      payload['totalInventoryValue'] ??
+      payload['inventoryValue'] ??
+      payload['totalValue'] ??
+      payload['snapshotTotalValue'];
+
+    return {
+      frozenItems: this.toNumber(frozenRaw),
+      totalInventoryValue: this.toNumber(totalRaw),
+    };
+  }
+
+  private toNumber(value: unknown): number {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'string') {
+      const parsed = Number(value.replace(/,/g, '').trim());
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
   }
 
   reopen(p: PeriodCloseRow): void {

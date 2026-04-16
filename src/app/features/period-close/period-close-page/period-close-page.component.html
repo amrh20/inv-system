@@ -1,4 +1,15 @@
 <div class="period-close space-y-6">
+  @if (closing()) {
+    <div class="fixed inset-0 z-[1200] flex items-center justify-center bg-black/35 backdrop-blur-[1px]">
+      <div class="rounded-[6px] bg-surface-elevated px-5 py-4 shadow-xl">
+        <nz-spin nzSimple [nzSpinning]="true"></nz-spin>
+        <div class="mt-3 text-sm font-medium text-brand-dark">
+          {{ 'PERIOD_CLOSE.CLOSING' | translate }}
+        </div>
+      </div>
+    </div>
+  }
+
   <div class="flex flex-wrap items-start justify-between gap-4">
     <div>
       <h1 class="flex items-center gap-2 text-2xl font-bold text-brand-dark">
@@ -59,6 +70,22 @@
       <div class="mt-3 rounded-[6px] bg-amber-50 p-2 text-xs text-amber-800">
         <lucide-icon [img]="lucideAlert" class="mr-1 inline h-3 w-3 text-amber-600" [strokeWidth]="2" />
         {{ 'PERIOD_CLOSE.SNAPSHOT_HINT' | translate }}
+      </div>
+    </div>
+  }
+
+  @if (closeSummary()) {
+    <div class="rounded-[6px] border border-emerald-200 bg-emerald-50 p-4">
+      <h3 class="mb-2 text-sm font-semibold text-emerald-800">{{ 'PERIOD_CLOSE.SUMMARY_TITLE' | translate }}</h3>
+      <div class="grid grid-cols-1 gap-2 text-sm text-emerald-900 md:grid-cols-2">
+        <div>
+          {{ 'PERIOD_CLOSE.SNAPSHOT_SUCCESS' | translate: { count: closeSummary()!.frozenItems } }}
+        </div>
+        <div>
+          {{
+            'PERIOD_CLOSE.TOTAL_INVENTORY_VALUE' | translate: { value: (closeSummary()!.totalInventoryValue | number: '1.2-2') }
+          }}
+        </div>
       </div>
     </div>
   }
