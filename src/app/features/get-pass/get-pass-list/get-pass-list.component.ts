@@ -1,14 +1,7 @@
 import { DatePipe, NgClass } from '@angular/common';
-import {
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { first } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
@@ -84,6 +77,7 @@ export class GetPassListComponent implements OnInit {
   private readonly api = inject(GetPassService);
   private readonly itemsApi = inject(ItemsService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly auth = inject(AuthService);
@@ -118,6 +112,7 @@ export class GetPassListComponent implements OnInit {
   readonly disableCreateButton = computed(
     () => this.obStatus() === 'INITIAL_LOCK' || this.obStatus() === 'OPEN',
   );
+  readonly maxPage = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize)));
 
   get canCreate(): boolean {
     return this.auth.hasPermission('GET_PASS_CREATE');
@@ -158,6 +153,10 @@ export class GetPassListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    const initialTab = this.route.snapshot.queryParamMap.get('tab');
+    if (initialTab === 'OUTGOING' || initialTab === 'INCOMING' || initialTab === 'RETURNS' || initialTab === 'CLAIMS') {
+      this.selectedTab.set(initialTab);
+    }
     this.loadRequirements();
     this.load();
   }
@@ -243,9 +242,9 @@ export class GetPassListComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
-          this.passes.set(r.passes);
-          this.total.set(r.total);
-          this.loading.set(false);
+          if (this.handlePaginatedResult(r)) {
+            this.loading.set(false);
+          }
         },
         error: () => {
           this.listError.set(this.translate.instant('GET_PASS.LIST.ERROR_LOAD'));
@@ -265,9 +264,9 @@ export class GetPassListComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
-          this.passes.set(r.passes);
-          this.total.set(r.total);
-          this.loading.set(false);
+          if (this.handlePaginatedResult(r)) {
+            this.loading.set(false);
+          }
         },
         error: () => {
           this.listError.set(this.translate.instant('GET_PASS.LIST.ERROR_LOAD_INCOMING'));
@@ -279,23 +278,48 @@ export class GetPassListComponent implements OnInit {
   private loadReturns(): void {
     this.loading.set(true);
     this.listError.set('');
+    const currentStatus = this.activeStatus();
+    const defaultReturnStatuses: GetPassStatus[] = [
+      'RETURNING',
+      'RETURN_RECEIVED_AT_GATE',
+      'PARTIALLY_RETURNED',
+      'RETURNED',
+    ];
+    const statuses: string[] | undefined =
+      currentStatus === 'ALL' ? defaultReturnStatuses : [currentStatus as GetPassStatus];
     this.api
       .getReturningPasses({
         page: this.page(),
         limit: this.pageSize,
+        status: statuses,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
-          this.passes.set(r.passes);
-          this.total.set(r.total);
-          this.loading.set(false);
+          if (this.handlePaginatedResult(r)) {
+            this.loading.set(false);
+          }
         },
         error: () => {
           this.listError.set(this.translate.instant('GET_PASS.LIST.ERROR_LOAD'));
           this.loading.set(false);
         },
       });
+  }
+
+  private handlePaginatedResult(result: { passes: GetPassListRow[]; total: number }): boolean {
+    const total = Math.max(0, Number(result.total) || 0);
+    const maxPage = Math.max(1, Math.ceil(total / this.pageSize));
+
+    if (total > 0 && this.page() > maxPage) {
+      this.page.set(maxPage);
+      this.load();
+      return false;
+    }
+
+    this.total.set(total);
+    this.passes.set(result.passes);
+    return true;
   }
 
   private loadClaims(): void {
@@ -382,6 +406,10 @@ export class GetPassListComponent implements OnInit {
     return `GET_PASS.STATUS.${p.status}`;
   }
 
+  transferTypeBadgeClass(transferType: GetPassType): string {
+    return transferType === 'PERMANENT' ? 'status-processing' : 'status-pending';
+  }
+
   /**
    * Incoming list: OUT = blue (dispatched), RECEIVED_AT_DESTINATION = amber (at gate / pending dept),
    * destination dept accepted = green (final).
@@ -453,8 +481,7 @@ export class GetPassListComponent implements OnInit {
   }
 
   nextPage(): void {
-    const maxPage = Math.max(1, Math.ceil(this.total() / this.pageSize));
-    if (this.page() < maxPage) {
+    if (this.page() < this.maxPage()) {
       this.page.update((p) => p + 1);
       this.load();
     }

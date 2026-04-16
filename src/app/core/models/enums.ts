@@ -28,6 +28,7 @@ export type MovementType =
   | 'RETURN'
   | 'ADJUSTMENT'
   | 'BREAKAGE'
+  | 'LOST'
   | 'COUNT_ADJUSTMENT'
   | 'LOAN_WRITE_OFF'
   | 'GET_PASS_OUT'
@@ -35,7 +36,16 @@ export type MovementType =
 
 export type LocationType = 'MAIN_STORE' | 'OUTLET_STORE' | 'DEPARTMENT';
 
-export type MovementStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'VOID' | 'REJECTED';
+export type MovementStatus =
+  | 'DRAFT'
+  | 'DEPT_APPROVED'
+  | 'COST_CONTROL_APPROVED'
+  | 'FINANCE_APPROVED'
+  | 'APPROVED'
+  | 'PENDING_APPROVAL'
+  | 'POSTED'
+  | 'VOID'
+  | 'REJECTED';
 
 export type GrnStatus =
   | 'DRAFT'

@@ -9,6 +9,16 @@
     </div>
     <div class="li-list__actions">
       <button
+        *appHasPermission="'BREAKAGE_CREATE'"
+        nz-button
+        nzType="primary"
+        type="button"
+        (click)="setCreateOpen(true)"
+      >
+        <lucide-icon [img]="lucidePlus" [size]="16" [strokeWidth]="2" />
+        {{ 'LOST_ITEMS.LIST.NEW' | translate }}
+      </button>
+      <button
         nz-button
         nzType="default"
         type="button"
@@ -21,6 +31,32 @@
   </div>
 
   <div class="li-list__filters">
+    <div class="li-list__tabs">
+      @for (tab of sourceTabs; track tab) {
+        <button
+          type="button"
+          class="li-list__tab li-list__tab--source"
+          [class.li-list__tab--active]="activeSourceTab() === tab"
+          (click)="setSourceTab(tab)"
+        >
+          {{ tab === 'INTERNAL' ? ('LOST_ITEMS.LIST.TAB_INTERNAL' | translate) : ('LOST_ITEMS.LIST.TAB_FROM_RETURNS' | translate) }}
+        </button>
+      }
+    </div>
+    @if (activeSourceTab() === 'INTERNAL') {
+      <div class="li-list__tab-row">
+        @for (tab of statusTabs; track tab) {
+          <button
+            nz-button
+            type="button"
+            [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
+            (click)="setStatusTab(tab)"
+          >
+            {{ 'LOST_ITEMS.STATUS.' + tab | translate }}
+          </button>
+        }
+      </div>
+    }
     <div class="li-list__search-wrap">
       <lucide-icon [img]="lucideSearch" [size]="18" class="li-list__search-icon" />
       <input
@@ -53,16 +89,20 @@
     </ng-template>
     <thead>
       <tr>
+        <th>{{ 'LOST_ITEMS.LIST.COL_DOC' | translate }}</th>
         <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
         <th>{{ 'LOST_ITEMS.LIST.COL_QTY' | translate }}</th>
+        <th>{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
+        <th>{{ 'COMMON.STATUS' | translate }}</th>
         <th>{{ 'COMMON.DATE' | translate }}</th>
-        <th>{{ 'LOST_ITEMS.LIST.COL_PASS' | translate }}</th>
-        <th>{{ 'LOST_ITEMS.LIST.COL_SECURITY' | translate }}</th>
+        <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
+        <th>{{ 'COMMON.ACTIONS' | translate }}</th>
       </tr>
     </thead>
     <tbody>
       @for (row of rows(); track row.id) {
         <tr>
+          <td>{{ row.documentNo }}</td>
           <td>
             <div class="li-list__item-name">{{ row.itemName }}</div>
             @if (row.itemBarcode) {
@@ -70,9 +110,32 @@
             }
           </td>
           <td>{{ row.qtyLost }}</td>
-          <td>{{ row.date | date: 'medium' }}</td>
-          <td>{{ row.getPassRef ?? '—' }}</td>
+          <td>
+            @if (row.sourceType === 'GET_PASS_RETURN' && (row.getPassId || row.getPass?.id)) {
+              <button nz-button nzType="link" type="button" (click)="goGetPass(row)">
+                {{ row.getPass?.passNo || sourceLabel(row) }}
+              </button>
+            } @else {
+              <span>{{ sourceLabel(row) }}</span>
+            }
+          </td>
+          <td>
+            <span class="status-badge" [ngClass]="row.status === 'APPROVED' ? 'status-active' : 'status-pending'">
+              {{ ('LOST_ITEMS.STATUS.' + row.status) | translate }}
+            </span>
+          </td>
+          <td>{{ row.createdAt | date: 'medium' }}</td>
           <td>{{ displayUser(row) }}</td>
+          <td>
+            @if (canApprove(row)) {
+              <button nz-button nzType="default" type="button" (click)="approve(row)">
+                <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+                {{ 'LOST_ITEMS.LIST.APPROVE' | translate }}
+              </button>
+            } @else {
+              —
+            }
+          </td>
         </tr>
       }
     </tbody>
@@ -94,3 +157,9 @@
     </button>
   </div>
 </div>
+
+<app-lost-create-modal
+  [open]="createOpen()"
+  (closed)="setCreateOpen(false)"
+  (created)="onCreated()"
+/>

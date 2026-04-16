@@ -1,5 +1,15 @@
 import type { MovementStatus } from '../../../core/models/enums';
 
+export type BreakageSourceType = 'INTERNAL' | 'GET_PASS_RETURN';
+export type BreakageWorkflowStatus =
+  | 'DRAFT'
+  | 'DEPT_APPROVED'
+  | 'COST_CONTROL_APPROVED'
+  | 'FINANCE_APPROVED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'VOID';
+
 export interface BreakageUserRef {
   id?: string;
   firstName: string;
@@ -10,7 +20,10 @@ export interface BreakageUserRef {
 export interface BreakageListRow {
   id: string;
   documentNo: string;
-  status: MovementStatus;
+  status: BreakageWorkflowStatus | MovementStatus;
+  sourceType?: BreakageSourceType;
+  getPassId?: string | null;
+  getPass?: { id: string; passNo: string } | null;
   createdAt: string;
   reason?: string | null;
   createdByUser?: BreakageUserRef | null;
@@ -58,7 +71,10 @@ export interface BreakageAttachmentMeta {
 export interface BreakageDetail {
   id: string;
   documentNo: string;
-  status: MovementStatus;
+  status: BreakageWorkflowStatus | MovementStatus;
+  sourceType?: BreakageSourceType;
+  getPassId?: string | null;
+  getPass?: { id: string; passNo: string } | null;
   reason?: string | null;
   notes?: string | null;
   createdAt: string;

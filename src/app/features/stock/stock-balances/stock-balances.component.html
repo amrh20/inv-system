@@ -195,6 +195,7 @@
     <nz-table
       #st
       [nzData]="balances()"
+      [nzFrontPagination]="false"
       [nzLoading]="loading()"
       [nzShowPagination]="false"
       nzTableLayout="fixed"
@@ -228,7 +229,10 @@
             </span>
           </th>
           <th nzWidth="120" nzAlign="right" nzColumnKey="qty" [nzSortFn]="sortQtyFn" nzShowSort>
-            {{ 'STOCK.QTY_ON_HAND' | translate }}
+            {{ 'STOCK.AVAILABLE_QTY' | translate }}
+          </th>
+          <th nzWidth="120" nzAlign="right">
+            {{ 'STOCK.QTY_BLOCKED' | translate }}
           </th>
           <th nzWidth="120" nzAlign="right" nzColumnKey="lineValue" [nzSortFn]="sortTotalValueFn" nzShowSort>
             {{ 'COMMON.TOTAL_VALUE' | translate }}
@@ -248,19 +252,22 @@
                   <lucide-icon [img]="lucideTrendDown" class="cell-item__warn cell-item__warn--amber" />
                 }
                 <div class="cell-item__text">
-                  <span class="cell-item__name" [title]="row.item?.name ?? ''">{{ row.item?.name ?? '—' }}</span>
+                  <span class="cell-item__name" [title]="displayItemName(row)">{{ displayItemName(row) }}</span>
+                  @if (isPendingCategorization(row)) {
+                    <span class="cell-item__meta">{{ 'STOCK.PENDING_CATEGORIZATION_HINT' | translate }}</span>
+                  }
                 </div>
               </div>
             </td>
-            <td class="cell-mono">{{ row.item?.barcode || '—' }}</td>
+            <td class="cell-mono">{{ displayBarcode(row) }}</td>
             <td>
-              <span class="cell-category">{{ row.item?.category?.name || ('COMMON.UNCATEGORIZED' | translate) }}</span>
+              <span class="cell-category">{{ displayCategoryName(row) }}</span>
             </td>
             <td>
               <span class="cell-department">
-                @if (row.item?.department?.name) {
+                @if (displayDepartmentName(row)) {
                   <lucide-icon [img]="lucideBuilding" [size]="12" class="cell-department__icon" [strokeWidth]="2" />
-                  <span class="cell-department__name">{{ row.item?.department?.name }}</span>
+                  <span class="cell-department__name">{{ displayDepartmentName(row) }}</span>
                 } @else {
                   —
                 }
@@ -278,15 +285,18 @@
               [class.cell-qty--out]="!isNegativeQty(row) && rowReorderStatus(row) === 'out_of_stock'"
               [class.cell-qty--low]="!isNegativeQty(row) && rowReorderStatus(row) === 'low_stock'"
             >
-              {{ formatQty(row.qtyOnHand) }}
+              {{ formatQty(availableQty(row)) }}
+            </td>
+            <td nzAlign="right">
+              {{ formatQty(row.qtyBlocked ?? 0) }}
             </td>
             <td nzAlign="right" class="cell-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(lineValue(row)) }}</td>
             <td nzAlign="center">
               <span
                 class="status-badge"
-                [ngClass]="'status-' + statusClass(rowReorderStatus(row))"
+                [ngClass]="statusBadgeClass(row)"
               >
-                {{ statusLabel(rowReorderStatus(row)) }}
+                {{ statusBadgeLabel(row) }}
               </span>
             </td>
           </tr>
@@ -318,6 +328,7 @@
           <col class="stock-page__col-department" />
           <col class="stock-page__col-location" />
           <col class="stock-page__col-qty" />
+          <col class="stock-page__col-qty" />
           <col class="stock-page__col-value" />
           <col class="stock-page__col-status" />
         </colgroup>
@@ -327,6 +338,7 @@
               {{ 'STOCK.PAGE_TOTAL_ROWS' | translate: { count: balances().length } }}
             </td>
             <td class="stock-page__footer-qty">{{ formatQty(pageTotals().qty) }}</td>
+            <td class="stock-page__footer-qty"></td>
             <td class="stock-page__footer-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(pageTotals().value) }}</td>
             <td class="stock-page__footer-status"></td>
           </tr>

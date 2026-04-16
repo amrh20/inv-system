@@ -4,6 +4,7 @@ import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import type {
+  GetPassAcceptReturnIntoDepartmentPayload,
   GetPassAcceptIntoDepartmentPayload,
   GetPassConfirmReturnArrivalPayload,
   GetPassConfirmReceiptPayload,
@@ -96,14 +97,25 @@ export class GetPassService {
     );
   }
 
-  /** Source hotel returns currently in reverse transit (status RETURNING). */
-  getReturningPasses(params?: { page?: number; limit?: number }): Observable<{
+  /**
+   * Source hotel returns currently in reverse transit and related return lifecycle statuses.
+   */
+  getReturningPasses(params?: {
+    page?: number;
+    limit?: number;
+    status?: string[];
+  }): Observable<{
     passes: GetPassListRow[];
     total: number;
   }> {
     let p = new HttpParams()
       .set('limit', String(params?.limit ?? 20))
       .set('page', String(params?.page ?? 1));
+    if (params?.status && params.status.length > 0) {
+      for (const s of params.status) {
+        p = p.append('status', s);
+      }
+    }
     return this.http.get<GetPassListHttpBody>(`${this.base}/returns`, { params: p }).pipe(
       map((res) => ({
         passes: res.success && Array.isArray(res.data) ? res.data : [],
@@ -176,8 +188,13 @@ export class GetPassService {
     );
   }
 
-  acceptReturnIntoDepartment(id: string): Observable<GetPassDetail> {
-    return this.http.post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/accept-return-into-department`, {}).pipe(
+  acceptReturnIntoDepartment(
+    id: string,
+    payload?: GetPassAcceptReturnIntoDepartmentPayload,
+  ): Observable<GetPassDetail> {
+    return this.http
+      .post<ApiResponse<GetPassDetail>>(`${this.base}/${id}/accept-return-into-department`, payload ?? {})
+      .pipe(
       map((res) => {
         if (!res.success || !res.data) throw new Error(res.message || 'Accept return into department failed');
         return res.data;

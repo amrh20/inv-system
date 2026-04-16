@@ -191,3 +191,69 @@
     font-size: 12px;
   }
 }
+
+.gp-d__file-hidden {
+  display: none;
+}
+
+.gp-d__arrival-photo-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.gp-d__arrival-photo-count {
+  min-width: 14px;
+  text-align: center;
+}
+
+.gp-d__arrival-photo-list {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.gp-d__arrival-photo-remove {
+  padding-inline: 2px;
+}
+
+.gp-d__arrival-table {
+  :where(table) {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  :where(th, td) {
+    vertical-align: middle;
+  }
+
+  :where(th:nth-child(1), td:nth-child(1)) {
+    width: 18%;
+    text-align: start;
+  }
+
+  :where(th:nth-child(2), td:nth-child(2)) {
+    width: 10%;
+  }
+
+  :where(th:nth-child(3), td:nth-child(3), th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5)) {
+    width: 14%;
+    text-align: center;
+  }
+
+  :where(th:nth-child(6), td:nth-child(6)) {
+    width: 20%;
+    text-align: center;
+  }
+
+  :where(th:nth-child(7), td:nth-child(7)) {
+    width: 10%;
+  }
+
+  :where(td:nth-child(3) .ant-input-number, td:nth-child(4) .ant-input-number, td:nth-child(5) .ant-input-number) {
+    width: 100%;
+    max-width: 92px;
+  }
+}

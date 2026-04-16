@@ -139,7 +139,7 @@ export class StockBalancesComponent implements OnInit {
   readonly pageTotals = computed(() =>
     this.balances().reduce(
       (acc, b) => {
-        const qty = Number(b.qtyOnHand);
+        const qty = this.availableQty(b);
         const val = qty * Number(b.wacUnitCost ?? 0);
         return { qty: acc.qty + qty, value: acc.value + val };
       },
@@ -158,18 +158,18 @@ export class StockBalancesComponent implements OnInit {
   });
 
   readonly sortItemFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
-    (a.item?.name ?? '').localeCompare(b.item?.name ?? '', undefined, { sensitivity: 'base' });
+    this.displayItemName(a).localeCompare(this.displayItemName(b), undefined, { sensitivity: 'base' });
 
   readonly sortBarcodeFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
-    (a.item?.barcode ?? '').localeCompare(b.item?.barcode ?? '', undefined, { sensitivity: 'base' });
+    this.displayBarcode(a).localeCompare(this.displayBarcode(b), undefined, { sensitivity: 'base' });
 
   readonly sortCategoryFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
-    (a.item?.category?.name ?? '').localeCompare(b.item?.category?.name ?? '', undefined, {
+    this.displayCategoryName(a).localeCompare(this.displayCategoryName(b), undefined, {
       sensitivity: 'base',
     });
 
   readonly sortDepartmentFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
-    (a.item?.department?.name ?? '').localeCompare(b.item?.department?.name ?? '', undefined, {
+    this.displayDepartmentName(a).localeCompare(this.displayDepartmentName(b), undefined, {
       sensitivity: 'base',
     });
 
@@ -177,7 +177,7 @@ export class StockBalancesComponent implements OnInit {
     (a.location?.name ?? '').localeCompare(b.location?.name ?? '', undefined, { sensitivity: 'base' });
 
   readonly sortQtyFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
-    Number(a.qtyOnHand) - Number(b.qtyOnHand);
+    this.availableQty(a) - this.availableQty(b);
 
   readonly sortTotalValueFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
     this.lineValue(a) - this.lineValue(b);
@@ -253,7 +253,7 @@ export class StockBalancesComponent implements OnInit {
 
   rowReorderStatus(row: StockBalanceRow): StockReorderStatus {
     const qty = Number(row.qtyOnHand);
-    const reorder = Number(row.item?.reorderPoint ?? 0);
+    const reorder = Number(row.reorderPoint ?? row.item?.reorderPoint ?? 0);
     if (qty === 0) {
       return 'out_of_stock';
     }
@@ -280,6 +280,46 @@ export class StockBalancesComponent implements OnInit {
       default:
         return this.t('STOCK.STATUS_IN_STOCK');
     }
+  }
+
+  isPendingCategorization(row: StockBalanceRow): boolean {
+    return row.pendingCategorization === true;
+  }
+
+  displayItemName(row: StockBalanceRow): string {
+    return row.displayName?.trim() || row.item?.name?.trim() || '—';
+  }
+
+  displayBarcode(row: StockBalanceRow): string {
+    return row.displayBarcode?.trim() || row.item?.barcode?.trim() || '—';
+  }
+
+  displayCategoryName(row: StockBalanceRow): string {
+    if (row.displayCategoryName?.trim()) {
+      return row.displayCategoryName.trim();
+    }
+    if (this.isPendingCategorization(row)) {
+      return this.t('STOCK.PENDING_CATEGORIZATION');
+    }
+    return row.item?.category?.name?.trim() || this.t('COMMON.UNCATEGORIZED');
+  }
+
+  displayDepartmentName(row: StockBalanceRow): string {
+    return row.displayDepartmentName?.trim() || row.item?.department?.name?.trim() || '';
+  }
+
+  statusBadgeClass(row: StockBalanceRow): string {
+    if (this.isPendingCategorization(row)) {
+      return 'status-pending';
+    }
+    return 'status-' + this.statusClass(this.rowReorderStatus(row));
+  }
+
+  statusBadgeLabel(row: StockBalanceRow): string {
+    if (this.isPendingCategorization(row)) {
+      return this.t('STOCK.PENDING_CATEGORIZATION');
+    }
+    return this.statusLabel(this.rowReorderStatus(row));
   }
 
   showLowStockBanner(): boolean {
@@ -317,7 +357,14 @@ export class StockBalancesComponent implements OnInit {
   }
 
   isNegativeQty(row: StockBalanceRow): boolean {
-    return Number(row.qtyOnHand) < 0;
+    return this.availableQty(row) < 0;
+  }
+
+  /** Available stock = on-hand minus blocked (per backend reversible get-pass logic). */
+  availableQty(row: StockBalanceRow): number {
+    const onHand = Number(row.qtyOnHand ?? 0);
+    const blocked = Number(row.qtyBlocked ?? 0);
+    return onHand - blocked;
   }
 
   /** Params for `STOCK.PAGE_ROW_RANGE` (1-based inclusive range on current page). */

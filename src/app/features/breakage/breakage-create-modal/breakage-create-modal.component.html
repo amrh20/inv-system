@@ -122,26 +122,30 @@
 
         <h3 class="brk-create__lines-title">{{ 'BREAKAGE.CREATE.LINES_TITLE' | translate }}</h3>
         <div class="brk-create__search">
-          <lucide-icon [img]="lucideSearch" [size]="18" [strokeWidth]="2" class="brk-create__search-icon" />
-          <input
-            nz-input
-            type="text"
-            [ngModel]="searchQuery()"
-            (ngModelChange)="searchQuery.set($event)"
-            (focus)="searchOpen.set(true)"
-            (blur)="onSearchBlur()"
-            [placeholder]="'BREAKAGE.CREATE.ITEM_SEARCH_PH' | translate"
-          />
-          @if (searchOpen() || searchQuery()) {
-            <ul class="brk-create__pick">
-              @for (item of filteredPickItems(); track item.id) {
-                <li type="button" class="brk-create__pick-row" (mousedown)="$event.preventDefault()" (click)="addLine(item)">
+          <nz-select
+            class="brk-create__control"
+            [ngModel]="selectedItemId()"
+            (ngModelChange)="onItemPicked($event)"
+            [nzDisabled]="!sourceLocationId()"
+            [nzShowSearch]="true"
+            [nzServerSearch]="true"
+            [nzAllowClear]="true"
+            [nzLoading]="itemOptionsLoading()"
+            (nzOnSearch)="onItemSearch($event)"
+            [nzPlaceHolder]="'BREAKAGE.CREATE.ITEM_SEARCH_PH' | translate"
+          >
+            @for (item of filteredPickItems(); track item.id) {
+              <nz-option [nzValue]="item.id" [nzLabel]="item.name" [nzCustomContent]="true">
+                <div class="brk-create__pick-row brk-create__pick-row--option">
                   <span>{{ item.name }}</span>
-                  <span class="brk-create__pick-meta">{{ item.barcode ?? '—' }} · {{ 'BREAKAGE.CREATE.QTY_ON_HAND' | translate }}: {{ item.qtyOnHand }}</span>
-                </li>
-              }
-            </ul>
-          }
+                  <span class="brk-create__pick-meta">
+                    {{ item.barcode ?? '—' }} · {{ 'BREAKAGE.CREATE.QTY_ON_HAND' | translate }}:
+                    {{ item.currentStock ?? 0 }}
+                  </span>
+                </div>
+              </nz-option>
+            }
+          </nz-select>
         </div>
 
         @if (lines().length === 0) {
@@ -162,12 +166,16 @@
                   <td>
                     <div class="brk-create__item-name">{{ line.name }}</div>
                     <div class="brk-create__item-bc">{{ line.barcode }}</div>
+                    <div class="brk-create__item-available">
+                      {{ 'BREAKAGE.CREATE.QTY_ON_HAND' | translate }}: {{ line.availableQty }}
+                    </div>
                   </td>
                   <td>
                     <nz-input-number
                       [ngModel]="line.qty"
                       (ngModelChange)="updateLineQty($index, $event)"
-                      [nzMin]="0.01"
+                      [nzMin]="1"
+                      [nzMax]="line.availableQty"
                       [nzStep]="1"
                     />
                   </td>

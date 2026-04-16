@@ -120,9 +120,24 @@
   }
 }
 
+.brk-create__pick-row--option {
+  padding: 2px 0;
+  border-bottom: 0;
+  cursor: default;
+}
+
 .brk-create__pick-meta {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+:host ::ng-deep .ant-select-item-option {
+  min-height: 44px;
+  height: auto;
+}
+
+:host ::ng-deep .ant-select-item-option-content {
+  overflow: visible;
 }
 
 .brk-create__empty {
@@ -141,4 +156,9 @@
 .brk-create__item-bc {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+.brk-create__item-available {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
 }

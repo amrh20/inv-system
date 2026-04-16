@@ -41,6 +41,27 @@
   }
 
   <div class="brk-list__filters">
+    <div class="brk-list__tabs">
+      @for (tab of sourceTabs; track tab) {
+        <button
+          type="button"
+          class="brk-list__tab brk-list__tab--source"
+          [class.brk-list__tab--active]="activeSourceTab() === tab"
+          (click)="setSourceTab(tab)"
+        >
+          {{ sourceTabLabel(tab) }}
+        </button>
+      }
+    </div>
+    @if (activeSourceTab() === 'INTERNAL') {
+      <div class="brk-list__tab-row">
+        @for (tab of statusTabs; track tab) {
+          <button nz-button type="button" [nzType]="activeStatusTab() === tab ? 'primary' : 'default'" (click)="setStatusTab(tab)">
+            {{ 'BREAKAGE.STATUS.' + tab | translate }}
+          </button>
+        }
+      </div>
+    }
     <div class="brk-list__search-wrap">
       <lucide-icon [img]="lucideSearch" [size]="18" class="brk-list__search-icon" />
       <input
@@ -52,19 +73,6 @@
         [placeholder]="'BREAKAGE.LIST.SEARCH_PH' | translate"
       />
     </div>
-  </div>
-
-  <div class="brk-list__tabs">
-    @for (tab of tabs; track tab) {
-      <button
-        type="button"
-        class="brk-list__tab"
-        [class.brk-list__tab--active]="activeTab() === tab"
-        (click)="setTab(tab)"
-      >
-        {{ tabLabel(tab) }}
-      </button>
-    }
   </div>
 
   @if (listError()) {
@@ -89,6 +97,7 @@
       <tr>
         <th>{{ 'BREAKAGE.LIST.COL_DOC' | translate }}</th>
         <th>{{ 'COMMON.DATE' | translate }}</th>
+        <th>{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
         <th>{{ 'COMMON.STATUS' | translate }}</th>
         <th>{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
         <th>{{ 'BREAKAGE.LIST.COL_REASON' | translate }}</th>
@@ -101,6 +110,15 @@
         <tr class="brk-list__row">
           <td class="brk-list__mono text-brand-primary">{{ doc.documentNo }}</td>
           <td>{{ doc.createdAt | date: 'mediumDate' }}</td>
+          <td>
+            @if (doc.getPassId && doc.getPass?.passNo) {
+              <a class="brk-list__source-link" (click)="goGetPass(doc); $event.stopPropagation()">
+                {{ doc.getPass?.passNo }}
+              </a>
+            } @else {
+              <span class="brk-list__source-badge">{{ sourceLabel(doc) }}</span>
+            }
+          </td>
           <td>
             <span class="status-badge" [ngClass]="'status-' + statusClass(doc.status)">
               {{ 'BREAKAGE.STATUS.' + doc.status | translate }}

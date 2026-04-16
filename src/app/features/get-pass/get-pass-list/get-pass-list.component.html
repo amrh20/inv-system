@@ -107,7 +107,9 @@
               <tr>
                 <td class="text-brand-primary gp-list__mono">{{ p.passNo }}</td>
                 <td>
-                  <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+                  <span class="status-badge" [ngClass]="transferTypeBadgeClass(p.transferType)">
+                    {{ 'GET_PASS.TYPE.' + p.transferType | translate }}
+                  </span>
                 </td>
                 <td>
                   <span class="status-badge" [ngClass]="statusBadgeClass(p)">
@@ -173,7 +175,9 @@
                   <td>{{ p.targetTenant?.name ?? '—' }}</td>
                 }
                 <td>
-                  <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+                  <span class="status-badge" [ngClass]="transferTypeBadgeClass(p.transferType)">
+                    {{ 'GET_PASS.TYPE.' + p.transferType | translate }}
+                  </span>
                 </td>
                 <td>
                   <span class="status-badge" [ngClass]="'status-' + incomingListStatusClass(p)">
@@ -224,7 +228,9 @@
                 <td>{{ p.tenant?.name ?? p.sourceTenant?.name ?? '—' }}</td>
                 <td>{{ p.targetTenant?.name ?? '—' }}</td>
                 <td>
-                  <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+                  <span class="status-badge" [ngClass]="transferTypeBadgeClass(p.transferType)">
+                    {{ 'GET_PASS.TYPE.' + p.transferType | translate }}
+                  </span>
                 </td>
                 <td>
                   <span class="status-badge" [ngClass]="'status-' + returnsListStatusClass(p)">
@@ -348,7 +354,9 @@
           <tr>
             <td class="text-brand-primary gp-list__mono">{{ p.passNo }}</td>
             <td>
-              <span class="status-badge status-processing">{{ 'GET_PASS.TYPE.' + p.transferType | translate }}</span>
+              <span class="status-badge" [ngClass]="transferTypeBadgeClass(p.transferType)">
+                {{ 'GET_PASS.TYPE.' + p.transferType | translate }}
+              </span>
             </td>
             <td>
               <span class="status-badge" [ngClass]="statusBadgeClass(p)">
@@ -377,13 +385,13 @@
 
   @if (selectedTab() !== 'CLAIMS') {
     <div class="gp-list__footer">
-    <button nz-button type="button" [disabled]="page() <= 1" (click)="prevPage()">
-      {{ 'COMMON.BACK' | translate }}
-    </button>
-    <span>{{ 'GET_PASS.LIST.PAGE' | translate: { page: page(), total: total() } }}</span>
-    <button nz-button type="button" [disabled]="page() * pageSize >= total()" (click)="nextPage()">
-      {{ 'COMMON.NEXT' | translate }}
-    </button>
+      <button nz-button type="button" [disabled]="page() <= 1" (click)="prevPage()">
+        {{ 'COMMON.BACK' | translate }}
+      </button>
+      <span>{{ 'GET_PASS.LIST.PAGE' | translate: { page: page(), total: total() } }}</span>
+      <button nz-button type="button" [disabled]="page() >= maxPage()" (click)="nextPage()">
+        {{ 'COMMON.NEXT' | translate }}
+      </button>
     </div>
   }
 </div>

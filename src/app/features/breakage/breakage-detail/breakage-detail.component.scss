@@ -142,6 +142,11 @@
   margin-top: 4px;
 }
 
+.brk-d__stamp {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.75);
+}
+
 .brk-d__attach-head {
   display: flex;
   justify-content: space-between;
@@ -188,4 +193,14 @@
 
 .small {
   font-size: 11px;
+}
+
+.brk-d__decision-comment {
+  margin-top: 12px;
+}
+
+.brk-d__decision-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--brand-warning, #d48806);
 }

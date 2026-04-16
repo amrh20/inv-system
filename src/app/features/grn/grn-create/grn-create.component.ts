@@ -40,7 +40,10 @@ import {
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import type { ItemListRow } from '../../items/models/item.model';
 import type { RequirementsResponse } from '../../items/models/item.model';
-import { InventoryService } from '../../inventory/services/inventory.service';
+import {
+  InventoryService,
+  type ItemByLocationSelectRow,
+} from '../../inventory/services/inventory.service';
 import { ItemsService } from '../../items/services/items.service';
 import { LocationsService } from '../../master-data/services/locations.service';
 import { SuppliersService } from '../../master-data/services/suppliers.service';
@@ -117,7 +120,7 @@ export class GrnCreateComponent implements OnInit {
   readonly requirements = signal<RequirementsResponse | null>(null);
 
   readonly itemQuery = signal('');
-  readonly itemResults = signal<ItemListRow[]>([]);
+  readonly itemResults = signal<ItemByLocationSelectRow[]>([]);
   readonly itemSearchLoading = signal(false);
   readonly itemDropdownOpen = signal(false);
 
@@ -197,7 +200,7 @@ export class GrnCreateComponent implements OnInit {
             );
           }
           this.itemSearchLoading.set(true);
-          return this.inventoryApi.getItemsByLocation(loc, { search: q, take: 10000 }).pipe(
+          return this.inventoryApi.getItemsByLocationSelect(loc, { search: q }).pipe(
             tap((items) => {
               this.itemResults.set(items);
               if (q.trim().length > 0) {
@@ -262,7 +265,7 @@ export class GrnCreateComponent implements OnInit {
     }
   }
 
-  addItem(item: ItemListRow): void {
+  addItem(item: ItemByLocationSelectRow): void {
     if (this.lines().some((l) => l.itemId === item.id)) return;
 
     const itemId = (item.id ?? '').trim();
@@ -270,33 +273,42 @@ export class GrnCreateComponent implements OnInit {
       this.message.error(this.translate.instant('GRN.CREATE.ERROR_ADD_INVALID_ITEM_ID'));
       return;
     }
+    this.itemsApi
+      .getItemById(itemId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (itemDetail) => {
+          const baseUom = this.resolveBaseUomFromItem(itemDetail);
+          if (!baseUom || !this.isValidUuidString(baseUom.uomId)) {
+            this.message.error(this.translate.instant('GRN.CREATE.ERROR_ADD_NO_BASE_UOM'));
+            return;
+          }
 
-    const baseUom = this.resolveBaseUomFromItem(item);
-    if (!baseUom || !this.isValidUuidString(baseUom.uomId)) {
-      this.message.error(this.translate.instant('GRN.CREATE.ERROR_ADD_NO_BASE_UOM'));
-      return;
-    }
-
-    this.lines.update((prev) => [
-      ...prev,
-      {
-        itemId,
-        itemName: item.name,
-        barcode: item.barcode ?? '',
-        imageUrl: item.imageUrl ?? null,
-        uomId: baseUom.uomId,
-        uomName: baseUom.uomName,
-        receivedQty: '',
-        unitPrice: item.unitPrice ?? '',
-      },
-    ]);
-    this.clearLineValidationUi();
-    this.itemQuery.set('');
-    this.itemResults.set([]);
-    this.itemDropdownOpen.set(false);
-    if (this.locationId().trim()) {
-      this.locationPrefetch$.next();
-    }
+          this.lines.update((prev) => [
+            ...prev,
+            {
+              itemId,
+              itemName: itemDetail.name,
+              barcode: itemDetail.barcode ?? '',
+              imageUrl: itemDetail.imageUrl ?? null,
+              uomId: baseUom.uomId,
+              uomName: baseUom.uomName,
+              receivedQty: '',
+              unitPrice: itemDetail.unitPrice ?? '',
+            },
+          ]);
+          this.clearLineValidationUi();
+          this.itemQuery.set('');
+          this.itemResults.set([]);
+          this.itemDropdownOpen.set(false);
+          if (this.locationId().trim()) {
+            this.locationPrefetch$.next();
+          }
+        },
+        error: () => {
+          this.message.error(this.translate.instant('GRN.CREATE.ERROR_ADD_NO_BASE_UOM'));
+        },
+      });
   }
 
   updateLine(idx: number, field: keyof GrnManualLineDraft, value: string): void {

@@ -3,7 +3,13 @@ import { inject, Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
-import type { BreakageCreatePayload, BreakageDetail, BreakageListRow } from '../models/breakage.model';
+import type {
+  BreakageCreatePayload,
+  BreakageDetail,
+  BreakageListRow,
+  BreakageSourceType,
+  BreakageWorkflowStatus,
+} from '../models/breakage.model';
 
 @Injectable({ providedIn: 'root' })
 export class BreakageService {
@@ -13,14 +19,16 @@ export class BreakageService {
   list(params?: {
     skip?: number;
     take?: number;
-    status?: string;
+    status?: BreakageWorkflowStatus;
     search?: string;
+    sourceType?: BreakageSourceType;
   }): Observable<{ documents: BreakageListRow[]; total: number }> {
     let p = new HttpParams()
       .set('take', String(params?.take ?? 15))
       .set('skip', String(params?.skip ?? 0));
     if (params?.status) p = p.set('status', params.status);
     if (params?.search) p = p.set('search', params.search);
+    if (params?.sourceType) p = p.set('sourceType', params.sourceType);
     return this.http.get<ApiResponse<BreakageListRow[]>>(this.base, { params: p }).pipe(
       map((res) => ({
         documents: res.success && Array.isArray(res.data) ? res.data : [],

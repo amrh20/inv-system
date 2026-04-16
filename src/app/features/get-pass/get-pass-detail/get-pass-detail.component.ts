@@ -25,11 +25,12 @@ import { NzTabsModule } from 'ng-zorro-antd/tabs';
 import { Observable } from 'rxjs';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { ArrowLeft, CheckCircle2, Package, Printer, XCircle } from 'lucide-angular';
+import { ArrowLeft, CheckCircle2, Package, Printer, Upload, XCircle } from 'lucide-angular';
 import type { GetPassStatus, GetPassType } from '../../../core/models/enums';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
+import { FileService } from '../../../core/services/file.service';
 import type {
   DepartmentRow,
 } from '../../master-data/models/department.model';
@@ -37,6 +38,9 @@ import type { LocationRow } from '../../master-data/models/location.model';
 import { DepartmentsService } from '../../master-data/services/departments.service';
 import { LocationsService } from '../../master-data/services/locations.service';
 import type {
+  GetPassAcceptReturnIntoDepartmentPayload,
+  GetPassAcceptReturnLinePayload,
+  GetPassReturnAccountability,
   GetPassAcceptIntoDepartmentPayload,
   GetPassConfirmReturnArrivalPayload,
   GetPassConfirmReturnArrivalLinePayload,
@@ -73,9 +77,22 @@ interface ReceiptDraft {
 interface ReturnArrivalDraft {
   lineId: string;
   itemName: string;
-  outstandingQty: number;
-  receivedQty: number;
-  condition: 'Good' | 'Damaged' | 'Lost';
+  shippedQty: number;
+  goodQty: number;
+  damagedQty: number;
+  lostQty: number;
+  damagePhotos: string[];
+  photoUploading: boolean;
+}
+
+interface ManagerReturnAcceptanceDraft {
+  lineId: string;
+  itemName: string;
+  goodQty: number;
+  damagedQty: number;
+  lostQty: number;
+  damagePhotos: string[];
+  accountability: GetPassReturnAccountability | null;
 }
 
 @Component({
@@ -110,6 +127,7 @@ export class GetPassDetailComponent implements OnInit {
   private readonly api = inject(GetPassService);
   private readonly auth = inject(AuthService);
   private readonly confirmation = inject(ConfirmationService);
+  private readonly fileService = inject(FileService);
   private readonly departmentsApi = inject(DepartmentsService);
   private readonly locationsApi = inject(LocationsService);
   private readonly message = inject(NzMessageService);
@@ -122,6 +140,7 @@ export class GetPassDetailComponent implements OnInit {
   readonly lucidePrint = Printer;
   readonly lucideCheck = CheckCircle2;
   readonly lucideX = XCircle;
+  readonly lucideUpload = Upload;
 
   readonly data = signal<GetPassDetail | null>(null);
   readonly loading = signal(true);
@@ -141,6 +160,13 @@ export class GetPassDetailComponent implements OnInit {
   readonly receiptLines = signal<ReceiptDraft[]>([]);
   readonly returnArrivalOpen = signal(false);
   readonly returnArrivalLines = signal<ReturnArrivalDraft[]>([]);
+  readonly acceptReturnOpen = signal(false);
+  readonly acceptReturnLines = signal<ManagerReturnAcceptanceDraft[]>([]);
+  readonly acceptReturnManagerNotes = signal('');
+  readonly photoLightboxOpen = signal(false);
+  readonly photoLightboxTitle = signal('');
+  readonly photoLightboxPhotos = signal<string[]>([]);
+  readonly photoLightboxIndex = signal(0);
   readonly acceptDeptOpen = signal(false);
   readonly acceptDepartments = signal<DepartmentRow[]>([]);
   readonly acceptLocations = signal<LocationRow[]>([]);
@@ -151,6 +177,21 @@ export class GetPassDetailComponent implements OnInit {
   readonly acceptSelectionTouched = signal(false);
   readonly canSubmitAcceptIntoDept = computed(
     () => !!this.acceptTargetDepartmentId().trim() && !!this.acceptTargetLocationId().trim(),
+  );
+  readonly hasInvalidReturnArrivalLines = computed(() =>
+    this.returnArrivalLines().some((row) => this.returnArrivalLineTotal(row) !== row.shippedQty),
+  );
+  readonly canSubmitManagerReturnAcceptance = computed(() =>
+    this.acceptReturnLines().length > 0 &&
+    this.acceptReturnLines().every(
+      (row) =>
+        ((this.num(row.goodQty) >= 0 &&
+          this.num(row.damagedQty) >= 0 &&
+          this.num(row.lostQty) >= 0 &&
+          this.num(row.damagedQty) + this.num(row.lostQty) <= 0) ||
+          !!row.accountability) &&
+        this.num(row.goodQty) + this.num(row.damagedQty) + this.num(row.lostQty) > 0,
+    ),
   );
 
   ngOnInit(): void {
@@ -622,36 +663,12 @@ export class GetPassDetailComponent implements OnInit {
     const sourceTenantId = d?.tenantId ?? d?.tenant?.id ?? null;
     const hasRequiredRole = this.auth.hasRole('SECURITY', 'ADMIN');
 
-    if (!d) {
-      console.warn('Trace: No Data');
-      return false;
-    }
-    if (!d.isInternalTransfer) {
-      console.warn('Trace: Not Internal Transfer');
-      return false;
-    }
-    if (d.status !== 'RETURNING') {
-      console.warn('Trace: Status is not RETURNING. Current:', d.status);
-      return false;
-    }
-
-    // Main check under investigation for debugging.
-    if (!d.destinationSecurityExitAt) {
-      console.warn('Trace: Missing destinationSecurityExitAt stamp');
-      // return false; // Uncomment this to enforce the stamp check again.
-    }
-
-    if (sourceTenantId !== currentTenantId) {
-      console.warn('Trace: Tenant mismatch', { source: sourceTenantId, current: currentTenantId });
-      return false;
-    }
-
-    if (!hasRequiredRole) {
-      console.warn('Trace: Missing Role');
-      return false;
-    }
-
-    console.log('Trace: Success! Button should be visible.');
+    if (!d) return false;
+    if (!d.isInternalTransfer) return false;
+    // "In transit" phase of return: status RETURNING and exit recorded at destination.
+    if (d.status !== 'RETURNING' || !d.destinationSecurityExitAt) return false;
+    if (!currentTenantId || !sourceTenantId || sourceTenantId !== currentTenantId) return false;
+    if (!hasRequiredRole) return false;
     return true;
   }
 
@@ -999,7 +1016,10 @@ export class GetPassDetailComponent implements OnInit {
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((ok) => {
-        if (ok) this.run(() => this.api.confirmReturnExit(id), 'GET_PASS.DETAIL.MSG_CONFIRM_RETURN_EXIT');
+        if (ok)
+          this.run(() => this.api.confirmReturnExit(id), 'GET_PASS.DETAIL.MSG_CONFIRM_RETURN_EXIT', () => {
+            this.router.navigate(['/get-passes'], { queryParams: { tab: 'RETURNS' } });
+          });
       });
   }
 
@@ -1014,24 +1034,39 @@ export class GetPassDetailComponent implements OnInit {
         return {
           lineId: line.id,
           itemName: line.item?.name ?? line.itemId,
-          outstandingQty: outstanding,
-          receivedQty: outstanding,
-          condition: 'Good',
+          shippedQty: outstanding,
+          goodQty: outstanding,
+          damagedQty: 0,
+          lostQty: 0,
+          damagePhotos: [],
+          photoUploading: false,
         };
       }),
     );
     this.returnArrivalOpen.set(true);
   }
 
-  onReturnArrivalQtyChange(index: number, raw: number | null | undefined): void {
+  onReturnArrivalSplitQtyChange(
+    index: number,
+    field: 'goodQty' | 'damagedQty' | 'lostQty',
+    raw: number | null | undefined,
+  ): void {
     this.returnArrivalLines.update((rows) => {
       const next = [...rows];
       const cur = next[index];
       if (!cur) return next;
-      const receivedQty = Math.min(Math.max(0, Number(raw ?? 0)), cur.outstandingQty);
-      next[index] = { ...cur, receivedQty };
+      const qty = Math.min(Math.max(0, Number(raw ?? 0)), cur.shippedQty);
+      const updated = { ...cur, [field]: qty };
+      if (field === 'damagedQty' && qty <= 0 && updated.damagePhotos.length > 0) {
+        updated.damagePhotos = [];
+      }
+      next[index] = updated;
       return next;
     });
+  }
+
+  returnArrivalLineTotal(row: ReturnArrivalDraft): number {
+    return this.num(row.goodQty) + this.num(row.damagedQty) + this.num(row.lostQty);
   }
 
   updateReturnArrivalDraft(index: number, patch: Partial<ReturnArrivalDraft>): void {
@@ -1042,32 +1077,222 @@ export class GetPassDetailComponent implements OnInit {
     });
   }
 
+  onReturnArrivalDamagePhotoUpload(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const row = this.returnArrivalLines()[index];
+    if (!row) return;
+    if (this.num(row.damagedQty) <= 0) {
+      this.message.warning(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_DAMAGE_QTY_FIRST'));
+      return;
+    }
+    this.updateReturnArrivalDraft(index, { photoUploading: true });
+    this.fileService
+      .upload(file)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (url) => {
+          const current = this.returnArrivalLines()[index];
+          if (!current) return;
+          this.updateReturnArrivalDraft(index, {
+            photoUploading: false,
+            damagePhotos: [...current.damagePhotos, url],
+          });
+          this.message.success(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_PHOTO_UPLOAD_OK'));
+        },
+        error: (e: Error) => {
+          this.updateReturnArrivalDraft(index, { photoUploading: false });
+          this.message.error(e.message || this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_PHOTO_UPLOAD_FAIL'));
+        },
+      });
+  }
+
+  removeReturnArrivalDamagePhoto(index: number, photoIndex: number): void {
+    const row = this.returnArrivalLines()[index];
+    if (!row) return;
+    this.updateReturnArrivalDraft(index, {
+      damagePhotos: row.damagePhotos.filter((_, idx) => idx !== photoIndex),
+    });
+  }
+
   confirmReturnArrivalAtSource(): void {
     this.openReturnInspectionModal();
   }
 
+  private extractLineReturnSplitQty(
+    line: GetPassDetail['lines'][number],
+  ): { goodQty: number; damagedQty: number; lostQty: number } {
+    const row = line as unknown as Record<string, unknown>;
+    const goodQty = this.num(
+      (typeof row['returnedGoodQty'] === 'string' || typeof row['returnedGoodQty'] === 'number'
+        ? row['returnedGoodQty']
+        : 0) as string | number,
+    );
+    const damagedQty = this.num(
+      (typeof row['returnedDamagedQty'] === 'string' || typeof row['returnedDamagedQty'] === 'number'
+        ? row['returnedDamagedQty']
+        : 0) as string | number,
+    );
+    const lostQty = this.num(
+      (typeof row['returnedLostQty'] === 'string' || typeof row['returnedLostQty'] === 'number'
+        ? row['returnedLostQty']
+        : 0) as string | number,
+    );
+    return { goodQty, damagedQty, lostQty };
+  }
+
+  private parseDamagePhotos(raw: unknown): string[] {
+    if (Array.isArray(raw)) {
+      return raw.filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+    }
+    if (typeof raw !== 'string' || !raw.trim()) return [];
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+      }
+    } catch {
+      // Keep fallback to plain string value.
+    }
+    return [raw];
+  }
+
+  securityInspectionLineSummaries(): Array<{
+    lineId: string;
+    itemName: string;
+    good: number;
+    damaged: number;
+    lost: number;
+    photos: string[];
+  }> {
+    const d = this.data();
+    if (!d) return [];
+    const rows: Array<{
+      lineId: string;
+      itemName: string;
+      good: number;
+      damaged: number;
+      lost: number;
+      photos: string[];
+    }> = [];
+    for (const line of d.lines ?? []) {
+      const { goodQty, damagedQty, lostQty } = this.extractLineReturnSplitQty(line);
+      if (goodQty <= 0 && damagedQty <= 0 && lostQty <= 0) continue;
+      const latestReturn = (line.returns ?? []).at(-1) ?? null;
+      rows.push({
+        lineId: line.id,
+        itemName: line.item?.name ?? line.itemId,
+        good: goodQty,
+        damaged: damagedQty,
+        lost: lostQty,
+        photos: this.parseDamagePhotos(latestReturn?.damagePhotos),
+      });
+    }
+    return rows;
+  }
+
+  showSecurityInspectionSummary(): boolean {
+    const d = this.data();
+    return !!d?.isInternalTransfer && this.isViewerIssuerTenant() && d.status === 'RETURN_RECEIVED_AT_GATE';
+  }
+
+  openManagerReturnAcceptanceModal(): void {
+    const d = this.data();
+    if (!d) return;
+    const rows: ManagerReturnAcceptanceDraft[] = [];
+    for (const line of d.lines ?? []) {
+      const { goodQty, damagedQty, lostQty } = this.extractLineReturnSplitQty(line);
+      if (goodQty <= 0 && damagedQty <= 0 && lostQty <= 0) continue;
+      const latestReturn = (line.returns ?? []).at(-1) ?? null;
+      rows.push({
+        lineId: line.id,
+        itemName: line.item?.name ?? line.itemId,
+        goodQty,
+        damagedQty,
+        lostQty,
+        damagePhotos: this.parseDamagePhotos(latestReturn?.damagePhotos),
+        accountability: null,
+      });
+    }
+    if (rows.length === 0) {
+      this.message.warning(this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+      return;
+    }
+    this.acceptReturnLines.set(rows);
+    this.acceptReturnManagerNotes.set('');
+    this.acceptReturnOpen.set(true);
+  }
+
+  onManagerAcceptanceAccountabilityChange(
+    index: number,
+    value: GetPassReturnAccountability | null,
+  ): void {
+    this.acceptReturnLines.update((rows) => {
+      const next = [...rows];
+      const cur = next[index];
+      if (!cur) return next;
+      next[index] = { ...cur, accountability: value };
+      return next;
+    });
+  }
+
+  openDamagePhotosLightbox(itemName: string, photos: string[]): void {
+    if (!photos.length) return;
+    this.photoLightboxTitle.set(itemName);
+    this.photoLightboxPhotos.set(photos);
+    this.photoLightboxIndex.set(0);
+    this.photoLightboxOpen.set(true);
+  }
+
+  closeDamagePhotosLightbox(): void {
+    this.photoLightboxOpen.set(false);
+    this.photoLightboxPhotos.set([]);
+    this.photoLightboxTitle.set('');
+    this.photoLightboxIndex.set(0);
+  }
+
+  goNextLightboxPhoto(): void {
+    const photos = this.photoLightboxPhotos();
+    if (!photos.length) return;
+    this.photoLightboxIndex.update((idx) => (idx + 1) % photos.length);
+  }
+
+  goPrevLightboxPhoto(): void {
+    const photos = this.photoLightboxPhotos();
+    if (!photos.length) return;
+    this.photoLightboxIndex.update((idx) => (idx - 1 + photos.length) % photos.length);
+  }
+
   submitConfirmReturnArrivalAtSource(): void {
     const id = this.data()?.id;
-    if (!id || this.actionBusy()) return;
+    if (!id || this.actionBusy() || this.hasInvalidReturnArrivalLines()) return;
     const lines: GetPassConfirmReturnArrivalLinePayload[] = [];
-    let hasPositiveQty = false;
     for (const row of this.returnArrivalLines()) {
-      const qty = this.num(row.receivedQty);
-      if (qty > 0) hasPositiveQty = true;
-      if (qty < 0 || qty > row.outstandingQty) {
+      const goodQty = this.num(row.goodQty);
+      const damagedQty = this.num(row.damagedQty);
+      const lostQty = this.num(row.lostQty);
+      if (goodQty < 0 || damagedQty < 0 || lostQty < 0) {
         this.message.error(this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
         return;
       }
-      const condition = row.condition.trim();
-      if (!condition) {
-        this.message.warning(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_CONDITION_REQUIRED'));
+      if (goodQty + damagedQty + lostQty !== row.shippedQty) {
+        this.message.warning(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_SUM_MISMATCH'));
         return;
       }
-      lines.push({ lineId: row.lineId, receivedQty: qty, condition });
-    }
-    if (!hasPositiveQty) {
-      this.message.warning(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_QTY_REQUIRED'));
-      return;
+      // Temporarily disabled: damage photos are no longer required when damagedQty > 0.
+      // if (damagedQty > 0 && row.damagePhotos.length === 0) {
+      //   this.message.warning(this.translate.instant('GET_PASS.DETAIL.RETURN_ARRIVAL_DAMAGE_PHOTOS_REQUIRED'));
+      //   return;
+      // }
+      lines.push({
+        lineId: row.lineId,
+        goodQty,
+        damagedQty,
+        lostQty,
+        damagePhotos: [...row.damagePhotos],
+      });
     }
     this.actionBusy.set(true);
     const payload: GetPassConfirmReturnArrivalPayload = { lines };
@@ -1082,6 +1307,7 @@ export class GetPassDetailComponent implements OnInit {
           this.returnArrivalOpen.set(false);
           this.actionBusy.set(false);
           this.message.success(this.translate.instant('GET_PASS.DETAIL.MSG_CONFIRM_RETURN_ARRIVAL'));
+          this.router.navigate(['/get-passes'], { queryParams: { tab: 'RETURNS' } });
         },
         error: (e: Error) => {
           this.actionBusy.set(false);
@@ -1091,19 +1317,56 @@ export class GetPassDetailComponent implements OnInit {
   }
 
   acceptReturnIntoDepartmentAtSource(): void {
+    this.openManagerReturnAcceptanceModal();
+  }
+
+  submitManagerReturnAcceptance(): void {
     const id = this.data()?.id;
-    if (!id) return;
-    this.confirmation
-      .confirm({
-        title: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ACCEPT_RETURN_DEPT_TITLE'),
-        message: this.translate.instant('GET_PASS.DETAIL.CONFIRM_ACCEPT_RETURN_DEPT_MSG'),
-        confirmText: this.translate.instant('COMMON.CONFIRM'),
-        cancelText: this.translate.instant('COMMON.CANCEL'),
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((ok) => {
-        if (ok) this.run(() => this.api.acceptReturnIntoDepartment(id), 'GET_PASS.DETAIL.MSG_ACCEPT_RETURN_DEPT');
-      });
+    if (!id || this.actionBusy()) return;
+    try {
+      const lines: GetPassAcceptReturnLinePayload[] = [];
+      for (const row of this.acceptReturnLines()) {
+        const goodQty = this.num(row.goodQty);
+        const damagedQty = this.num(row.damagedQty);
+        const lostQty = this.num(row.lostQty);
+        if (goodQty < 0 || damagedQty < 0 || lostQty < 0) {
+          this.message.warning(this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+          return;
+        }
+        if (goodQty + damagedQty + lostQty <= 0) {
+          this.message.warning(this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+          return;
+        }
+        if ((damagedQty > 0 || lostQty > 0) && !row.accountability) {
+          this.message.warning(this.translate.instant('GET_PASS.DETAIL.ACCOUNTABILITY_REQUIRED'));
+          return;
+        }
+        lines.push({
+          lineId: row.lineId,
+          goodQty,
+          damagedQty,
+          lostQty,
+          accountability: damagedQty > 0 || lostQty > 0 ? row.accountability : null,
+          damagedAccountability: damagedQty > 0 ? row.accountability : null,
+          lostAccountability: lostQty > 0 ? row.accountability : null,
+        });
+      }
+      const payload: GetPassAcceptReturnIntoDepartmentPayload = {
+        lines,
+        managerNotes: this.acceptReturnManagerNotes().trim() || null,
+      };
+      console.log('Payload to send:', lines);
+      this.run(
+        () => this.api.acceptReturnIntoDepartment(id, payload),
+        'GET_PASS.DETAIL.MSG_ACCEPT_RETURN_DEPT',
+        () => {
+          this.acceptReturnOpen.set(false);
+          this.router.navigate(['/get-passes'], { queryParams: { tab: 'RETURNS' } });
+        },
+      );
+    } catch {
+      this.message.error(this.translate.instant('GET_PASS.DETAIL.ACTION_FAIL'));
+    }
   }
 
   /** Summary line for the “department acceptance complete” banner (internal transfer, destination). */
@@ -1430,7 +1693,11 @@ export class GetPassDetailComponent implements OnInit {
       });
   }
 
-  private run(factory: () => Observable<GetPassDetail>, okKey: string): void {
+  private run(
+    factory: () => Observable<GetPassDetail>,
+    okKey: string,
+    afterSuccess?: (detail: GetPassDetail) => void,
+  ): void {
     if (!this.data()?.id) return;
     this.actionBusy.set(true);
     factory()
@@ -1442,6 +1709,7 @@ export class GetPassDetailComponent implements OnInit {
           this.initReturnDrafts(normalized);
           this.actionBusy.set(false);
           this.message.success(this.translate.instant(okKey));
+          if (afterSuccess) afterSuccess(normalized);
         },
         error: (e: Error) => {
           this.actionBusy.set(false);

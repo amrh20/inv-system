@@ -1,12 +1,4 @@
-import {
-  Component,
-  DestroyRef,
-  effect,
-  inject,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { of, Subject } from 'rxjs';
@@ -22,18 +14,18 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { AlertTriangle, Camera, Plus, Trash2, XCircle } from 'lucide-angular';
+import { AlertTriangle, Plus, Trash2 } from 'lucide-angular';
 import type { CategoryRow } from '../../master-data/models/category.model';
 import type { DepartmentRow } from '../../master-data/models/department.model';
 import type { LocationRow } from '../../master-data/models/location.model';
-import { CategoriesService } from '../../master-data/services/categories.service';
-import { DepartmentsService } from '../../master-data/services/departments.service';
-import { LocationsService } from '../../master-data/services/locations.service';
 import {
   InventoryService,
   type ItemByLocationSelectRow,
 } from '../../inventory/services/inventory.service';
-import { BreakageService } from '../services/breakage.service';
+import { CategoriesService } from '../../master-data/services/categories.service';
+import { DepartmentsService } from '../../master-data/services/departments.service';
+import { LocationsService } from '../../master-data/services/locations.service';
+import { LostItemsService } from '../services/lost-items.service';
 
 interface LineDraft {
   itemId: string;
@@ -45,7 +37,7 @@ interface LineDraft {
 }
 
 @Component({
-  selector: 'app-breakage-create-modal',
+  selector: 'app-lost-create-modal',
   standalone: true,
   imports: [
     FormsModule,
@@ -60,28 +52,26 @@ interface LineDraft {
     TranslatePipe,
     LucideAngularModule,
   ],
-  templateUrl: './breakage-create-modal.component.html',
-  styleUrl: './breakage-create-modal.component.scss',
+  templateUrl: './lost-create-modal.component.html',
+  styleUrl: './lost-create-modal.component.scss',
 })
-export class BreakageCreateModalComponent {
+export class LostCreateModalComponent {
   private readonly departmentsApi = inject(DepartmentsService);
   private readonly categoriesApi = inject(CategoriesService);
   private readonly locationsApi = inject(LocationsService);
   private readonly inventoryApi = inject(InventoryService);
-  private readonly breakageApi = inject(BreakageService);
+  private readonly lostApi = inject(LostItemsService);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly open = input.required<boolean>();
   readonly closed = output<void>();
-  readonly created = output<string>();
+  readonly created = output<void>();
 
   readonly lucideAlert = AlertTriangle;
   readonly lucidePlus = Plus;
   readonly lucideTrash = Trash2;
-  readonly lucideCamera = Camera;
-  readonly lucideXCircle = XCircle;
 
   readonly departments = signal<DepartmentRow[]>([]);
   readonly categories = signal<CategoryRow[]>([]);
@@ -97,8 +87,6 @@ export class BreakageCreateModalComponent {
   readonly lines = signal<LineDraft[]>([]);
   readonly searchQuery = signal('');
   readonly selectedItemId = signal('');
-  readonly photos = signal<File[]>([]);
-
   readonly loading = signal(false);
   readonly lookupsLoading = signal(false);
   readonly itemOptionsLoading = signal(false);
@@ -118,8 +106,8 @@ export class BreakageCreateModalComponent {
             this.lookupsLoading.set(false);
           },
           error: () => {
-            this.message.error(this.translate.instant('BREAKAGE.CREATE.ERROR_LOOKUPS'));
             this.lookupsLoading.set(false);
+            this.message.error(this.translate.instant('LOST_ITEMS.CREATE.ERROR_LOOKUPS'));
           },
         });
     });
@@ -147,7 +135,7 @@ export class BreakageCreateModalComponent {
         error: () => {
           this.itemOptions.set([]);
           this.itemOptionsLoading.set(false);
-          this.message.error(this.translate.instant('BREAKAGE.CREATE.ERROR_ITEMS'));
+          this.message.error(this.translate.instant('LOST_ITEMS.CREATE.ERROR_ITEMS'));
         },
       });
   }
@@ -162,7 +150,6 @@ export class BreakageCreateModalComponent {
     this.lines.set([]);
     this.searchQuery.set('');
     this.selectedItemId.set('');
-    this.photos.set([]);
     this.categories.set([]);
     this.locations.set([]);
     this.itemOptions.set([]);
@@ -185,7 +172,7 @@ export class BreakageCreateModalComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => this.categories.set(r.categories),
-        error: () => this.message.error(this.translate.instant('BREAKAGE.CREATE.ERROR_CATEGORIES')),
+        error: () => this.message.error(this.translate.instant('LOST_ITEMS.CREATE.ERROR_CATEGORIES')),
       });
     this.reloadLocations();
   }
@@ -206,19 +193,14 @@ export class BreakageCreateModalComponent {
     }
     const catId = this.selectedCategoryId();
     this.locationsApi
-      .list({
-        take: 100,
-        isActive: true,
-        departmentId: deptId,
-        ...(catId ? { categoryId: catId } : {}),
-      })
+      .list({ take: 100, isActive: true, departmentId: deptId, ...(catId ? { categoryId: catId } : {}) })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (r) => {
           this.locations.set(r.locations);
           this.sourceLocationId.set('');
         },
-        error: () => this.message.error(this.translate.instant('BREAKAGE.CREATE.ERROR_LOCATIONS')),
+        error: () => this.message.error(this.translate.instant('LOST_ITEMS.CREATE.ERROR_LOCATIONS')),
       });
   }
 
@@ -279,20 +261,13 @@ export class BreakageCreateModalComponent {
     const availableQty = Number(item.currentStock ?? 0);
     if (availableQty <= 0) {
       this.message.warning(
-        this.translate.instant('BREAKAGE.CREATE.ERROR_ZERO_AVAILABLE', { item: item.name }),
+        this.translate.instant('LOST_ITEMS.CREATE.ERROR_ZERO_AVAILABLE', { item: item.name }),
       );
       return;
     }
     this.lines.update((rows) => [
       ...rows,
-      {
-        itemId: item.id,
-        name: item.name,
-        barcode: item.barcode,
-        availableQty,
-        qty: 1,
-        notes: '',
-      },
+      { itemId: item.id, name: item.name, barcode: item.barcode, availableQty, qty: 1, notes: '' },
     ]);
   }
 
@@ -310,7 +285,7 @@ export class BreakageCreateModalComponent {
     const clamped = Math.min(requested, row.availableQty);
     if (requested > row.availableQty) {
       this.message.warning(
-        this.translate.instant('BREAKAGE.CREATE.ERROR_QTY_EXCEEDS', {
+        this.translate.instant('LOST_ITEMS.CREATE.ERROR_QTY_EXCEEDS', {
           item: row.name,
           available: row.availableQty,
         }),
@@ -331,30 +306,18 @@ export class BreakageCreateModalComponent {
     });
   }
 
-  onPhotoPick(e: Event): void {
-    const input = e.target as HTMLInputElement;
-    const files = input.files ? Array.from(input.files) : [];
-    input.value = '';
-    if (!files.length) return;
-    this.photos.update((prev) => [...prev, ...files].slice(0, 6));
-  }
-
-  removePhoto(index: number): void {
-    this.photos.update((p) => p.filter((_, i) => i !== index));
-  }
-
   submit(): void {
     const loc = this.sourceLocationId();
     const r = this.reason().trim();
     const rows = this.lines();
     if (!loc || !r || rows.length === 0) {
-      this.message.warning(this.translate.instant('BREAKAGE.CREATE.VALIDATION'));
+      this.message.warning(this.translate.instant('LOST_ITEMS.CREATE.VALIDATION'));
       return;
     }
     const exceeded = rows.find((line) => line.qty > line.availableQty);
     if (exceeded) {
       this.message.warning(
-        this.translate.instant('BREAKAGE.CREATE.ERROR_QTY_EXCEEDS', {
+        this.translate.instant('LOST_ITEMS.CREATE.ERROR_QTY_EXCEEDS', {
           item: exceeded.name,
           available: exceeded.availableQty,
         }),
@@ -362,34 +325,16 @@ export class BreakageCreateModalComponent {
       return;
     }
     this.loading.set(true);
-    const docDate =
-      this.documentDate() instanceof Date
-        ? this.documentDate().toISOString().slice(0, 10)
-        : String(this.documentDate());
-    this.breakageApi
+    const docDate = this.documentDate().toISOString().slice(0, 10);
+    this.lostApi
       .create({
         sourceLocationId: loc,
         reason: r,
         notes: this.notes().trim() || null,
         documentDate: docDate,
-        lines: rows.map((l) => ({
-          itemId: l.itemId,
-          qty: l.qty,
-          notes: l.notes.trim() || null,
-        })),
+        lines: rows.map((l) => ({ itemId: l.itemId, qty: l.qty, notes: l.notes.trim() || null })),
       })
-      .pipe(
-        switchMap((doc) => {
-          const files = this.photos();
-          if (!files.length) return of(doc);
-          let chain = of(doc);
-          for (const f of files) {
-            chain = chain.pipe(switchMap((d) => this.breakageApi.uploadAttachment(d.id, f)));
-          }
-          return chain;
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
           this.loading.set(false);
@@ -397,15 +342,15 @@ export class BreakageCreateModalComponent {
           this.message.success(
             this.translate.instant(
               isAutoApproved
-                ? 'BREAKAGE.CREATE.AUTO_APPROVED_SUCCESS'
-                : 'BREAKAGE.CREATE.DRAFT_SUCCESS',
+                ? 'LOST_ITEMS.CREATE.AUTO_APPROVED_SUCCESS'
+                : 'LOST_ITEMS.CREATE.DRAFT_SUCCESS',
             ),
           );
-          this.created.emit(doc.id);
+          this.created.emit();
         },
-        error: (err: Error) => {
+        error: (e: Error) => {
           this.loading.set(false);
-          this.message.error(err.message || this.translate.instant('BREAKAGE.CREATE.ERROR'));
+          this.message.error(e.message || this.translate.instant('LOST_ITEMS.CREATE.ERROR'));
         },
       });
   }

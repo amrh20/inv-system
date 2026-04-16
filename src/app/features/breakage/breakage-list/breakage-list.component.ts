@@ -16,21 +16,20 @@ import { LucideAngularModule } from 'lucide-angular';
 import { AlertTriangle, Eye, Plus, RefreshCw, Search } from 'lucide-angular';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import type { MovementStatus } from '../../../core/models/enums';
-import type { BreakageListRow } from '../models/breakage.model';
+import type { BreakageListRow, BreakageSourceType, BreakageWorkflowStatus } from '../models/breakage.model';
 import { BreakageService } from '../services/breakage.service';
 import { BreakageCreateModalComponent } from '../breakage-create-modal/breakage-create-modal.component';
 import type { RequirementsResponse } from '../../items/models/item.model';
 import { ItemsService } from '../../items/services/items.service';
 
-const TABS: Array<'ALL' | MovementStatus> = [
-  'ALL',
+const STATUS_TABS: BreakageWorkflowStatus[] = [
   'DRAFT',
-  'PENDING_APPROVAL',
-  'POSTED',
-  'REJECTED',
-  'VOID',
+  'DEPT_APPROVED',
+  'COST_CONTROL_APPROVED',
+  'FINANCE_APPROVED',
+  'APPROVED',
 ];
+const SOURCE_TABS: BreakageSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
 
 @Component({
   selector: 'app-breakage-list',
@@ -68,10 +67,12 @@ export class BreakageListComponent implements OnInit {
   readonly lucideEye = Eye;
   readonly lucideSearch = Search;
 
-  readonly tabs = TABS;
+  readonly statusTabs = STATUS_TABS;
+  readonly sourceTabs = SOURCE_TABS;
   readonly pageSize = 15;
 
-  readonly activeTab = signal<(typeof TABS)[number]>('ALL');
+  readonly activeStatusTab = signal<(typeof STATUS_TABS)[number]>('DRAFT');
+  readonly activeSourceTab = signal<BreakageSourceType>('INTERNAL');
   readonly documents = signal<BreakageListRow[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);
@@ -124,15 +125,22 @@ export class BreakageListComponent implements OnInit {
       });
   }
 
-  setTab(tab: (typeof TABS)[number]): void {
-    this.activeTab.set(tab);
+  setStatusTab(tab: (typeof STATUS_TABS)[number]): void {
+    this.activeStatusTab.set(tab);
     this.page.set(0);
     this.load();
   }
 
-  tabLabel(tab: string): string {
-    if (tab === 'ALL') return this.translate.instant('BREAKAGE.LIST.TAB_ALL');
-    return this.translate.instant(`BREAKAGE.STATUS.${tab}`);
+  setSourceTab(tab: BreakageSourceType): void {
+    this.activeSourceTab.set(tab);
+    this.page.set(0);
+    this.load();
+  }
+
+  sourceTabLabel(tab: BreakageSourceType): string {
+    return tab === 'INTERNAL'
+      ? this.translate.instant('BREAKAGE.LIST.TAB_INTERNAL')
+      : this.translate.instant('BREAKAGE.LIST.TAB_FROM_RETURNS');
   }
 
   onSearchInput(v: string): void {
@@ -143,13 +151,14 @@ export class BreakageListComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.listError.set('');
-    const status = this.activeTab() === 'ALL' ? undefined : this.activeTab();
+    const status: BreakageWorkflowStatus = this.activeStatusTab();
     this.api
       .list({
         skip: this.page() * this.pageSize,
         take: this.pageSize,
         status,
         search: this.search().trim() || undefined,
+        sourceType: this.activeSourceTab(),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -185,14 +194,29 @@ export class BreakageListComponent implements OnInit {
     this.router.navigate(['/breakage', doc.id]);
   }
 
-  statusClass(status: MovementStatus): string {
+  goGetPass(doc: BreakageListRow): void {
+    const id = doc.getPassId ?? doc.getPass?.id;
+    if (!id) return;
+    this.router.navigate(['/get-passes', id]);
+  }
+
+  sourceLabel(doc: BreakageListRow): string {
+    if (doc.sourceType === 'GET_PASS_RETURN') {
+      return this.translate.instant('BREAKAGE.LIST.SOURCE_FROM_RETURN');
+    }
+    return this.translate.instant('BREAKAGE.LIST.SOURCE_INTERNAL');
+  }
+
+  statusClass(status: BreakageWorkflowStatus | string): string {
     switch (status) {
       case 'DRAFT':
         return 'pending';
-      case 'PENDING_APPROVAL':
-        return 'pending';
-      case 'POSTED':
-        return 'posted';
+      case 'DEPT_APPROVED':
+      case 'COST_CONTROL_APPROVED':
+      case 'FINANCE_APPROVED':
+        return 'warning';
+      case 'APPROVED':
+        return 'active';
       case 'REJECTED':
         return 'rejected';
       case 'VOID':

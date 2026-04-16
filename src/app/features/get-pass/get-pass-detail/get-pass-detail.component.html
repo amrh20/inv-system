@@ -303,6 +303,46 @@
             </nz-steps>
           </div>
         }
+        @if (showSecurityInspectionSummary()) {
+          <div class="gp-d__card">
+            <h2 class="gp-d__h2">{{ 'GET_PASS.DETAIL.SECURITY_INSPECTION_TITLE' | translate }}</h2>
+            <nz-table [nzData]="securityInspectionLineSummaries()" [nzShowPagination]="false" nzSize="small">
+              <thead>
+                <tr>
+                  <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+                  <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_GOOD_QTY' | translate }}</th>
+                  <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_DAMAGED_QTY' | translate }}</th>
+                  <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_LOST_QTY' | translate }}</th>
+                  <th>{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_DAMAGE_PHOTOS' | translate }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of securityInspectionLineSummaries(); track row.lineId) {
+                  <tr>
+                    <td>{{ row.itemName }}</td>
+                    <td nzAlign="right">{{ row.good }}</td>
+                    <td nzAlign="right">{{ row.damaged }}</td>
+                    <td nzAlign="right">{{ row.lost }}</td>
+                    <td>
+                      @if (row.photos.length > 0) {
+                        <button
+                          nz-button
+                          nzType="link"
+                          type="button"
+                          (click)="openDamagePhotosLightbox(row.itemName, row.photos)"
+                        >
+                          {{ 'GET_PASS.DETAIL.VIEW_DAMAGE_PHOTOS' | translate }} ({{ row.photos.length }})
+                        </button>
+                      } @else {
+                        <span class="gp-d__muted">—</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </nz-table>
+          </div>
+        }
 
         @if (showInternalDestinationProgress()) {
           <div class="gp-d__card">
@@ -622,45 +662,195 @@
   (nzOnCancel)="returnArrivalOpen.set(false)"
   (nzOnOk)="submitConfirmReturnArrivalAtSource()"
   [nzOkLoading]="actionBusy()"
+  [nzOkDisabled]="hasInvalidReturnArrivalLines()"
 >
   <ng-container *nzModalContent>
     <p class="gp-d__muted">{{ 'GET_PASS.DETAIL.CONFIRM_RETURN_ARRIVAL_MSG' | translate }}</p>
-    <nz-table [nzData]="returnArrivalLines()" [nzShowPagination]="false" nzSize="small">
+    <nz-table [nzData]="returnArrivalLines()" [nzShowPagination]="false" nzSize="small" class="gp-d__arrival-table">
       <thead>
         <tr>
           <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
-          <th nzAlign="right">{{ 'GET_PASS.DETAIL.MAX' | translate }}</th>
-          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_QTY' | translate }}</th>
-          <th>{{ 'GET_PASS.DETAIL.COND_IN' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_SHIPPED_QTY' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_GOOD_QTY' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_DAMAGED_QTY' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_LOST_QTY' | translate }}</th>
+          <th>{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_DAMAGE_PHOTOS' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_TOTAL' | translate }}</th>
         </tr>
       </thead>
       <tbody>
         @for (row of returnArrivalLines(); track row.lineId; let idx = $index) {
           <tr>
             <td>{{ row.itemName }}</td>
-            <td nzAlign="right">{{ row.outstandingQty }}</td>
-            <td>
+            <td nzAlign="right">{{ row.shippedQty }}</td>
+            <td nzAlign="center">
               <nz-input-number
-                [ngModel]="row.receivedQty"
-                (ngModelChange)="onReturnArrivalQtyChange(idx, $event)"
+                [ngModel]="row.goodQty"
+                (ngModelChange)="onReturnArrivalSplitQtyChange(idx, 'goodQty', $event)"
                 [nzMin]="0"
-                [nzMax]="row.outstandingQty"
+                [nzMax]="row.shippedQty"
               />
             </td>
-            <td>
-              <nz-select
-                [ngModel]="row.condition"
-                (ngModelChange)="updateReturnArrivalDraft(idx, { condition: $event ?? 'Good' })"
-              >
-                <nz-option nzValue="Good" [nzLabel]="'GET_PASS.DETAIL.RECEIVED_COND_GOOD' | translate"></nz-option>
-                <nz-option nzValue="Damaged" [nzLabel]="'GET_PASS.DETAIL.DAMAGED' | translate"></nz-option>
-                <nz-option nzValue="Lost" [nzLabel]="'GET_PASS.DETAIL.LOST' | translate"></nz-option>
-              </nz-select>
+            <td nzAlign="center">
+              <nz-input-number
+                [ngModel]="row.damagedQty"
+                (ngModelChange)="onReturnArrivalSplitQtyChange(idx, 'damagedQty', $event)"
+                [nzMin]="0"
+                [nzMax]="row.shippedQty"
+              />
+            </td>
+            <td nzAlign="center">
+              <nz-input-number
+                [ngModel]="row.lostQty"
+                (ngModelChange)="onReturnArrivalSplitQtyChange(idx, 'lostQty', $event)"
+                [nzMin]="0"
+                [nzMax]="row.shippedQty"
+              />
+            </td>
+            <td nzAlign="center">
+              <div class="gp-d__arrival-photo-cell">
+                <input
+                  #damagePhotoInput
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.webp"
+                  class="gp-d__file-hidden"
+                  [disabled]="row.photoUploading || actionBusy() || row.damagedQty <= 0"
+                  (change)="onReturnArrivalDamagePhotoUpload(idx, $event)"
+                />
+                <button
+                  nz-button
+                  nzType="default"
+                  nzSize="small"
+                  type="button"
+                  [disabled]="row.photoUploading || actionBusy() || row.damagedQty <= 0"
+                  (click)="damagePhotoInput.click()"
+                >
+                  <lucide-icon [img]="lucideUpload" [size]="14" [strokeWidth]="2" />
+                </button>
+                <span class="gp-d__muted gp-d__arrival-photo-count">{{ row.damagePhotos.length }}</span>
+                @if (row.photoUploading) {
+                  <span class="gp-d__muted">{{ 'COMMON.LOADING' | translate }}</span>
+                }
+                @if (row.damagePhotos.length > 0) {
+                  <div class="gp-d__arrival-photo-list">
+                    @for (photo of row.damagePhotos; track $index; let photoIdx = $index) {
+                      <button
+                        nz-button
+                        nzType="link"
+                        type="button"
+                        class="gp-d__arrival-photo-remove"
+                        (click)="removeReturnArrivalDamagePhoto(idx, photoIdx)"
+                      >
+                        {{ 'COMMON.DELETE' | translate }} {{ photoIdx + 1 }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </td>
+            <td nzAlign="right">
+              {{ returnArrivalLineTotal(row) }}
+              @if (returnArrivalLineTotal(row) !== row.shippedQty) {
+                <div class="gp-d__error">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_SUM_MISMATCH' | translate }}</div>
+              }
             </td>
           </tr>
         }
       </tbody>
     </nz-table>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="acceptReturnOpen()"
+  [nzTitle]="'GET_PASS.DETAIL.ACCEPT_RETURN_INTO_DEPT' | translate"
+  [nzWidth]="1080"
+  (nzOnCancel)="acceptReturnOpen.set(false)"
+  (nzOnOk)="submitManagerReturnAcceptance()"
+  [nzOkLoading]="actionBusy()"
+  [nzOkDisabled]="!canSubmitManagerReturnAcceptance()"
+>
+  <ng-container *nzModalContent>
+    <p class="gp-d__muted">{{ 'GET_PASS.DETAIL.CONFIRM_ACCEPT_RETURN_DEPT_MSG' | translate }}</p>
+    <nz-table [nzData]="acceptReturnLines()" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>{{ 'GET_PASS.FORM.COL_ITEM' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_GOOD_QTY' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_DAMAGED_QTY' | translate }}</th>
+          <th nzAlign="right">{{ 'GET_PASS.DETAIL.RETURN_ARRIVAL_LOST_QTY' | translate }}</th>
+          <th>{{ 'GET_PASS.DETAIL.ACCOUNTABILITY' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of acceptReturnLines(); track row.lineId; let idx = $index) {
+          <tr>
+            <td>{{ row.itemName }}</td>
+            <td nzAlign="right">{{ row.goodQty }}</td>
+            <td nzAlign="right">{{ row.damagedQty }}</td>
+            <td nzAlign="right">{{ row.lostQty }}</td>
+            <td>
+              @if (row.damagedQty > 0 || row.lostQty > 0) {
+                <nz-select
+                  [ngModel]="row.accountability"
+                  [nzPlaceHolder]="'GET_PASS.DETAIL.ACCOUNTABILITY_PLACEHOLDER' | translate"
+                  (ngModelChange)="onManagerAcceptanceAccountabilityChange(idx, $event ?? null)"
+                >
+                  <nz-option
+                    nzValue="EMPLOYEE_DEDUCTION"
+                    [nzLabel]="'GET_PASS.DETAIL.ACCOUNTABILITY_EMPLOYEE_DEDUCTION' | translate"
+                  />
+                  <nz-option
+                    nzValue="COMPANY_LOSS"
+                    [nzLabel]="'GET_PASS.DETAIL.ACCOUNTABILITY_COMPANY_LOSS' | translate"
+                  />
+                  <nz-option
+                    nzValue="TARGET_HOTEL_COMPENSATION"
+                    [nzLabel]="'GET_PASS.DETAIL.ACCOUNTABILITY_TARGET_COMPENSATION' | translate"
+                  />
+                </nz-select>
+              } @else {
+                <span class="gp-d__muted">—</span>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </nz-table>
+    <label class="gp-d__label gp-d__field-gap">{{ 'GET_PASS.DETAIL.MANAGER_NOTES' | translate }}</label>
+    <textarea
+      nz-input
+      rows="3"
+      [placeholder]="'GET_PASS.DETAIL.MANAGER_NOTES_PLACEHOLDER' | translate"
+      [ngModel]="acceptReturnManagerNotes()"
+      (ngModelChange)="acceptReturnManagerNotes.set($event)"
+    ></textarea>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="photoLightboxOpen()"
+  [nzTitle]="photoLightboxTitle()"
+  [nzFooter]="null"
+  (nzOnCancel)="closeDamagePhotosLightbox()"
+>
+  <ng-container *nzModalContent>
+    @if (photoLightboxPhotos().length > 0) {
+      <img
+        [src]="photoLightboxPhotos()[photoLightboxIndex()]"
+        alt="damage-photo"
+        style="width: 100%; max-height: 70vh; object-fit: contain"
+      />
+      <div class="gp-d__actions" style="justify-content: space-between; margin-top: 12px">
+        <button nz-button nzType="default" type="button" (click)="goPrevLightboxPhoto()">
+          {{ 'COMMON.BACK' | translate }}
+        </button>
+        <span class="gp-d__muted">{{ photoLightboxIndex() + 1 }} / {{ photoLightboxPhotos().length }}</span>
+        <button nz-button nzType="default" type="button" (click)="goNextLightboxPhoto()">
+          {{ 'COMMON.NEXT' | translate }}
+        </button>
+      </div>
+    }
   </ng-container>
 </nz-modal>
 

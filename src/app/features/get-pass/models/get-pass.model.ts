@@ -39,6 +39,9 @@ export interface GetPassLineDetail {
   locationId: string;
   qty: string | number;
   qtyReturned: string | number;
+  returnedGoodQty?: string | number;
+  returnedDamagedQty?: string | number;
+  returnedLostQty?: string | number;
   qtyReceivedAtDestination?: string | number;
   qtyDiscrepancyAtDestination?: string | number;
   conditionOut?: string | null;
@@ -56,6 +59,7 @@ export interface GetPassReturnDetail {
   qtyGood?: string | number;
   qtyLost?: string | number;
   qtyDamaged?: string | number;
+  damagePhotos?: string[] | string | null;
   isLost?: boolean;
   isDamaged?: boolean;
   conditionIn?: string | null;
@@ -63,6 +67,8 @@ export interface GetPassReturnDetail {
   notes?: string | null;
   registeredByUser?: GetPassUserRef | null;
 }
+
+export type GetPassReturnAccountability = 'EMPLOYEE_DEDUCTION' | 'COMPANY_LOSS' | 'TARGET_HOTEL_COMPENSATION';
 
 export interface GetPassDetail extends GetPassListRow {
   /** Issuing hotel (included on detail for destination viewers). */
@@ -176,12 +182,29 @@ export interface GetPassConfirmReceiptPayload {
 
 export interface GetPassConfirmReturnArrivalLinePayload {
   lineId: string;
-  receivedQty: number;
-  condition: string;
+  goodQty: number;
+  damagedQty: number;
+  lostQty: number;
+  damagePhotos: string[];
 }
 
 export interface GetPassConfirmReturnArrivalPayload {
   lines: GetPassConfirmReturnArrivalLinePayload[];
+}
+
+export interface GetPassAcceptReturnLinePayload {
+  lineId: string;
+  goodQty: number;
+  damagedQty: number;
+  lostQty: number;
+  accountability?: GetPassReturnAccountability | null;
+  damagedAccountability?: GetPassReturnAccountability | null;
+  lostAccountability?: GetPassReturnAccountability | null;
+}
+
+export interface GetPassAcceptReturnIntoDepartmentPayload {
+  lines: GetPassAcceptReturnLinePayload[];
+  managerNotes?: string | null;
 }
 
 /** POST /get-passes/:id/accept-into-department */

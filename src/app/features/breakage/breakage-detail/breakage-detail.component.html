@@ -35,21 +35,10 @@
             nzType="primary"
             type="button"
             [disabled]="actionBusy()"
-            (click)="openApproval('APPROVE')"
+            (click)="openApproval()"
           >
             <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
-            {{ 'BREAKAGE.DETAIL.APPROVE' | translate }}
-          </button>
-          <button
-            *appHasPermission="'BREAKAGE_APPROVE_REJECT'"
-            nz-button
-            nzDanger
-            type="button"
-            [disabled]="actionBusy()"
-            (click)="openApproval('REJECT')"
-          >
-            <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
-            {{ 'BREAKAGE.DETAIL.REJECT' | translate }}
+            {{ 'BREAKAGE.DETAIL.DECIDE' | translate }}
           </button>
         }
       </div>
@@ -80,7 +69,7 @@
     <div class="brk-d__grid">
       <div class="brk-d__main">
         <div class="brk-d__card brk-d__card--rel">
-          @if (d.status === 'POSTED') {
+          @if (d.status === 'APPROVED') {
             <lucide-icon [img]="lucideShield" [size]="120" class="brk-d__watermark" [strokeWidth]="2" />
           }
           <h2 class="brk-d__h2">{{ 'BREAKAGE.DETAIL.INFO' | translate }}</h2>
@@ -98,8 +87,8 @@
               <div>{{ d.lines[0]?.location?.name ?? '—' }}</div>
             </div>
             <div>
-              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.POSTED_AT' | translate }}</div>
-              <div>{{ d.postedAt ? (d.postedAt | date: 'medium') : ('BREAKAGE.DETAIL.NOT_POSTED' | translate) }}</div>
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.APPROVED_AT' | translate }}</div>
+              <div>{{ d.postedAt ? (d.postedAt | date: 'medium') : ('BREAKAGE.DETAIL.NOT_APPROVED' | translate) }}</div>
             </div>
             <div class="brk-d__full">
               <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.REASON' | translate }}</div>
@@ -154,14 +143,9 @@
                   <div class="brk-d__dot" [class.brk-d__dot--ok]="step.status === 'APPROVED'" [class.brk-d__dot--bad]="step.status === 'REJECTED'"></div>
                   <div>
                     <div class="brk-d__step-title">
-                      {{ 'BREAKAGE.DETAIL.STEP' | translate: { n: step.stepNumber, role: step.requiredRole } }}
+                      {{ 'BREAKAGE.DETAIL.STEP' | translate: { n: step.stepNumber, role: roleLabel(step.requiredRole) } }}
                     </div>
-                    <div>{{ step.status }}</div>
-                    @if (step.actedByUser) {
-                      <div class="brk-d__muted small">
-                        {{ userName(step.actedByUser) }} · {{ step.actedAt | date: 'mediumDate' }}
-                      </div>
-                    }
+                    <div class="brk-d__stamp">{{ stepStatusLabel(step) }}</div>
                     @if (step.comment) {
                       <div class="brk-d__comment">"{{ step.comment }}"</div>
                     }
@@ -178,7 +162,7 @@
               <lucide-icon [img]="lucideClip" [size]="18" [strokeWidth]="2" />
               {{ 'BREAKAGE.DETAIL.ATTACHMENTS' | translate }} ({{ attachments().length }})
             </h2>
-            @if (d.status !== 'POSTED' && d.status !== 'VOID') {
+            @if (d.status !== 'APPROVED' && d.status !== 'VOID') {
               <input
                 #attInput
                 type="file"
@@ -218,12 +202,51 @@
 
 <nz-modal
   [nzVisible]="approvalOpen()"
-  [nzTitle]="approvalAction() === 'REJECT' ? ('BREAKAGE.DETAIL.REJECT_TITLE' | translate) : ('BREAKAGE.DETAIL.APPROVE_TITLE' | translate)"
+  [nzTitle]="'BREAKAGE.DETAIL.DECISION_TITLE' | translate"
   (nzOnCancel)="approvalOpen.set(false)"
-  (nzOnOk)="confirmApproval()"
-  [nzOkLoading]="actionBusy()"
+  [nzFooter]="modalFooterTpl"
 >
   <ng-container *nzModalContent>
-    <textarea nz-input rows="4" [ngModel]="approvalComment()" (ngModelChange)="approvalComment.set($event)" [placeholder]="'BREAKAGE.DETAIL.COMMENT_PH' | translate"></textarea>
+    <nz-radio-group [ngModel]="approvalAction()" (ngModelChange)="setApprovalAction($event)">
+      <label nz-radio nzValue="APPROVE">{{ 'BREAKAGE.DETAIL.APPROVE' | translate }}</label>
+      <label nz-radio nzValue="REJECT">{{ 'BREAKAGE.DETAIL.REJECT' | translate }}</label>
+    </nz-radio-group>
+    <textarea
+      nz-input
+      rows="4"
+      class="brk-d__decision-comment"
+      [ngModel]="approvalComment()"
+      (ngModelChange)="approvalComment.set($event)"
+      [placeholder]="'BREAKAGE.DETAIL.COMMENT_PH' | translate"
+    ></textarea>
+    @if (approvalAction() === 'REJECT') {
+      <p class="brk-d__decision-hint">{{ 'BREAKAGE.DETAIL.REJECT_REASON_REQUIRED' | translate }}</p>
+    }
   </ng-container>
 </nz-modal>
+
+<ng-template #modalFooterTpl>
+  <button nz-button nzType="default" type="button" (click)="approvalOpen.set(false)">
+    {{ 'COMMON.CANCEL' | translate }}
+  </button>
+  <button
+    nz-button
+    nzType="primary"
+    type="button"
+    [disabled]="actionBusy()"
+    [nzLoading]="actionBusy()"
+    (click)="setApprovalAction('APPROVE'); confirmApproval()"
+  >
+    {{ 'BREAKAGE.DETAIL.APPROVE' | translate }}
+  </button>
+  <button
+    nz-button
+    nzDanger
+    type="button"
+    [disabled]="actionBusy()"
+    [nzLoading]="actionBusy()"
+    (click)="setApprovalAction('REJECT'); confirmApproval()"
+  >
+    {{ 'BREAKAGE.DETAIL.REJECT' | translate }}
+  </button>
+</ng-template>

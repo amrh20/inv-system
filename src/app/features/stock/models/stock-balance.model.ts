@@ -1,6 +1,8 @@
 /** Row from `GET /stock-balances` (shape follows Prisma relations). */
 export interface StockBalanceItemNested {
+  id?: string;
   name: string;
+  tenantId?: string;
   barcode?: string | null;
   reorderPoint?: string | number | null;
   department?: { id: string; name: string } | null;
@@ -16,9 +18,16 @@ export interface StockBalanceRow {
   itemId: string;
   locationId: string;
   qtyOnHand: string | number;
+  qtyBlocked?: string | number;
   wacUnitCost?: string | number;
+  reorderPoint?: string | number;
   item?: StockBalanceItemNested | null;
   location?: StockBalanceLocationNested | null;
+  displayName?: string;
+  displayBarcode?: string | null;
+  displayCategoryName?: string | null;
+  displayDepartmentName?: string | null;
+  pendingCategorization?: boolean;
 }
 
 export interface StockBalancesParams {

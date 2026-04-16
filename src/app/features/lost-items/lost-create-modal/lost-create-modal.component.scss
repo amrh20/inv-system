@@ -1,0 +1,81 @@
+.lost-create__title {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lost-create__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.lost-create__field--span2,
+.lost-create__field--full {
+  grid-column: 1 / -1;
+}
+
+.lost-create__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.lost-create__control {
+  width: 100%;
+}
+
+.lost-create__search {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.lost-create__pick-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #fafafa;
+}
+
+.lost-create__pick-row--option {
+  padding: 2px 0;
+  border-bottom: 0;
+  cursor: default;
+}
+
+.lost-create__pick-meta {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.lost-create__empty {
+  padding: 10px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.lost-create__item-name {
+  font-weight: 500;
+}
+
+.lost-create__item-bc {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.lost-create__item-available {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+:host ::ng-deep .ant-select-item-option {
+  min-height: 44px;
+  height: auto;
+}
+
+:host ::ng-deep .ant-select-item-option-content {
+  overflow: visible;
+}

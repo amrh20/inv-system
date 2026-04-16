@@ -308,6 +308,11 @@
   white-space: nowrap;
 }
 
+.cell-item__meta {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+}
+
 .cell-department {
   display: inline-flex;
   align-items: center;

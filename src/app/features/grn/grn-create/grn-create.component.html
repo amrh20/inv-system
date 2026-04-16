@@ -118,13 +118,9 @@
               <div class="grn-create-page__dropdown">
                 @for (item of itemResults(); track item.id) {
                   <button type="button" class="grn-create-page__dd-item" (click)="addItem(item)">
-                    @if (item.imageUrl) {
-                      <img [src]="item.imageUrl" [alt]="item.name" class="grn-create-page__thumb" />
-                    } @else {
-                      <span class="grn-create-page__thumb grn-create-page__thumb--ph">
-                        <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
-                      </span>
-                    }
+                    <span class="grn-create-page__thumb grn-create-page__thumb--ph">
+                      <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
+                    </span>
                     <div class="grn-create-page__dd-text">
                       <div class="grn-create-page__dd-name-row">
                         <span class="grn-create-page__dd-name">{{ item.name }}</span>

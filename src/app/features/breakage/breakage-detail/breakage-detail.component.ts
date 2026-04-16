@@ -16,6 +16,7 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import {
@@ -29,11 +30,15 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-angular';
-import type { MovementStatus } from '../../../core/models/enums';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
-import type { BreakageAttachmentMeta, BreakageDetail } from '../models/breakage.model';
+import type {
+  ApprovalStepDetail,
+  BreakageAttachmentMeta,
+  BreakageDetail,
+  BreakageWorkflowStatus,
+} from '../models/breakage.model';
 import { BreakageService } from '../services/breakage.service';
 
 @Component({
@@ -49,6 +54,7 @@ import { BreakageService } from '../services/breakage.service';
     NzInputModule,
     NzModalModule,
     NzTableModule,
+    NzRadioModule,
     TranslatePipe,
     LucideAngularModule,
     HasPermissionDirective,
@@ -82,7 +88,7 @@ export class BreakageDetailComponent implements OnInit {
   readonly actionBusy = signal(false);
   readonly uploadBusy = signal(false);
   readonly approvalOpen = signal(false);
-  readonly approvalAction = signal<'APPROVE' | 'REJECT' | null>(null);
+  readonly approvalAction = signal<'APPROVE' | 'REJECT'>('APPROVE');
   readonly approvalComment = signal('');
 
   readonly attachments = signal<BreakageAttachmentMeta[]>([]);
@@ -132,14 +138,16 @@ export class BreakageDetailComponent implements OnInit {
       });
   }
 
-  statusClass(status: MovementStatus): string {
+  statusClass(status: BreakageWorkflowStatus | string): string {
     switch (status) {
       case 'DRAFT':
         return 'pending';
-      case 'PENDING_APPROVAL':
-        return 'pending';
-      case 'POSTED':
-        return 'posted';
+      case 'DEPT_APPROVED':
+      case 'COST_CONTROL_APPROVED':
+      case 'FINANCE_APPROVED':
+        return 'warning';
+      case 'APPROVED':
+        return 'active';
       case 'REJECTED':
         return 'rejected';
       case 'VOID':
@@ -168,7 +176,7 @@ export class BreakageDetailComponent implements OnInit {
   canApprove(): boolean {
     const d = this.doc();
     const u = this.auth.currentUser();
-    if (!d || !u || d.status !== 'PENDING_APPROVAL') return false;
+    if (!d || !u) return false;
     const approval = d.approvalRequests?.[0];
     if (!approval) return false;
     const stepNo = approval.currentStep;
@@ -217,8 +225,8 @@ export class BreakageDetailComponent implements OnInit {
       });
   }
 
-  openApproval(action: 'APPROVE' | 'REJECT'): void {
-    this.approvalAction.set(action);
+  openApproval(): void {
+    this.approvalAction.set('APPROVE');
     this.approvalComment.set('');
     this.approvalOpen.set(true);
   }
@@ -227,7 +235,7 @@ export class BreakageDetailComponent implements OnInit {
     const id = this.doc()?.id;
     const action = this.approvalAction();
     const comment = this.approvalComment().trim();
-    if (!id || !action) return;
+    if (!id) return;
     if (action === 'REJECT' && !comment) {
       this.message.warning(this.translate.instant('BREAKAGE.DETAIL.REJECT_REASON_REQUIRED'));
       return;
@@ -247,6 +255,30 @@ export class BreakageDetailComponent implements OnInit {
         this.message.error(e.message || this.translate.instant('BREAKAGE.DETAIL.ACTION_FAIL'));
       },
     });
+  }
+
+  setApprovalAction(action: 'APPROVE' | 'REJECT'): void {
+    this.approvalAction.set(action);
+  }
+
+  roleLabel(role: string): string {
+    return this.translate.instant(`COMMON.ROLES.${role}`);
+  }
+
+  stepStatusLabel(step: ApprovalStepDetail): string {
+    if (step.status === 'APPROVED' && step.actedByUser && step.actedAt) {
+      return this.translate.instant('BREAKAGE.DETAIL.STAMP_APPROVED', {
+        user: this.userName(step.actedByUser),
+        date: new Date(step.actedAt).toLocaleString(),
+      });
+    }
+    if (step.status === 'REJECTED' && step.actedByUser && step.actedAt) {
+      return this.translate.instant('BREAKAGE.DETAIL.STAMP_REJECTED', {
+        user: this.userName(step.actedByUser),
+        date: new Date(step.actedAt).toLocaleString(),
+      });
+    }
+    return this.translate.instant(`BREAKAGE.DETAIL.STEP_STATUS.${step.status}`);
   }
 
   voidDoc(): void {

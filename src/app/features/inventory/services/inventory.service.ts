@@ -10,6 +10,14 @@ export interface ItemsByLocationParams {
   take?: number;
 }
 
+export interface ItemByLocationSelectRow {
+  id: string;
+  name: string;
+  code?: string | null;
+  barcode?: string | null;
+  currentStock?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class InventoryService {
   private readonly http = inject(HttpClient);
@@ -34,6 +42,31 @@ export class InventoryService {
         map((res) => {
           if (!res.success || !res.data) {
             throw new Error(res.message || 'Failed to load items for location');
+          }
+          return Array.isArray(res.data) ? res.data : [];
+        }),
+      );
+  }
+
+  getItemsByLocationSelect(
+    locationId: string,
+    params?: Pick<ItemsByLocationParams, 'search'>,
+  ): Observable<ItemByLocationSelectRow[]> {
+    let httpParams = new HttpParams();
+    if (params?.search != null && params.search !== '') {
+      httpParams = httpParams.set('search', params.search);
+    }
+    return this.http
+      .get<ApiResponse<ItemByLocationSelectRow[]>>(
+        `${this.base}/items-by-locations/${encodeURIComponent(locationId)}/select`,
+        {
+          params: httpParams,
+        },
+      )
+      .pipe(
+        map((res) => {
+          if (!res.success || !res.data) {
+            throw new Error(res.message || 'Failed to load item options for location');
           }
           return Array.isArray(res.data) ? res.data : [];
         }),
