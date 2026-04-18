@@ -1,0 +1,35 @@
+@if (!hasRows()) {
+  <p class="rw-timeline__muted">{{ emptyMessageKey() | translate }}</p>
+} @else {
+  <nz-timeline>
+    @for (entry of entries(); track entry.stepNumber) {
+      <nz-timeline-item [nzColor]="timelineColor(entry)">
+        <div
+          class="rw-timeline__card"
+          [class.rw-timeline__card--highlight]="isHighlighted(entry)"
+        >
+          <div class="rw-timeline__row">
+            <span class="rw-timeline__label">{{ 'RETURNS_WORKFLOW.COL_ROLE' | translate }}</span>
+            <span class="rw-timeline__value">{{ displayRole(entry.roleCode) }}</span>
+          </div>
+          @if (entry.userDisplayName) {
+            <div class="rw-timeline__row">
+              <span class="rw-timeline__label">{{ 'RETURNS_WORKFLOW.ACTED_BY' | translate }}</span>
+              <span class="rw-timeline__value">{{ entry.userDisplayName }}</span>
+            </div>
+          }
+          <div class="rw-timeline__row">
+            <span class="rw-timeline__label">{{ 'RETURNS_WORKFLOW.COL_ACTION' | translate }}</span>
+            <span class="rw-timeline__value">{{ actionLabelKey(entry) | translate }}</span>
+          </div>
+          <div class="rw-timeline__row rw-timeline__row--block">
+            <span class="rw-timeline__label">{{ 'RETURNS_WORKFLOW.COL_COMMENTS' | translate }}</span>
+            <span class="rw-timeline__value rw-timeline__value--multiline">{{
+              entry.comment || ('RETURNS_WORKFLOW.NO_COMMENT' | translate)
+            }}</span>
+          </div>
+        </div>
+      </nz-timeline-item>
+    }
+  </nz-timeline>
+}

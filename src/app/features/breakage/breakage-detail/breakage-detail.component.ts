@@ -33,12 +33,16 @@ import {
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
-import type {
-  ApprovalStepDetail,
-  BreakageAttachmentMeta,
-  BreakageDetail,
-  BreakageWorkflowStatus,
-} from '../models/breakage.model';
+import { ReturnsWorkflowApproveModalComponent } from '../../../shared/components/returns-workflow-approve-modal/returns-workflow-approve-modal.component';
+import { ReturnsWorkflowTimelineComponent } from '../../../shared/components/returns-workflow-timeline/returns-workflow-timeline.component';
+import type { ReturnsAccountabilityType } from '../../../shared/models/returns-accountability.model';
+import {
+  pendingApprovalStepFromContext,
+  requiredRoleCodeFromStep,
+  userMatchesCurrentApprovalChainStep,
+  WORKFLOW_PERMISSION_APPROVE_BREAKAGE,
+} from '../../../shared/utils/returns-workflow.helpers';
+import type { BreakageAttachmentMeta, BreakageDetail, BreakageWorkflowStatus } from '../models/breakage.model';
 import { BreakageService } from '../services/breakage.service';
 
 @Component({
@@ -58,6 +62,8 @@ import { BreakageService } from '../services/breakage.service';
     TranslatePipe,
     LucideAngularModule,
     HasPermissionDirective,
+    ReturnsWorkflowTimelineComponent,
+    ReturnsWorkflowApproveModalComponent,
   ],
   templateUrl: './breakage-detail.component.html',
   styleUrl: './breakage-detail.component.scss',
@@ -87,13 +93,22 @@ export class BreakageDetailComponent implements OnInit {
   readonly error = signal('');
   readonly actionBusy = signal(false);
   readonly uploadBusy = signal(false);
+  /** Internal / non–get-pass breakage: combined approve–reject modal. */
   readonly approvalOpen = signal(false);
   readonly approvalAction = signal<'APPROVE' | 'REJECT'>('APPROVE');
   readonly approvalComment = signal('');
+  /** Unified workflow (get-pass returns or approval chain): accountability modal. */
+  readonly returnsWorkflowOpen = signal(false);
+  readonly returnsWorkflowSubmitting = signal(false);
+  /** Unified workflow: reject with comment. */
+  readonly rejectModalOpen = signal(false);
+  readonly rejectComment = signal('');
 
   readonly attachments = signal<BreakageAttachmentMeta[]>([]);
 
   readonly serverOrigin = environment.apiUrl.replace(/\/api\/?$/, '');
+
+  readonly permApproveBreakage = WORKFLOW_PERMISSION_APPROVE_BREAKAGE;
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -177,12 +192,20 @@ export class BreakageDetailComponent implements OnInit {
     const d = this.doc();
     const u = this.auth.currentUser();
     if (!d || !u) return false;
-    const approval = d.approvalRequests?.[0];
-    if (!approval) return false;
-    const stepNo = approval.currentStep;
-    const step = approval.steps?.find((s) => s.stepNumber === stepNo);
-    if (!step || step.status !== 'PENDING') return false;
-    return this.auth.hasPermission('BREAKAGE_APPROVE_REJECT');
+    if (!this.auth.hasPermission(WORKFLOW_PERMISSION_APPROVE_BREAKAGE)) return false;
+    const step = pendingApprovalStepFromContext(d);
+    if (!step) return false;
+    return userMatchesCurrentApprovalChainStep(u.role, requiredRoleCodeFromStep(step), d);
+  }
+
+  private hasApprovalRequestChain(d: BreakageDetail): boolean {
+    const steps = d.approvalRequests?.[0]?.steps;
+    return Array.isArray(steps) && steps.length > 0;
+  }
+
+  /** Unified workflow UI: get-pass returns or any breakage with an approval chain. */
+  shouldUseUnifiedBreakageUi(d: BreakageDetail): boolean {
+    return d.sourceType === 'GET_PASS_RETURN' || this.hasApprovalRequestChain(d);
   }
 
   canVoid(): boolean {
@@ -225,30 +248,111 @@ export class BreakageDetailComponent implements OnInit {
       });
   }
 
-  openApproval(): void {
+  openLegacyApprovalModal(): void {
     this.approvalAction.set('APPROVE');
     this.approvalComment.set('');
     this.approvalOpen.set(true);
   }
 
-  confirmApproval(): void {
+  openReturnsWorkflowApprove(): void {
+    this.returnsWorkflowOpen.set(true);
+  }
+
+  closeReturnsWorkflow(): void {
+    if (this.returnsWorkflowSubmitting()) return;
+    this.returnsWorkflowOpen.set(false);
+  }
+
+  onReturnsWorkflowSubmitted(accountability: ReturnsAccountabilityType): void {
+    const d = this.doc();
+    const id = d?.id;
+    if (!id || !d) return;
+    this.returnsWorkflowSubmitting.set(true);
+    this.api
+      .approveAtCurrentStep(
+        id,
+        {
+          sourceType: d.sourceType,
+          status: String(d.status),
+          approvalRequests: d.approvalRequests,
+        },
+        { accountability },
+      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.returnsWorkflowOpen.set(false);
+          this.returnsWorkflowSubmitting.set(false);
+          this.message.success(this.translate.instant('BREAKAGE.DETAIL.ACTION_OK'));
+          this.fetch(id);
+        },
+        error: (e: Error) => {
+          this.returnsWorkflowSubmitting.set(false);
+          this.message.error(e.message || this.translate.instant('BREAKAGE.DETAIL.ACTION_FAIL'));
+        },
+      });
+  }
+
+  openRejectModal(): void {
+    this.rejectComment.set('');
+    this.rejectModalOpen.set(true);
+  }
+
+  confirmReject(): void {
     const id = this.doc()?.id;
+    const comment = this.rejectComment().trim();
+    if (!id) return;
+    if (!comment) {
+      this.message.warning(this.translate.instant('BREAKAGE.DETAIL.REJECT_REASON_REQUIRED'));
+      return;
+    }
+    this.actionBusy.set(true);
+    this.api
+      .reject(id, comment)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.rejectModalOpen.set(false);
+          this.actionBusy.set(false);
+          this.message.success(this.translate.instant('BREAKAGE.DETAIL.ACTION_OK'));
+          this.fetch(id);
+        },
+        error: (e: Error) => {
+          this.actionBusy.set(false);
+          this.message.error(e.message || this.translate.instant('BREAKAGE.DETAIL.ACTION_FAIL'));
+        },
+      });
+  }
+
+  confirmApproval(): void {
+    const d = this.doc();
+    const id = d?.id;
     const action = this.approvalAction();
     const comment = this.approvalComment().trim();
-    if (!id) return;
+    if (!id || !d) return;
     if (action === 'REJECT' && !comment) {
       this.message.warning(this.translate.instant('BREAKAGE.DETAIL.REJECT_REASON_REQUIRED'));
       return;
     }
     this.actionBusy.set(true);
-    const req = action === 'APPROVE' ? this.api.approve(id, comment) : this.api.reject(id, comment);
+    const req =
+      action === 'APPROVE'
+        ? this.api.approveAtCurrentStep(
+            id,
+            {
+              sourceType: d.sourceType,
+              status: String(d.status),
+              approvalRequests: d.approvalRequests,
+            },
+            { comment: comment || undefined },
+          )
+        : this.api.reject(id, comment);
     req.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (d) => {
-        this.doc.set(d);
-        this.attachments.set(this.parseAttachments(d));
+      next: () => {
         this.approvalOpen.set(false);
         this.actionBusy.set(false);
         this.message.success(this.translate.instant('BREAKAGE.DETAIL.ACTION_OK'));
+        this.fetch(id);
       },
       error: (e: Error) => {
         this.actionBusy.set(false);
@@ -259,26 +363,6 @@ export class BreakageDetailComponent implements OnInit {
 
   setApprovalAction(action: 'APPROVE' | 'REJECT'): void {
     this.approvalAction.set(action);
-  }
-
-  roleLabel(role: string): string {
-    return this.translate.instant(`COMMON.ROLES.${role}`);
-  }
-
-  stepStatusLabel(step: ApprovalStepDetail): string {
-    if (step.status === 'APPROVED' && step.actedByUser && step.actedAt) {
-      return this.translate.instant('BREAKAGE.DETAIL.STAMP_APPROVED', {
-        user: this.userName(step.actedByUser),
-        date: new Date(step.actedAt).toLocaleString(),
-      });
-    }
-    if (step.status === 'REJECTED' && step.actedByUser && step.actedAt) {
-      return this.translate.instant('BREAKAGE.DETAIL.STAMP_REJECTED', {
-        user: this.userName(step.actedByUser),
-        date: new Date(step.actedAt).toLocaleString(),
-      });
-    }
-    return this.translate.instant(`BREAKAGE.DETAIL.STEP_STATUS.${step.status}`);
   }
 
   voidDoc(): void {

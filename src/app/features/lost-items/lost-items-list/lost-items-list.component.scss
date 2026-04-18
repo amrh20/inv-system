@@ -33,6 +33,21 @@
   gap: 8px;
 }
 
+.li-list__actions-returns {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.li-list__processed-tag {
+  margin: 0;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.3;
+}
+
 .li-list__filters {
   display: flex;
   flex-direction: column;
@@ -128,6 +143,11 @@
 .li-list__pager-meta {
   font-size: 13px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+.li-list__doc-link {
+  color: var(--brand-primary, #1677ff);
+  font-weight: 500;
 }
 
 .li-list__spin {

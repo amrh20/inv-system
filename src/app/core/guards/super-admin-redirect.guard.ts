@@ -1,12 +1,16 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import {
+  BREAKAGE_NAV_PERMISSIONS_ANY,
+  LOST_ITEMS_NAV_PERMISSIONS_ANY,
+} from '../constants/approvals-nav-permissions';
 import { AuthService } from '../services/auth.service';
 
 /**
  * When user navigates to '' (root), redirect based on role and permissions:
  * - SUPER_ADMIN → /admin/tenants
  * - VIEW_DASHBOARD → /dashboard
- * - Else GET_PASS_VIEW → /get-passes, BREAKAGE_VIEW → /breakage, LOST_ITEMS_VIEW → /lost-items, else /forbidden
+ * - Else GET_PASS_VIEW → /get-passes, then Breakage / Lost Items if any matching permission, else /forbidden
  */
 export const defaultRedirectGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
@@ -21,10 +25,10 @@ export const defaultRedirectGuard: CanActivateFn = () => {
   if (auth.hasPermission('GET_PASS_VIEW')) {
     return router.createUrlTree(['/get-passes']);
   }
-  if (auth.hasPermission('BREAKAGE_VIEW')) {
+  if (BREAKAGE_NAV_PERMISSIONS_ANY.some((p) => auth.hasPermission(p))) {
     return router.createUrlTree(['/breakage']);
   }
-  if (auth.hasPermission('LOST_ITEMS_VIEW')) {
+  if (LOST_ITEMS_NAV_PERMISSIONS_ANY.some((p) => auth.hasPermission(p))) {
     return router.createUrlTree(['/lost-items']);
   }
   return router.createUrlTree(['/forbidden']);

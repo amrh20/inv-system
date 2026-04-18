@@ -1,0 +1,188 @@
+@if (loading()) {
+  <p class="li-det__muted">{{ 'LOST_ITEMS.DETAIL.LOADING' | translate }}</p>
+} @else if (error()) {
+  <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon />
+} @else if (doc(); as d) {
+  <div class="li-det">
+    <div class="li-det__head">
+      <button nz-button nzType="text" type="button" (click)="back()">
+        <lucide-icon [img]="lucideBack" [size]="18" [strokeWidth]="2" />
+      </button>
+      <h1 class="li-det__title">
+        <lucide-icon [img]="lucidePackageX" [size]="22" class="text-brand-error" [strokeWidth]="2" />
+        {{ 'LOST_ITEMS.DETAIL.TITLE' | translate }} {{ d.documentNo }}
+      </h1>
+      <span class="status-badge" [ngClass]="'status-' + statusBadgeClass(d.status)">
+        {{ 'LOST_ITEMS.STATUS.' + d.status | translate }}
+      </span>
+    </div>
+
+    @if (canTakeAction()) {
+      <div class="li-det__actions">
+        @if (shouldUseUnifiedLostApprovalUi(d)) {
+          <button
+            *appHasPermission="permApproveLost"
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="actionBusy() || returnsWorkflowSubmitting()"
+            (click)="openReturnsWorkflowApprove()"
+          >
+            <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+            {{ 'RETURNS_WORKFLOW.TAKE_ACTION' | translate }}
+          </button>
+          <button
+            *appHasPermission="permApproveLost"
+            nz-button
+            nzDanger
+            nzType="default"
+            type="button"
+            [disabled]="actionBusy() || returnsWorkflowSubmitting()"
+            (click)="openRejectModal()"
+          >
+            <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
+            {{ 'LOST_ITEMS.DETAIL.REJECT' | translate }}
+          </button>
+        } @else {
+          <button
+            *appHasPermission="permApproveLost"
+            nz-button
+            nzType="primary"
+            type="button"
+            [disabled]="actionBusy()"
+            (click)="confirmApproveInternal()"
+          >
+            <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+            {{ 'LOST_ITEMS.LIST.APPROVE' | translate }}
+          </button>
+        }
+      </div>
+    }
+
+    <div class="li-det__grid">
+      <div class="li-det__main">
+        <div class="li-det__card">
+          <h2 class="li-det__h2">{{ 'LOST_ITEMS.DETAIL.INFO' | translate }}</h2>
+          <div class="li-det__info">
+            <div>
+              <div class="li-det__label">{{ 'LOST_ITEMS.DETAIL.CREATED_BY' | translate }}</div>
+              <div>{{ userName(d.createdByUser) }}</div>
+            </div>
+            <div>
+              <div class="li-det__label">{{ 'LOST_ITEMS.DETAIL.CREATED_AT' | translate }}</div>
+              <div>{{ d.createdAt | date: 'medium' }}</div>
+            </div>
+            <div>
+              <div class="li-det__label">{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</div>
+              <div>{{ sourceLabel(d) }}</div>
+            </div>
+            @if (d.getPassId || d.getPass?.id) {
+              <div>
+                <div class="li-det__label">{{ 'GET_PASS.LIST.COL_PASS' | translate }}</div>
+                <div>
+                  <a [routerLink]="['/get-passes', d.getPass?.id ?? d.getPassId]" class="li-det__link">{{
+                    d.getPass?.passNo ?? '—'
+                  }}</a>
+                </div>
+              </div>
+            }
+            <div class="li-det__full">
+              <div class="li-det__label">{{ 'LOST_ITEMS.DETAIL.REASON' | translate }}</div>
+              <div>{{ d.reason ?? '—' }}</div>
+            </div>
+            @if (d.notes) {
+              <div class="li-det__full">
+                <div class="li-det__label">{{ 'COMMON.NOTES' | translate }}</div>
+                <div>{{ d.notes }}</div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="li-det__card">
+          <h2 class="li-det__h2">{{ 'LOST_ITEMS.DETAIL.LINES_TITLE' | translate }} ({{ linesForTable(d).length }})</h2>
+          <nz-table [nzData]="linesForTable(d)" [nzShowPagination]="false" nzSize="middle">
+            <thead>
+              <tr>
+                <th>{{ 'LOST_ITEMS.DETAIL.COL_ITEM' | translate }}</th>
+                <th>{{ 'LOST_ITEMS.DETAIL.COL_BARCODE' | translate }}</th>
+                <th nzAlign="right">{{ 'LOST_ITEMS.DETAIL.COL_QTY' | translate }}</th>
+                <th>{{ 'LOST_ITEMS.DETAIL.COL_LOC' | translate }}</th>
+                <th>{{ 'LOST_ITEMS.DETAIL.COL_NOTES' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of linesForTable(d); track line.id) {
+                <tr>
+                  <td>{{ line.item?.name ?? '—' }}</td>
+                  <td class="li-det__muted">{{ line.item?.barcode ?? '—' }}</td>
+                  <td nzAlign="right" class="text-brand-error">{{ num(line.qtyInBaseUnit) }}</td>
+                  <td>{{ line.location?.name ?? '—' }}</td>
+                  <td>{{ line.notes ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </nz-table>
+        </div>
+      </div>
+
+      <div class="li-det__side">
+        <div class="li-det__card">
+          <h2 class="li-det__h2">
+            <lucide-icon [img]="lucideClock" [size]="18" [strokeWidth]="2" />
+            {{ 'LOST_ITEMS.DETAIL.TIMELINE' | translate }}
+          </h2>
+          <app-returns-workflow-timeline
+            [documentContext]="d"
+            [emptyMessageKey]="'LOST_ITEMS.DETAIL.NO_WORKFLOW'"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-returns-workflow-approve-modal
+    [open]="returnsWorkflowOpen()"
+    [contextLoading]="false"
+    [submitting]="returnsWorkflowSubmitting()"
+    [documentContext]="doc()"
+    (closed)="closeReturnsWorkflow()"
+    (submitted)="onReturnsWorkflowSubmitted($event)"
+  />
+
+  <nz-modal
+    [nzVisible]="rejectModalOpen()"
+    [nzTitle]="'LOST_ITEMS.DETAIL.REJECT' | translate"
+    (nzOnCancel)="rejectModalOpen.set(false)"
+    [nzFooter]="lostRejectFooterTpl"
+  >
+    <ng-container *nzModalContent>
+      <textarea
+        nz-input
+        rows="4"
+        class="li-det__reject-comment"
+        [ngModel]="rejectComment()"
+        (ngModelChange)="rejectComment.set($event)"
+        [placeholder]="'LOST_ITEMS.DETAIL.COMMENT_PH' | translate"
+      ></textarea>
+      <p class="li-det__hint">{{ 'LOST_ITEMS.DETAIL.REJECT_REASON_REQUIRED' | translate }}</p>
+    </ng-container>
+  </nz-modal>
+
+  <ng-template #lostRejectFooterTpl>
+    <button nz-button nzType="default" type="button" (click)="rejectModalOpen.set(false)">
+      {{ 'COMMON.CANCEL' | translate }}
+    </button>
+    <button
+      nz-button
+      nzDanger
+      nzType="primary"
+      type="button"
+      [disabled]="actionBusy()"
+      [nzLoading]="actionBusy()"
+      (click)="confirmReject()"
+    >
+      {{ 'LOST_ITEMS.DETAIL.REJECT' | translate }}
+    </button>
+  </ng-template>
+}

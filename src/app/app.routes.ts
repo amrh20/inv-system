@@ -1,4 +1,8 @@
 import { Routes } from '@angular/router';
+import {
+  BREAKAGE_NAV_PERMISSIONS_ANY,
+  LOST_ITEMS_NAV_PERMISSIONS_ANY,
+} from './core/constants/approvals-nav-permissions';
 import { authGuard } from './core/guards/auth.guard';
 import { blockSuperAdminDashboardGuard } from './core/guards/block-super-admin-dashboard.guard';
 import { permissionGuard } from './core/guards/permission.guard';
@@ -266,7 +270,7 @@ export const routes: Routes = [
         path: 'breakage',
         canActivate: [permissionGuard],
         data: {
-          permissionsAny: [ROUTE_PERMISSIONS.inventoryView, ROUTE_PERMISSIONS.breakageView],
+          permissionsAny: [...BREAKAGE_NAV_PERMISSIONS_ANY],
         },
         children: [
           {
@@ -290,11 +294,27 @@ export const routes: Routes = [
       {
         path: 'lost-items',
         canActivate: [permissionGuard],
-        loadComponent: () =>
-          import('./features/lost-items/lost-items-list/lost-items-list.component').then(
-            (m) => m.LostItemsListComponent,
-          ),
-        data: { breadcrumb: 'LOST_ITEMS.LIST.TITLE', permission: ROUTE_PERMISSIONS.lostItemsView },
+        data: {
+          permissionsAny: [...LOST_ITEMS_NAV_PERMISSIONS_ANY],
+        },
+        children: [
+          {
+            path: '',
+            loadComponent: () =>
+              import('./features/lost-items/lost-items-list/lost-items-list.component').then(
+                (m) => m.LostItemsListComponent,
+              ),
+            data: { breadcrumb: 'LOST_ITEMS.LIST.TITLE' },
+          },
+          {
+            path: ':id',
+            loadComponent: () =>
+              import('./features/lost-items/lost-items-detail/lost-items-detail.component').then(
+                (m) => m.LostItemsDetailComponent,
+              ),
+            data: { breadcrumb: 'LOST_ITEMS.DETAIL.BREADCRUMB' },
+          },
+        ],
       },
       {
         path: 'get-passes',

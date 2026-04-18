@@ -53,18 +53,20 @@
         </button>
       }
     </div>
-    <div class="brk-list__tab-row">
-      @for (tab of statusTabs; track tab) {
-        <button
-          nz-button
-          type="button"
-          [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
-          (click)="setStatusTab(tab)"
-        >
-          {{ 'BREAKAGE.STATUS.' + tab | translate }}
-        </button>
-      }
-    </div>
+    @if (showWorkflowStatusTabBar()) {
+      <div class="brk-list__tab-row">
+        @for (tab of visibleStatusTabs(); track tab) {
+          <button
+            nz-button
+            type="button"
+            [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
+            (click)="setStatusTab(tab)"
+          >
+            {{ 'BREAKAGE.STATUS.' + workflowStatusTabLabelSuffix(tab) | translate }}
+          </button>
+        }
+      </div>
+    }
     <div class="brk-list__search-wrap">
       <lucide-icon [img]="lucideSearch" [size]="18" class="brk-list__search-icon" />
       <input
@@ -148,10 +150,48 @@
             </td>
             <td class="brk-list__truncate">{{ doc.reason ?? '—' }}</td>
             <td nzAlign="center">{{ doc._count?.lines ?? 0 }}</td>
-            <td nzAlign="right">
-              <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
-                <lucide-icon [img]="lucideEye" [size]="16" />
-              </button>
+            <td nzAlign="right" class="brk-list__actions-returns">
+              @if (canTakeBreakageWorkflowAction(doc)) {
+                <button
+                  nz-button
+                  nzType="text"
+                  type="button"
+                  nz-dropdown
+                  [nzDropdownMenu]="brkInternalActionsMenu"
+                  nzTrigger="click"
+                  nzPlacement="bottomRight"
+                  (click)="$event.stopPropagation()"
+                  [nz-tooltip]="'COMMON.ACTIONS' | translate"
+                >
+                  <lucide-icon [img]="lucideEllipsisVertical" [size]="16" [strokeWidth]="2" />
+                </button>
+                <nz-dropdown-menu #brkInternalActionsMenu="nzDropdownMenu">
+                  <ul nz-menu>
+                    <li nz-menu-item (click)="goDetail(doc); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideEye" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.VIEW_DOCUMENT' | translate }}</span>
+                    </li>
+                    <li nz-menu-item (click)="openReturnsBreakageApprove(doc); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.TAKE_ACTION' | translate }}</span>
+                    </li>
+                  </ul>
+                </nz-dropdown-menu>
+              } @else if (returnsBreakageWaitingTagRole(doc); as nextRole) {
+                <nz-tag nzColor="success" class="brk-list__processed-tag">
+                  {{
+                    'RETURNS_WORKFLOW.PROCESSED_WAITING'
+                      | translate: { role: workflowRoleLabel(nextRole) }
+                  }}
+                </nz-tag>
+                <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                </button>
+              } @else {
+                <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                </button>
+              }
             </td>
           } @else {
             <td class="brk-list__mono text-brand-primary">{{ doc.documentNo }}</td>
@@ -179,10 +219,48 @@
                 —
               }
             </td>
-            <td nzAlign="right">
-              <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
-                <lucide-icon [img]="lucideEye" [size]="16" />
-              </button>
+            <td nzAlign="right" class="brk-list__actions-returns">
+              @if (canTakeBreakageWorkflowAction(doc)) {
+                <button
+                  nz-button
+                  nzType="text"
+                  type="button"
+                  nz-dropdown
+                  [nzDropdownMenu]="brkReturnsActionsMenu"
+                  nzTrigger="click"
+                  nzPlacement="bottomRight"
+                  (click)="$event.stopPropagation()"
+                  [nz-tooltip]="'COMMON.ACTIONS' | translate"
+                >
+                  <lucide-icon [img]="lucideEllipsisVertical" [size]="16" [strokeWidth]="2" />
+                </button>
+                <nz-dropdown-menu #brkReturnsActionsMenu="nzDropdownMenu">
+                  <ul nz-menu>
+                    <li nz-menu-item (click)="goDetail(doc); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideEye" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.VIEW_DOCUMENT' | translate }}</span>
+                    </li>
+                    <li nz-menu-item (click)="openReturnsBreakageApprove(doc); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.TAKE_ACTION' | translate }}</span>
+                    </li>
+                  </ul>
+                </nz-dropdown-menu>
+              } @else if (returnsBreakageWaitingTagRole(doc); as nextRole) {
+                <nz-tag nzColor="success" class="brk-list__processed-tag">
+                  {{
+                    'RETURNS_WORKFLOW.PROCESSED_WAITING'
+                      | translate: { role: workflowRoleLabel(nextRole) }
+                  }}
+                </nz-tag>
+                <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                </button>
+              } @else {
+                <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                </button>
+              }
             </td>
           }
         </tr>
@@ -211,4 +289,13 @@
   [open]="createOpen()"
   (closed)="onCreateClosed()"
   (created)="onCreated($event)"
+/>
+
+<app-returns-workflow-approve-modal
+  [open]="returnsModalOpen()"
+  [contextLoading]="returnsContextLoading()"
+  [submitting]="returnsSubmitting()"
+  [documentContext]="returnsModalDetail()"
+  (closed)="closeReturnsBreakageModal()"
+  (submitted)="onReturnsBreakageSubmitted($event)"
 />

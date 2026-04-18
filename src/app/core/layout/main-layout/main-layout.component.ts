@@ -98,6 +98,7 @@ export class MainLayoutComponent {
         '/grn',
         '/transfers',
         '/breakage',
+        '/lost-items',
         '/get-passes',
       ]),
       reports: this.matchesPrefixes(p, ['/reports', '/stock-report', '/period-close']),

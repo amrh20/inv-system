@@ -17,6 +17,26 @@ export interface BreakageUserRef {
   role?: string;
 }
 
+export interface ApprovalStepDetail {
+  id: string;
+  stepNumber: number;
+  requiredRole: { code: string } | string;
+  status: string;
+  actedAt?: string | null;
+  comment?: string | null;
+  /** Set for get-pass return approvals when the step records accountability. */
+  accountabilityType?: string | null;
+  actedByUser?: BreakageUserRef | null;
+}
+
+export interface BreakageApprovalRequest {
+  id: string;
+  currentStep: number;
+  totalSteps: number;
+  status: string;
+  steps: ApprovalStepDetail[];
+}
+
 export interface BreakageListRow {
   id: string;
   documentNo: string;
@@ -32,6 +52,8 @@ export interface BreakageListRow {
   totalQtyDamaged?: number | null;
   createdByUser?: BreakageUserRef | null;
   _count?: { lines: number };
+  /** Present for tenant-wide approvers; drives list workflow actions. */
+  approvalRequests?: BreakageApprovalRequest[];
 }
 
 export interface BreakageLineDetail {
@@ -42,24 +64,6 @@ export interface BreakageLineDetail {
   notes?: string | null;
   item?: { id: string; name: string; barcode?: string | null } | null;
   location?: { id: string; name: string } | null;
-}
-
-export interface ApprovalStepDetail {
-  id: string;
-  stepNumber: number;
-  requiredRole: string;
-  status: string;
-  actedAt?: string | null;
-  comment?: string | null;
-  actedByUser?: BreakageUserRef | null;
-}
-
-export interface BreakageApprovalRequest {
-  id: string;
-  currentStep: number;
-  totalSteps: number;
-  status: string;
-  steps: ApprovalStepDetail[];
 }
 
 export interface BreakageAttachmentMeta {

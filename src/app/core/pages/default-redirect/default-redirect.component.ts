@@ -1,5 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import {
+  BREAKAGE_NAV_PERMISSIONS_ANY,
+  LOST_ITEMS_NAV_PERMISSIONS_ANY,
+} from '../../constants/approvals-nav-permissions';
 import { AuthService } from '../../services/auth.service';
 
 /**
@@ -24,9 +28,9 @@ export class DefaultRedirectComponent {
       target = '/dashboard';
     } else if (this.auth.hasPermission('GET_PASS_VIEW')) {
       target = '/get-passes';
-    } else if (this.auth.hasPermission('BREAKAGE_VIEW')) {
+    } else if (BREAKAGE_NAV_PERMISSIONS_ANY.some((p) => this.auth.hasPermission(p))) {
       target = '/breakage';
-    } else if (this.auth.hasPermission('LOST_ITEMS_VIEW')) {
+    } else if (LOST_ITEMS_NAV_PERMISSIONS_ANY.some((p) => this.auth.hasPermission(p))) {
       target = '/lost-items';
     }
     void this.router.navigateByUrl(target, { replaceUrl: true });

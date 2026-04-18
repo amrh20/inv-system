@@ -29,17 +29,43 @@
           </button>
         }
         @if (canApprove()) {
-          <button
-            *appHasPermission="'BREAKAGE_APPROVE_REJECT'"
-            nz-button
-            nzType="primary"
-            type="button"
-            [disabled]="actionBusy()"
-            (click)="openApproval()"
-          >
-            <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
-            {{ 'BREAKAGE.DETAIL.DECIDE' | translate }}
-          </button>
+          @if (shouldUseUnifiedBreakageUi(d)) {
+            <button
+              *appHasPermission="permApproveBreakage"
+              nz-button
+              nzType="primary"
+              type="button"
+              [disabled]="actionBusy() || returnsWorkflowSubmitting()"
+              (click)="openReturnsWorkflowApprove()"
+            >
+              <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+              {{ 'RETURNS_WORKFLOW.TAKE_ACTION' | translate }}
+            </button>
+            <button
+              *appHasPermission="permApproveBreakage"
+              nz-button
+              nzDanger
+              nzType="default"
+              type="button"
+              [disabled]="actionBusy() || returnsWorkflowSubmitting()"
+              (click)="openRejectModal()"
+            >
+              <lucide-icon [img]="lucideX" [size]="14" [strokeWidth]="2" />
+              {{ 'BREAKAGE.DETAIL.REJECT' | translate }}
+            </button>
+          } @else {
+            <button
+              *appHasPermission="permApproveBreakage"
+              nz-button
+              nzType="primary"
+              type="button"
+              [disabled]="actionBusy()"
+              (click)="openLegacyApprovalModal()"
+            >
+              <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+              {{ 'BREAKAGE.DETAIL.DECIDE' | translate }}
+            </button>
+          }
         }
       </div>
       <div class="brk-d__actions-right">
@@ -134,26 +160,10 @@
             <lucide-icon [img]="lucideClock" [size]="18" [strokeWidth]="2" />
             {{ 'BREAKAGE.DETAIL.TIMELINE' | translate }}
           </h2>
-          @if (!d.approvalRequests?.length) {
-            <p class="brk-d__muted">{{ 'BREAKAGE.DETAIL.NO_WORKFLOW' | translate }}</p>
-          } @else {
-            @for (ap of d.approvalRequests; track ap.id) {
-              @for (step of ap.steps; track step.id) {
-                <div class="brk-d__step">
-                  <div class="brk-d__dot" [class.brk-d__dot--ok]="step.status === 'APPROVED'" [class.brk-d__dot--bad]="step.status === 'REJECTED'"></div>
-                  <div>
-                    <div class="brk-d__step-title">
-                      {{ 'BREAKAGE.DETAIL.STEP' | translate: { n: step.stepNumber, role: roleLabel(step.requiredRole) } }}
-                    </div>
-                    <div class="brk-d__stamp">{{ stepStatusLabel(step) }}</div>
-                    @if (step.comment) {
-                      <div class="brk-d__comment">"{{ step.comment }}"</div>
-                    }
-                  </div>
-                </div>
-              }
-            }
-          }
+          <app-returns-workflow-timeline
+            [documentContext]="d"
+            [emptyMessageKey]="'BREAKAGE.DETAIL.NO_WORKFLOW'"
+          />
         </div>
 
         <div class="brk-d__card">
@@ -199,6 +209,51 @@
     </div>
   </div>
 }
+
+<app-returns-workflow-approve-modal
+  [open]="returnsWorkflowOpen()"
+  [contextLoading]="false"
+  [submitting]="returnsWorkflowSubmitting()"
+  [documentContext]="doc()"
+  (closed)="closeReturnsWorkflow()"
+  (submitted)="onReturnsWorkflowSubmitted($event)"
+/>
+
+<nz-modal
+  [nzVisible]="rejectModalOpen()"
+  [nzTitle]="'BREAKAGE.DETAIL.REJECT' | translate"
+  (nzOnCancel)="rejectModalOpen.set(false)"
+  [nzFooter]="rejectFooterTpl"
+>
+  <ng-container *nzModalContent>
+    <textarea
+      nz-input
+      rows="4"
+      class="brk-d__decision-comment"
+      [ngModel]="rejectComment()"
+      (ngModelChange)="rejectComment.set($event)"
+      [placeholder]="'BREAKAGE.DETAIL.COMMENT_PH' | translate"
+    ></textarea>
+    <p class="brk-d__decision-hint">{{ 'BREAKAGE.DETAIL.REJECT_REASON_REQUIRED' | translate }}</p>
+  </ng-container>
+</nz-modal>
+
+<ng-template #rejectFooterTpl>
+  <button nz-button nzType="default" type="button" (click)="rejectModalOpen.set(false)">
+    {{ 'COMMON.CANCEL' | translate }}
+  </button>
+  <button
+    nz-button
+    nzDanger
+    nzType="primary"
+    type="button"
+    [disabled]="actionBusy()"
+    [nzLoading]="actionBusy()"
+    (click)="confirmReject()"
+  >
+    {{ 'BREAKAGE.DETAIL.REJECT' | translate }}
+  </button>
+</ng-template>
 
 <nz-modal
   [nzVisible]="approvalOpen()"

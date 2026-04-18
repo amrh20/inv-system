@@ -43,18 +43,20 @@
         </button>
       }
     </div>
-    <div class="li-list__tab-row">
-      @for (tab of statusTabs; track tab) {
-        <button
-          nz-button
-          type="button"
-          [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
-          (click)="setStatusTab(tab)"
-        >
-          {{ 'LOST_ITEMS.STATUS.' + tab | translate }}
-        </button>
-      }
-    </div>
+    @if (showWorkflowStatusTabBar()) {
+      <div class="li-list__tab-row">
+        @for (tab of visibleStatusTabs(); track tab) {
+          <button
+            nz-button
+            type="button"
+            [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
+            (click)="setStatusTab(tab)"
+          >
+            {{ 'LOST_ITEMS.STATUS.' + workflowStatusTabLabelSuffix(tab) | translate }}
+          </button>
+        }
+      </div>
+    }
     <div class="li-list__search-wrap">
       <lucide-icon [img]="lucideSearch" [size]="18" class="li-list__search-icon" />
       <input
@@ -95,7 +97,7 @@
           <th>{{ 'COMMON.STATUS' | translate }}</th>
           <th>{{ 'COMMON.DATE' | translate }}</th>
           <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
-          <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+          <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
         } @else {
           <th>{{ 'LOST_ITEMS.LIST.COL_DOC' | translate }}</th>
           <th>{{ 'COMMON.DATE' | translate }}</th>
@@ -105,7 +107,7 @@
           <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
           <th>{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
           <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
-          <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+          <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
         }
       </tr>
     </thead>
@@ -113,7 +115,9 @@
       @for (row of rows(); track row.id) {
         <tr>
           @if (activeSourceTab() === 'INTERNAL') {
-            <td>{{ row.documentNo }}</td>
+            <td>
+              <a [routerLink]="['/lost-items', row.id]" class="li-list__doc-link">{{ row.documentNo }}</a>
+            </td>
             <td>
               <div class="li-list__item-name">{{ row.itemName }}</div>
               @if (row.itemBarcode) {
@@ -137,18 +141,53 @@
             </td>
             <td>{{ row.createdAt | date: 'medium' }}</td>
             <td>{{ displayUser(row) }}</td>
-            <td>
-              @if (canApprove(row)) {
-                <button nz-button nzType="default" type="button" (click)="approve(row)">
-                  <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
-                  {{ 'LOST_ITEMS.LIST.APPROVE' | translate }}
+            <td nzAlign="right" class="li-list__actions-returns">
+              @if (canTakeLostWorkflowAction(row)) {
+                <button
+                  nz-button
+                  nzType="text"
+                  type="button"
+                  nz-dropdown
+                  [nzDropdownMenu]="liInternalActionsMenu"
+                  nzTrigger="click"
+                  nzPlacement="bottomRight"
+                  (click)="$event.stopPropagation()"
+                  [nz-tooltip]="'COMMON.ACTIONS' | translate"
+                >
+                  <lucide-icon [img]="lucideEllipsisVertical" [size]="16" [strokeWidth]="2" />
+                </button>
+                <nz-dropdown-menu #liInternalActionsMenu="nzDropdownMenu">
+                  <ul nz-menu>
+                    <li nz-menu-item (click)="goDetail(row); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideEye" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.VIEW_DOCUMENT' | translate }}</span>
+                    </li>
+                    <li nz-menu-item (click)="openReturnsApprove(row); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.TAKE_ACTION' | translate }}</span>
+                    </li>
+                  </ul>
+                </nz-dropdown-menu>
+              } @else if (lostListWaitingTagRole(row); as nextRole) {
+                <nz-tag nzColor="success" class="li-list__processed-tag">
+                  {{
+                    'RETURNS_WORKFLOW.PROCESSED_WAITING'
+                      | translate: { role: workflowRoleLabel(nextRole) }
+                  }}
+                </nz-tag>
+                <button nz-button nzType="link" type="button" (click)="goDetail(row); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
                 </button>
               } @else {
-                —
+                <button nz-button nzType="link" type="button" (click)="goDetail(row); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                </button>
               }
             </td>
           } @else {
-            <td>{{ row.documentNo }}</td>
+            <td>
+              <a [routerLink]="['/lost-items', row.id]" class="li-list__doc-link">{{ row.documentNo }}</a>
+            </td>
             <td>{{ row.createdAt | date: 'mediumDate' }}</td>
             <td>
               <span class="status-badge" [ngClass]="'status-' + statusBadgeClass(row.status)">
@@ -173,14 +212,47 @@
               }
             </td>
             <td>{{ displayUser(row) }}</td>
-            <td>
-              @if (canApprove(row)) {
-                <button nz-button nzType="default" type="button" (click)="approve(row)">
-                  <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
-                  {{ 'LOST_ITEMS.LIST.APPROVE' | translate }}
+            <td nzAlign="right" class="li-list__actions-returns">
+              @if (canTakeLostWorkflowAction(row)) {
+                <button
+                  nz-button
+                  nzType="text"
+                  type="button"
+                  nz-dropdown
+                  [nzDropdownMenu]="liReturnsActionsMenu"
+                  nzTrigger="click"
+                  nzPlacement="bottomRight"
+                  (click)="$event.stopPropagation()"
+                  [nz-tooltip]="'COMMON.ACTIONS' | translate"
+                >
+                  <lucide-icon [img]="lucideEllipsisVertical" [size]="16" [strokeWidth]="2" />
+                </button>
+                <nz-dropdown-menu #liReturnsActionsMenu="nzDropdownMenu">
+                  <ul nz-menu>
+                    <li nz-menu-item (click)="goDetail(row); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideEye" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.VIEW_DOCUMENT' | translate }}</span>
+                    </li>
+                    <li nz-menu-item (click)="openReturnsApprove(row); $event.stopPropagation()">
+                      <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+                      <span>{{ 'RETURNS_WORKFLOW.TAKE_ACTION' | translate }}</span>
+                    </li>
+                  </ul>
+                </nz-dropdown-menu>
+              } @else if (lostListWaitingTagRole(row); as nextRole) {
+                <nz-tag nzColor="success" class="li-list__processed-tag">
+                  {{
+                    'RETURNS_WORKFLOW.PROCESSED_WAITING'
+                      | translate: { role: workflowRoleLabel(nextRole) }
+                  }}
+                </nz-tag>
+                <button nz-button nzType="link" type="button" (click)="goDetail(row); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
                 </button>
               } @else {
-                —
+                <button nz-button nzType="link" type="button" (click)="goDetail(row); $event.stopPropagation()">
+                  <lucide-icon [img]="lucideEye" [size]="16" [strokeWidth]="2" />
+                </button>
               }
             </td>
           }
@@ -210,4 +282,13 @@
   [open]="createOpen()"
   (closed)="setCreateOpen(false)"
   (created)="onCreated()"
+/>
+
+<app-returns-workflow-approve-modal
+  [open]="returnsModalOpen()"
+  [contextLoading]="returnsContextLoading()"
+  [submitting]="returnsSubmitting()"
+  [documentContext]="returnsModalDetail()"
+  (closed)="closeReturnsModal()"
+  (submitted)="onReturnsSubmitted($event)"
 />

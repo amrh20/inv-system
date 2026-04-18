@@ -18,6 +18,7 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzPaginationModule } from 'ng-zorro-antd/pagination';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import type { NzTableSortFn } from 'ng-zorro-antd/table';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
@@ -63,6 +64,7 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
     NzPaginationModule,
     NzSelectModule,
     NzTableModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     EmptyStateComponent,
@@ -141,9 +143,15 @@ export class StockBalancesComponent implements OnInit {
       (acc, b) => {
         const qty = this.availableQty(b);
         const val = qty * Number(b.wacUnitCost ?? 0);
-        return { qty: acc.qty + qty, value: acc.value + val };
+        return {
+          qty: acc.qty + qty,
+          value: acc.value + val,
+          blocked: acc.blocked + Number(b.qtyBlocked ?? 0),
+          lost: acc.lost + this.lossQty(b),
+          damage: acc.damage + this.damageQty(b),
+        };
       },
-      { qty: 0, value: 0 },
+      { qty: 0, value: 0, blocked: 0, lost: 0, damage: 0 },
     ),
   );
 
@@ -178,6 +186,11 @@ export class StockBalancesComponent implements OnInit {
 
   readonly sortQtyFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
     this.availableQty(a) - this.availableQty(b);
+
+  readonly sortLostFn: NzTableSortFn<StockBalanceRow> = (a, b) => this.lossQty(a) - this.lossQty(b);
+
+  readonly sortDamageFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
+    this.damageQty(a) - this.damageQty(b);
 
   readonly sortTotalValueFn: NzTableSortFn<StockBalanceRow> = (a, b) =>
     this.lineValue(a) - this.lineValue(b);
@@ -360,7 +373,19 @@ export class StockBalancesComponent implements OnInit {
     return this.availableQty(row) < 0;
   }
 
-  /** Available stock = on-hand minus blocked (per backend reversible get-pass logic). */
+  lossQty(row: StockBalanceRow): number {
+    return Number(row.totalQtyLost ?? 0);
+  }
+
+  damageQty(row: StockBalanceRow): number {
+    return Number(row.totalQtyDamage ?? 0);
+  }
+
+  /**
+   * Sellable / usable quantity: on-hand minus blocked reservations.
+   * Finalized breakage/lost postings already reduced `qtyOnHand` when stock was deducted; cumulative
+   * lost/damage columns are for audit and are not subtracted again here.
+   */
   availableQty(row: StockBalanceRow): number {
     const onHand = Number(row.qtyOnHand ?? 0);
     const blocked = Number(row.qtyBlocked ?? 0);

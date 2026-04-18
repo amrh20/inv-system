@@ -23,6 +23,10 @@ import {
   User,
 } from 'lucide-angular';
 import { AuthService } from './auth.service';
+import {
+  BREAKAGE_NAV_PERMISSIONS_ANY,
+  LOST_ITEMS_NAV_PERMISSIONS_ANY,
+} from '../constants/approvals-nav-permissions';
 
 /** Lucide icon payload used by `lucide-icon` `[img]`. */
 type NavIcon = typeof LayoutDashboard;
@@ -40,6 +44,16 @@ const NAV_PERMISSIONS = {
   superAdminPortalAccess: 'SUPER_ADMIN_PORTAL_ACCESS',
 } as const;
 
+/** Submenu row: single `permission` (legacy) or `permissions` + `permissionMode` (default `any`). */
+export type NavSubmenuChild = {
+  path: string;
+  label: string;
+  icon: NavIcon;
+  permission?: string;
+  permissions?: readonly string[];
+  permissionMode?: 'any' | 'all';
+};
+
 export type NavEntry =
   | {
       kind: 'link';
@@ -56,12 +70,7 @@ export type NavEntry =
       label: string;
       icon: NavIcon;
       permission?: string;
-      children: readonly {
-        path: string;
-        label: string;
-        icon: NavIcon;
-        permission?: string;
-      }[];
+      children: readonly NavSubmenuChild[];
     };
 
 export interface NavSection {
@@ -135,13 +144,15 @@ const NAV_SECTIONS: readonly NavSection[] = [
             path: '/breakage',
             label: 'NAV.BREAKAGE_LOSS',
             icon: AlertTriangle,
-            permission: NAV_PERMISSIONS.breakageView,
+            permissions: BREAKAGE_NAV_PERMISSIONS_ANY,
+            permissionMode: 'any',
           },
           {
             path: '/lost-items',
             label: 'NAV.LOST_ITEMS',
             icon: PackageX,
-            permission: NAV_PERMISSIONS.lostItemsView,
+            permissions: LOST_ITEMS_NAV_PERMISSIONS_ANY,
+            permissionMode: 'any',
           },
           { path: '/get-passes', label: 'NAV.GET_PASS_WORKFLOW', icon: Package },
         ],
@@ -210,10 +221,25 @@ function permissionAllowed(
   return hasPermission(required);
 }
 
-function filterSubmenuChildren<
-  T extends { permission?: string; path: string; label: string; icon: NavIcon },
->(children: readonly T[], hasPermission: (permission: string) => boolean): T[] {
-  return children.filter((c) => permissionAllowed(c.permission, hasPermission));
+function submenuChildAllowed(
+  child: NavSubmenuChild,
+  hasPermission: (permission: string) => boolean,
+): boolean {
+  if (child.permissions && child.permissions.length > 0) {
+    const mode = child.permissionMode ?? 'any';
+    if (mode === 'all') {
+      return child.permissions.every((p) => hasPermission(p));
+    }
+    return child.permissions.some((p) => hasPermission(p));
+  }
+  return permissionAllowed(child.permission, hasPermission);
+}
+
+function filterSubmenuChildren(
+  children: readonly NavSubmenuChild[],
+  hasPermission: (permission: string) => boolean,
+): NavSubmenuChild[] {
+  return children.filter((c) => submenuChildAllowed(c, hasPermission));
 }
 
 function filterNavEntry(
@@ -286,12 +312,13 @@ export class NavigationService {
   private readonly auth = inject(AuthService);
 
   /** Menu tree after permission filtering (reacts to `AuthService.permissions`). */
-  readonly sections = computed(() =>
-    filterSections(
-      this.auth.isParentOrganizationContext(),
-      (permission) => this.auth.hasPermission(permission),
-    ),
-  );
+  readonly sections = computed(() => {
+    // Explicit dependency so the menu refreshes as soon as JWT/user permissions are available.
+    this.auth.permissions();
+    return filterSections(this.auth.isParentOrganizationContext(), (permission) =>
+      this.auth.hasPermission(permission),
+    );
+  });
 
   /** Flat map for breadcrumbs on routes without `data.breadcrumb`. */
   breadcrumbLabelForPath(urlPath: string): string | null {

@@ -429,11 +429,27 @@ export class AuthService {
     };
   }
 
+  /** Maps legacy matrix codes to canonical JWT codes (see backend `authorize.js` PERMISSION_ALIASES). */
+  private static readonly legacyPermissionCodeToCanonical: Readonly<Record<string, string>> = {
+    BREAKAGE_APPROVE_REJECT: 'APPROVE_BREAKAGE',
+    LOST_APPROVE_REJECT: 'APPROVE_LOST',
+    /** Align with backend `authorize.js` PERMISSION_ALIASES — JWT may store Excel-style codes. */
+    CREATE_BREAKAGE: 'BREAKAGE_CREATE',
+    CREATE_LOST: 'BREAKAGE_CREATE',
+  };
+
   private normalizePermissions(permissions: unknown): string[] {
     if (!Array.isArray(permissions)) {
       return [];
     }
-    return permissions.filter((key): key is string => typeof key === 'string' && key.length > 0);
+    const canonical = new Set<string>();
+    for (const key of permissions) {
+      if (typeof key !== 'string' || key.length === 0) {
+        continue;
+      }
+      canonical.add(AuthService.legacyPermissionCodeToCanonical[key] ?? key);
+    }
+    return [...canonical];
   }
 
   private decodeJwtPayload(token: string | null): Record<string, unknown> | null {

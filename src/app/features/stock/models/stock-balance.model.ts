@@ -19,6 +19,10 @@ export interface StockBalanceRow {
   locationId: string;
   qtyOnHand: string | number;
   qtyBlocked?: string | number;
+  /** Cumulative qty from finalized lost documents (GM approval), per item/location. */
+  totalQtyLost?: string | number;
+  /** Cumulative qty from finalized breakage documents (GM approval), per item/location. */
+  totalQtyDamage?: string | number;
   wacUnitCost?: string | number;
   reorderPoint?: string | number;
   item?: StockBalanceItemNested | null;

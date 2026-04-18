@@ -1,40 +1,54 @@
 import { DatePipe, NgClass } from '@angular/common';
 import {
   Component,
-  DestroyRef,
   computed,
+  DestroyRef,
+  effect,
   inject,
   OnInit,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzDropdownModule } from 'ng-zorro-antd/dropdown';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { Check, PackageX, Plus, RefreshCw, Search } from 'lucide-angular';
+import { Check, EllipsisVertical, Eye, PackageX, Plus, RefreshCw, Search } from 'lucide-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { HasPermissionDirective } from '../../../core/directives/has-permission.directive';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
-import type { LostItemsListRow, LostSourceType, LostWorkflowStatus } from '../models/lost-items.model';
+import { ReturnsWorkflowApproveModalComponent } from '../../../shared/components/returns-workflow-approve-modal/returns-workflow-approve-modal.component';
+import type { ReturnsAccountabilityType } from '../../../shared/models/returns-accountability.model';
+import {
+  type ReturnsWorkflowDocumentContext,
+  type ReturnsWorkflowListStatusTab,
+  returnsWorkflowListApiStatusParam,
+  returnsWorkflowListRowWaitingTagRole,
+  returnsWorkflowListShouldFilterCreatedBy,
+  returnsWorkflowListTabTranslationSuffix,
+  returnsWorkflowUnifiedListApiStatusParam,
+  showReturnsWorkflowStatusTabBar,
+  userCanActOnReturnsWorkflowListRow,
+  visibleReturnsWorkflowListStatusTabs,
+  WORKFLOW_PERMISSION_APPROVE_LOST,
+} from '../../../shared/utils/returns-workflow.helpers';
+import type { LostDetail, LostItemsListRow, LostSourceType, LostWorkflowStatus } from '../models/lost-items.model';
 import { LostItemsService } from '../services/lost-items.service';
 import { LostCreateModalComponent } from '../lost-create-modal/lost-create-modal.component';
 
 const SOURCE_TABS: LostSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
-const STATUS_TABS: LostWorkflowStatus[] = [
-  'DRAFT',
-  'DEPT_APPROVED',
-  'COST_CONTROL_APPROVED',
-  'FINANCE_APPROVED',
-  'APPROVED',
-];
 
 @Component({
   selector: 'app-lost-items-list',
@@ -45,18 +59,26 @@ const STATUS_TABS: LostWorkflowStatus[] = [
     FormsModule,
     NzAlertModule,
     NzButtonModule,
+    NzDropdownModule,
     NzInputModule,
+    NzMenuModule,
     NzTableModule,
+    NzTagModule,
+    NzTooltipModule,
     TranslatePipe,
     LucideAngularModule,
     HasPermissionDirective,
     EmptyStateComponent,
     LostCreateModalComponent,
+    ReturnsWorkflowApproveModalComponent,
+    RouterLink,
   ],
   templateUrl: './lost-items-list.component.html',
   styleUrl: './lost-items-list.component.scss',
 })
 export class LostItemsListComponent implements OnInit {
+  private listViewReady = false;
+
   private readonly api = inject(LostItemsService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -69,8 +91,29 @@ export class LostItemsListComponent implements OnInit {
   readonly lucideSearch = Search;
   readonly lucidePlus = Plus;
   readonly lucideCheck = Check;
+  readonly lucideEye = Eye;
+  readonly lucideEllipsisVertical = EllipsisVertical;
   readonly sourceTabs = SOURCE_TABS;
-  readonly statusTabs = STATUS_TABS;
+  /** Role-scoped workflow tabs; role from {@link AuthService#userRole}. */
+  readonly visibleStatusTabs = computed(() =>
+    visibleReturnsWorkflowListStatusTabs(this.auth.userRole()),
+  );
+  readonly showWorkflowStatusTabBar = computed(() =>
+    showReturnsWorkflowStatusTabBar(this.auth.userRole()),
+  );
+  readonly listWorkflowStatusParam = computed(() => {
+    const role = this.auth.userRole();
+    if (showReturnsWorkflowStatusTabBar(role)) {
+      return returnsWorkflowListApiStatusParam(this.activeStatusTab());
+    }
+    return returnsWorkflowUnifiedListApiStatusParam(role);
+  });
+  readonly listCreatedById = computed(() => {
+    const role = this.auth.userRole();
+    if (showReturnsWorkflowStatusTabBar(role)) return undefined;
+    if (!returnsWorkflowListShouldFilterCreatedBy(role)) return undefined;
+    return this.auth.currentUser()?.id;
+  });
 
   readonly pageSize = 20;
 
@@ -81,13 +124,32 @@ export class LostItemsListComponent implements OnInit {
   readonly search = signal('');
   readonly page = signal(0);
   readonly activeSourceTab = signal<LostSourceType>('INTERNAL');
-  readonly activeStatusTab = signal<(typeof STATUS_TABS)[number]>('DRAFT');
+  readonly activeStatusTab = signal<ReturnsWorkflowListStatusTab>('DEPT_APPROVED');
   readonly createOpen = signal(false);
   readonly userRole = computed(() => this.auth.userRole());
 
+  readonly returnsModalOpen = signal(false);
+  readonly returnsModalRow = signal<LostItemsListRow | null>(null);
+  readonly returnsModalDetail = signal<ReturnsWorkflowDocumentContext | null>(null);
+  readonly returnsContextLoading = signal(false);
+  readonly returnsSubmitting = signal(false);
+
   private readonly search$ = new Subject<string>();
 
+  constructor() {
+    effect(() => {
+      this.auth.userRole();
+      untracked(() => {
+        if (!this.listViewReady) return;
+        if (this.syncActiveStatusTabFromRole()) {
+          this.load();
+        }
+      });
+    });
+  }
+
   ngOnInit(): void {
+    this.syncActiveStatusTabFromRole();
     this.search$
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
       .subscribe(() => {
@@ -95,6 +157,17 @@ export class LostItemsListComponent implements OnInit {
         this.load();
       });
     this.load();
+    this.listViewReady = true;
+  }
+
+  /** If the active tab is hidden for this role, switch to the first visible tab. */
+  private syncActiveStatusTabFromRole(): boolean {
+    const visible = this.visibleStatusTabs();
+    const cur = this.activeStatusTab();
+    if (visible.includes(cur)) return false;
+    this.activeStatusTab.set(visible[0] ?? 'DEPT_APPROVED');
+    this.page.set(0);
+    return true;
   }
 
   onSearchInput(v: string): void {
@@ -108,16 +181,22 @@ export class LostItemsListComponent implements OnInit {
     this.load();
   }
 
-  setStatusTab(tab: (typeof STATUS_TABS)[number]): void {
+  setStatusTab(tab: ReturnsWorkflowListStatusTab): void {
     this.activeStatusTab.set(tab);
     this.page.set(0);
     this.load();
   }
 
+  /** i18n key suffix under `LOST_ITEMS.STATUS.*` for workflow tabs (incl. virtual `IN_PROGRESS`). */
+  workflowStatusTabLabelSuffix(tab: ReturnsWorkflowListStatusTab): string {
+    return returnsWorkflowListTabTranslationSuffix(tab);
+  }
+
   load(): void {
     this.loading.set(true);
     this.listError.set('');
-    const status: LostWorkflowStatus = this.activeStatusTab();
+    const status = this.listWorkflowStatusParam();
+    const createdById = this.listCreatedById();
     this.api
       .list({
         skip: this.page() * this.pageSize,
@@ -125,6 +204,7 @@ export class LostItemsListComponent implements OnInit {
         search: this.search().trim() || undefined,
         sourceType: this.activeSourceTab(),
         status,
+        createdById,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -186,32 +266,106 @@ export class LostItemsListComponent implements OnInit {
     }
   }
 
-  canApprove(row: LostItemsListRow): boolean {
-    if (row.sourceType !== 'INTERNAL') return false;
-    const role = this.userRole();
-    if (!role) return false;
-    if (role === 'ADMIN' || role === 'ORG_MANAGER') return row.status !== 'APPROVED';
-    if (row.status === 'DRAFT' && role === 'DEPT_MANAGER') return true;
-    if (row.status === 'DEPT_APPROVED' && role === 'COST_CONTROL') return true;
-    if (row.status === 'COST_CONTROL_APPROVED' && role === 'FINANCE_MANAGER') return true;
-    if (row.status === 'FINANCE_APPROVED' && role === 'GENERAL_MANAGER') return true;
-    return false;
+  private lostWorkflowContext(row: LostItemsListRow): ReturnsWorkflowDocumentContext {
+    return {
+      notes: row.notes ?? null,
+      reason: row.reason ?? null,
+      approvalRequests: row.approvalRequests as ReturnsWorkflowDocumentContext['approvalRequests'],
+    };
   }
 
-  approve(row: LostItemsListRow): void {
-    let action$ = this.api.approveDept(row.id);
-    if (row.status === 'DEPT_APPROVED') action$ = this.api.approveCost(row.id);
-    if (row.status === 'COST_CONTROL_APPROVED') action$ = this.api.approveFinance(row.id);
-    if (row.status === 'FINANCE_APPROVED') action$ = this.api.approveGm(row.id);
-    action$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+  /**
+   * List row: show the three-dots menu when {@link userCanActOnReturnsWorkflowListRow} passes and the user has
+   * `APPROVE_LOST` — applies to internal and get-pass-return documents.
+   */
+  canTakeLostWorkflowAction(row: LostItemsListRow): boolean {
+    if (!this.auth.hasPermission(WORKFLOW_PERMISSION_APPROVE_LOST)) return false;
+    return userCanActOnReturnsWorkflowListRow(this.userRole(), this.lostWorkflowContext(row), row.status);
+  }
+
+  lostListWaitingTagRole(row: LostItemsListRow): string | null {
+    return returnsWorkflowListRowWaitingTagRole(
+      this.userRole(),
+      this.auth.currentUser()?.id,
+      this.lostWorkflowContext(row),
+      row,
+    );
+  }
+
+  workflowRoleLabel(roleCode: string): string {
+    const key = `USERS.ROLES.${roleCode}`;
+    const t = this.translate.instant(key);
+    return t !== key ? t : roleCode;
+  }
+
+  openReturnsApprove(row: LostItemsListRow): void {
+    this.returnsModalRow.set(row);
+    this.returnsModalOpen.set(true);
+    this.returnsContextLoading.set(true);
+    this.returnsModalDetail.set(null);
+    this.api
+      .getById(row.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (d) => {
+          this.returnsModalDetail.set(d);
+          this.returnsContextLoading.set(false);
+        },
+        error: () => {
+          this.returnsModalDetail.set({
+            notes: row.notes ?? null,
+            reason: row.reason ?? null,
+            approvalRequests: [],
+          });
+          this.returnsContextLoading.set(false);
+        },
+      });
+  }
+
+  closeReturnsModal(): void {
+    this.returnsModalOpen.set(false);
+    this.returnsModalRow.set(null);
+    this.returnsModalDetail.set(null);
+  }
+
+  onReturnsSubmitted(accountability: ReturnsAccountabilityType): void {
+    const row = this.returnsModalRow();
+    if (!row) return;
+    this.returnsSubmitting.set(true);
+    const body = { accountability };
+    const req$ = this.lostApproveRequest$(row, body);
+    req$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
+        this.returnsSubmitting.set(false);
         this.message.success(this.translate.instant('LOST_ITEMS.LIST.APPROVE_SUCCESS'));
+        this.returnsModalOpen.set(false);
+        this.returnsModalRow.set(null);
         this.load();
       },
       error: (e: Error) => {
+        this.returnsSubmitting.set(false);
         this.message.error(e.message || this.translate.instant('LOST_ITEMS.LIST.APPROVE_ERROR'));
       },
     });
+  }
+
+  private lostApproveRequest$(
+    row: LostItemsListRow,
+    body: { accountability: ReturnsAccountabilityType },
+  ): Observable<LostItemsListRow | LostDetail> {
+    return this.api.approveAtCurrentStep(
+      row.id,
+      {
+        sourceType: row.sourceType,
+        status: row.status,
+        approvalRequests: row.approvalRequests,
+      },
+      body,
+    );
+  }
+
+  goDetail(row: LostItemsListRow): void {
+    this.router.navigate(['/lost-items', row.id]);
   }
 
   goGetPass(row: LostItemsListRow): void {

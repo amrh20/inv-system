@@ -456,3 +456,30 @@
   font-variant-numeric: tabular-nums;
   color: #6ee7b7;
 }
+
+.stock-th-loss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.stock-th-loss__icon {
+  flex-shrink: 0;
+  color: #dc2626;
+}
+
+.cell-loss-qty {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+.stock-page__footer-qty--loss {
+  color: #fecaca;
+  font-weight: 600;
+}

@@ -234,6 +234,34 @@
           <th nzWidth="120" nzAlign="right">
             {{ 'STOCK.QTY_BLOCKED' | translate }}
           </th>
+          <th
+            nzWidth="112"
+            nzAlign="right"
+            nzColumnKey="lost"
+            [nzSortFn]="sortLostFn"
+            nzShowSort
+            nz-tooltip
+            [nzTooltipTitle]="'STOCK.LOSSES_CUMULATIVE_HINT' | translate"
+          >
+            <span class="stock-th-loss">
+              <lucide-icon [img]="lucideAlert" [size]="14" class="stock-th-loss__icon" [strokeWidth]="2" />
+              {{ 'STOCK.QTY_LOST' | translate }}
+            </span>
+          </th>
+          <th
+            nzWidth="120"
+            nzAlign="right"
+            nzColumnKey="damage"
+            [nzSortFn]="sortDamageFn"
+            nzShowSort
+            nz-tooltip
+            [nzTooltipTitle]="'STOCK.LOSSES_CUMULATIVE_HINT' | translate"
+          >
+            <span class="stock-th-loss">
+              <lucide-icon [img]="lucideAlert" [size]="14" class="stock-th-loss__icon" [strokeWidth]="2" />
+              {{ 'STOCK.QTY_DAMAGE' | translate }}
+            </span>
+          </th>
           <th nzWidth="120" nzAlign="right" nzColumnKey="lineValue" [nzSortFn]="sortTotalValueFn" nzShowSort>
             {{ 'COMMON.TOTAL_VALUE' | translate }}
           </th>
@@ -290,6 +318,12 @@
             <td nzAlign="right">
               {{ formatQty(row.qtyBlocked ?? 0) }}
             </td>
+            <td nzAlign="right" class="cell-loss-qty">
+              {{ formatQty(lossQty(row)) }}
+            </td>
+            <td nzAlign="right" class="cell-loss-qty">
+              {{ formatQty(damageQty(row)) }}
+            </td>
             <td nzAlign="right" class="cell-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(lineValue(row)) }}</td>
             <td nzAlign="center">
               <span
@@ -329,6 +363,8 @@
           <col class="stock-page__col-location" />
           <col class="stock-page__col-qty" />
           <col class="stock-page__col-qty" />
+          <col class="stock-page__col-qty" />
+          <col class="stock-page__col-qty" />
           <col class="stock-page__col-value" />
           <col class="stock-page__col-status" />
         </colgroup>
@@ -338,7 +374,9 @@
               {{ 'STOCK.PAGE_TOTAL_ROWS' | translate: { count: balances().length } }}
             </td>
             <td class="stock-page__footer-qty">{{ formatQty(pageTotals().qty) }}</td>
-            <td class="stock-page__footer-qty"></td>
+            <td class="stock-page__footer-qty">{{ formatQty(pageTotals().blocked) }}</td>
+            <td class="stock-page__footer-qty stock-page__footer-qty--loss">{{ formatQty(pageTotals().lost) }}</td>
+            <td class="stock-page__footer-qty stock-page__footer-qty--loss">{{ formatQty(pageTotals().damage) }}</td>
             <td class="stock-page__footer-value">{{ 'COMMON.CURRENCY_SAR' | translate }} {{ formatMoney(pageTotals().value) }}</td>
             <td class="stock-page__footer-status"></td>
           </tr>

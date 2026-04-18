@@ -10,6 +10,10 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule, Mail, Lock, Languages, Eye, EyeOff } from 'lucide-angular';
+import {
+  BREAKAGE_NAV_PERMISSIONS_ANY,
+  LOST_ITEMS_NAV_PERMISSIONS_ANY,
+} from '../../../core/constants/approvals-nav-permissions';
 import { AuthService } from '../../../core/services/auth.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { SubscriptionNoticeService } from '../../../core/services/subscription-notice.service';
@@ -49,11 +53,15 @@ export class LoginComponent implements OnInit {
     email: 'superadmin@ose.cloud',
     password: 'SuperAdmin@2026',
   } as const;
-  private static readonly LOGIN_REDIRECTS: readonly { path: string; permission?: string }[] = [
+  private static readonly LOGIN_REDIRECTS: readonly {
+    path: string;
+    permission?: string;
+    permissionsAny?: readonly string[];
+  }[] = [
     { path: '/dashboard', permission: 'VIEW_DASHBOARD' },
     { path: '/get-passes', permission: 'GET_PASS_VIEW' },
-    { path: '/breakage', permission: 'BREAKAGE_VIEW' },
-    { path: '/lost-items', permission: 'LOST_ITEMS_VIEW' },
+    { path: '/breakage', permissionsAny: [...BREAKAGE_NAV_PERMISSIONS_ANY] },
+    { path: '/lost-items', permissionsAny: [...LOST_ITEMS_NAV_PERMISSIONS_ANY] },
     { path: '/stock', permission: 'INVENTORY_VIEW' },
     { path: '/reports', permission: 'REPORTS_VIEW' },
     { path: '/settings', permission: 'SETTINGS_MANAGE' },
@@ -220,9 +228,12 @@ export class LoginComponent implements OnInit {
       void this.router.navigate(['/admin/tenants'], { replaceUrl: true });
       return;
     }
-    const target = LoginComponent.LOGIN_REDIRECTS.find((route) =>
-      !route.permission || this.auth.hasPermission(route.permission),
-    )?.path;
+    const target = LoginComponent.LOGIN_REDIRECTS.find((route) => {
+      if (route.permissionsAny && route.permissionsAny.length > 0) {
+        return route.permissionsAny.some((p) => this.auth.hasPermission(p));
+      }
+      return !route.permission || this.auth.hasPermission(route.permission);
+    })?.path;
     if (target) {
       void this.router.navigate([target], { replaceUrl: true });
       return;
@@ -231,8 +242,12 @@ export class LoginComponent implements OnInit {
       void this.router.navigate(['/get-passes'], { replaceUrl: true });
       return;
     }
-    if (this.auth.hasPermission('BREAKAGE_VIEW')) {
+    if (BREAKAGE_NAV_PERMISSIONS_ANY.some((p) => this.auth.hasPermission(p))) {
       void this.router.navigate(['/breakage'], { replaceUrl: true });
+      return;
+    }
+    if (LOST_ITEMS_NAV_PERMISSIONS_ANY.some((p) => this.auth.hasPermission(p))) {
+      void this.router.navigate(['/lost-items'], { replaceUrl: true });
       return;
     }
     void this.router.navigate(['/forbidden'], { replaceUrl: true });
