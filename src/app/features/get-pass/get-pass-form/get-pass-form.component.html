@@ -29,7 +29,6 @@
           (ngModelChange)="onTransferTypeChange($event)"
         >
           <nz-option nzValue="TEMPORARY" [nzLabel]="'GET_PASS.TYPE.TEMPORARY' | translate" />
-          <nz-option nzValue="CATERING" [nzLabel]="'GET_PASS.TYPE.CATERING' | translate" />
           <nz-option nzValue="OUTSIDE_CATERING" [nzLabel]="'GET_PASS.TYPE.OUTSIDE_CATERING' | translate" />
           <nz-option nzValue="PERMANENT" [nzLabel]="'GET_PASS.TYPE.PERMANENT' | translate" />
         </nz-select>
@@ -106,7 +105,7 @@
           />
         </div>
       }
-      @if (transferType() === 'CATERING' || transferType() === 'OUTSIDE_CATERING') {
+      @if (transferType() === 'OUTSIDE_CATERING') {
         <div>
           <label class="gp-form__label">
             {{ 'GET_PASS.FORM.CATERING_EXPECTED_RETURN' | translate }}

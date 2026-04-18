@@ -26,6 +26,10 @@ export interface BreakageListRow {
   getPass?: { id: string; passNo: string } | null;
   createdAt: string;
   reason?: string | null;
+  /** Accountability / remarks; used heavily on GET_PASS_RETURN list rows. */
+  notes?: string | null;
+  /** Total qty (damaged) in base units when the list API supplies an aggregate. */
+  totalQtyDamaged?: number | null;
   createdByUser?: BreakageUserRef | null;
   _count?: { lines: number };
 }

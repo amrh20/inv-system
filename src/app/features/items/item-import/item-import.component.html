@@ -164,10 +164,12 @@
           </div>
 
           @if (importAsOpeningBalance()) {
-            <div class="ob-card ob-card--preview">
+            <div class="ob-card ob-card--preview mt-4">
               <label class="ob-card__reason-label" for="ob-import-reason-preview">{{
                 'ITEMS.OB_IMPORT_REASON_LABEL' | translate
-              }}</label>
+              }}
+            <span class="gp-form__req" aria-hidden="true">*</span>
+            </label>
               <textarea
                 id="ob-import-reason-preview"
                 nz-input

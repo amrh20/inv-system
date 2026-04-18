@@ -161,6 +161,31 @@ export class LostItemsListComponent implements OnInit {
       : this.translate.instant('LOST_ITEMS.LIST.SOURCE_INTERNAL');
   }
 
+  /** From returns: accountability / remarks (notes preferred, else reason). */
+  accountabilityLabel(row: LostItemsListRow): string {
+    const n = row.notes?.trim();
+    if (n) return n;
+    const r = row.reason?.trim();
+    if (r) return r;
+    return '—';
+  }
+
+  /** Align lost workflow badges with breakage-style status classes. */
+  statusBadgeClass(status: LostWorkflowStatus | string): string {
+    switch (status) {
+      case 'DRAFT':
+        return 'pending';
+      case 'DEPT_APPROVED':
+      case 'COST_CONTROL_APPROVED':
+      case 'FINANCE_APPROVED':
+        return 'warning';
+      case 'APPROVED':
+        return 'active';
+      default:
+        return 'pending';
+    }
+  }
+
   canApprove(row: LostItemsListRow): boolean {
     if (row.sourceType !== 'INTERNAL') return false;
     const role = this.userRole();

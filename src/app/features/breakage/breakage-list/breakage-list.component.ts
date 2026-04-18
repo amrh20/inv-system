@@ -207,6 +207,24 @@ export class BreakageListComponent implements OnInit {
     return this.translate.instant('BREAKAGE.LIST.SOURCE_INTERNAL');
   }
 
+  /** Returns tab: total damaged qty when API sends `totalQtyDamaged`; otherwise em dash. */
+  returnsQtyLabel(doc: BreakageListRow): string {
+    const n = doc.totalQtyDamaged;
+    if (n !== undefined && n !== null && !Number.isNaN(Number(n))) {
+      return String(n);
+    }
+    return '—';
+  }
+
+  /** Returns tab: accountability from notes, else reason. */
+  accountabilityLabel(doc: BreakageListRow): string {
+    const fromNotes = doc.notes?.trim();
+    if (fromNotes) return fromNotes;
+    const fromReason = doc.reason?.trim();
+    if (fromReason) return fromReason;
+    return '—';
+  }
+
   statusClass(status: BreakageWorkflowStatus | string): string {
     switch (status) {
       case 'DRAFT':

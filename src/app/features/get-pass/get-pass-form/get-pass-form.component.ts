@@ -321,7 +321,7 @@ export class GetPassFormComponent implements OnInit {
       this.cateringExpectedReturnDate.set(null);
     } else if (value === 'TEMPORARY') {
       this.cateringExpectedReturnDate.set(null);
-    } else if (value === 'CATERING' || value === 'OUTSIDE_CATERING') {
+    } else if (value === 'OUTSIDE_CATERING') {
       this.temporaryReturnDate.set(null);
     }
   }
@@ -624,7 +624,10 @@ export class GetPassFormComponent implements OnInit {
             this.loading.set(false);
             return;
           }
-          this.transferType.set(p.transferType);
+          /** Legacy drafts may still have CATERING; option removed in favor of OUTSIDE_CATERING. */
+          this.transferType.set(
+            p.transferType === 'CATERING' ? 'OUTSIDE_CATERING' : p.transferType,
+          );
           this.departmentId.set(p.departmentId ?? '');
           this.borrowingEntity.set(p.borrowingEntity);
           this.isInternalTransfer.set(!!p.isInternalTransfer);

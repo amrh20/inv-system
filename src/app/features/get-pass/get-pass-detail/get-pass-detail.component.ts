@@ -624,7 +624,8 @@ export class GetPassDetailComponent implements OnInit {
     const d = this.data();
     if (!d) return false;
     if (!d.isInternalTransfer || !this.isViewerTargetTenant()) return false;
-    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    if (!['TEMPORARY', 'CATERING', 'OUTSIDE_CATERING'].includes(d.transferType as GetPassType))
+      return false;
     if (d.status !== 'RECEIVED_AT_DESTINATION') return false;
     if (!d.destinationDeptAcceptedAt) return false;
     return this.auth.hasRole('DEPT_MANAGER') || this.isAdminBypass();
@@ -634,7 +635,8 @@ export class GetPassDetailComponent implements OnInit {
     const d = this.data();
     if (!d) return false;
     if (!d.isInternalTransfer || !this.isViewerTargetTenant()) return false;
-    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    if (!['TEMPORARY', 'CATERING', 'OUTSIDE_CATERING'].includes(d.transferType as GetPassType))
+      return false;
     if (d.status !== 'RETURNING') return false;
     if (d.destinationSecurityExitAt) return false;
     return this.auth.hasRole('SECURITY') || this.isAdminBypass();
@@ -676,7 +678,8 @@ export class GetPassDetailComponent implements OnInit {
     const d = this.data();
     if (!d) return false;
     if (!d.isInternalTransfer || !this.isViewerIssuerTenant()) return false;
-    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    if (!['TEMPORARY', 'CATERING', 'OUTSIDE_CATERING'].includes(d.transferType as GetPassType))
+      return false;
     if (d.status !== 'RETURN_RECEIVED_AT_GATE') return false;
     return this.auth.hasRole('DEPT_MANAGER') || this.isAdminBypass();
   }
@@ -757,7 +760,8 @@ export class GetPassDetailComponent implements OnInit {
     const d = this.data();
     if (!d) return false;
     if (!d.isInternalTransfer || !this.isViewerIssuerTenant()) return false;
-    if (!['TEMPORARY', 'CATERING'].includes(d.transferType as GetPassType)) return false;
+    if (!['TEMPORARY', 'CATERING', 'OUTSIDE_CATERING'].includes(d.transferType as GetPassType))
+      return false;
     return ['RETURNING', 'RETURN_RECEIVED_AT_GATE', 'CLOSED'].includes(d.status);
   }
 

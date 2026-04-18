@@ -1073,6 +1073,8 @@
       "COL_BY": "Created by",
       "COL_REASON": "Reason",
       "COL_ITEMS": "Items",
+      "COL_QTY_DAMAGED": "Qty damaged",
+      "COL_ACCOUNTABILITY": "Accountability",
       "PAGE": "Page {{current}} · {{total}} records"
     },
     "STATUS": {
@@ -1191,6 +1193,7 @@
       "COL_QTY": "Qty lost",
       "COL_SOURCE": "Source",
       "COL_BY": "Created by",
+      "COL_ACCOUNTABILITY": "Accountability",
       "SOURCE_INTERNAL": "Internal",
       "SOURCE_FROM_RETURN": "From returns",
       "APPROVE": "Approve",

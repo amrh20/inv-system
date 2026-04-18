@@ -45,7 +45,6 @@ const STATUS_FILTERS: Array<'ALL' | GetPassStatus> = [
 const TYPE_FILTERS: Array<'ALL' | GetPassType> = [
   'ALL',
   'TEMPORARY',
-  'CATERING',
   'OUTSIDE_CATERING',
   'PERMANENT',
 ];

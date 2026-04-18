@@ -110,6 +110,13 @@
   font-family: ui-monospace, monospace;
 }
 
+.li-list__truncate {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .li-list__pager {
   display: flex;
   align-items: center;

@@ -53,15 +53,18 @@
         </button>
       }
     </div>
-    @if (activeSourceTab() === 'INTERNAL') {
-      <div class="brk-list__tab-row">
-        @for (tab of statusTabs; track tab) {
-          <button nz-button type="button" [nzType]="activeStatusTab() === tab ? 'primary' : 'default'" (click)="setStatusTab(tab)">
-            {{ 'BREAKAGE.STATUS.' + tab | translate }}
-          </button>
-        }
-      </div>
-    }
+    <div class="brk-list__tab-row">
+      @for (tab of statusTabs; track tab) {
+        <button
+          nz-button
+          type="button"
+          [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
+          (click)="setStatusTab(tab)"
+        >
+          {{ 'BREAKAGE.STATUS.' + tab | translate }}
+        </button>
+      }
+    </div>
     <div class="brk-list__search-wrap">
       <lucide-icon [img]="lucideSearch" [size]="18" class="brk-list__search-icon" />
       <input
@@ -95,49 +98,93 @@
     </ng-template>
     <thead>
       <tr>
-        <th>{{ 'BREAKAGE.LIST.COL_DOC' | translate }}</th>
-        <th>{{ 'COMMON.DATE' | translate }}</th>
-        <th>{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
-        <th>{{ 'COMMON.STATUS' | translate }}</th>
-        <th>{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
-        <th>{{ 'BREAKAGE.LIST.COL_REASON' | translate }}</th>
-        <th nzAlign="center">{{ 'BREAKAGE.LIST.COL_ITEMS' | translate }}</th>
-        <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
+        @if (activeSourceTab() === 'INTERNAL') {
+          <th>{{ 'BREAKAGE.LIST.COL_DOC' | translate }}</th>
+          <th>{{ 'COMMON.DATE' | translate }}</th>
+          <th>{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
+          <th>{{ 'COMMON.STATUS' | translate }}</th>
+          <th>{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
+          <th>{{ 'BREAKAGE.LIST.COL_REASON' | translate }}</th>
+          <th nzAlign="center">{{ 'BREAKAGE.LIST.COL_ITEMS' | translate }}</th>
+          <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
+        } @else {
+          <th>{{ 'BREAKAGE.LIST.COL_DOC' | translate }}</th>
+          <th>{{ 'COMMON.DATE' | translate }}</th>
+          <th>{{ 'COMMON.STATUS' | translate }}</th>
+          <th nzAlign="right">{{ 'BREAKAGE.LIST.COL_QTY_DAMAGED' | translate }}</th>
+          <th>{{ 'BREAKAGE.LIST.COL_ACCOUNTABILITY' | translate }}</th>
+          <th>{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
+          <th>{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
+          <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
+        }
       </tr>
     </thead>
     <tbody>
       @for (doc of docTable.data; track doc.id) {
         <tr class="brk-list__row">
-          <td class="brk-list__mono text-brand-primary">{{ doc.documentNo }}</td>
-          <td>{{ doc.createdAt | date: 'mediumDate' }}</td>
-          <td>
-            @if (doc.getPassId && doc.getPass?.passNo) {
-              <a class="brk-list__source-link" (click)="goGetPass(doc); $event.stopPropagation()">
-                {{ doc.getPass?.passNo }}
-              </a>
-            } @else {
-              <span class="brk-list__source-badge">{{ sourceLabel(doc) }}</span>
-            }
-          </td>
-          <td>
-            <span class="status-badge" [ngClass]="'status-' + statusClass(doc.status)">
-              {{ 'BREAKAGE.STATUS.' + doc.status | translate }}
-            </span>
-          </td>
-          <td>
-            @if (doc.createdByUser) {
-              {{ doc.createdByUser.firstName }} {{ doc.createdByUser.lastName }}
-            } @else {
-              —
-            }
-          </td>
-          <td class="brk-list__truncate">{{ doc.reason ?? '—' }}</td>
-          <td nzAlign="center">{{ doc._count?.lines ?? 0 }}</td>
-          <td nzAlign="right">
-            <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
-              <lucide-icon [img]="lucideEye" [size]="16" />
-            </button>
-          </td>
+          @if (activeSourceTab() === 'INTERNAL') {
+            <td class="brk-list__mono text-brand-primary">{{ doc.documentNo }}</td>
+            <td>{{ doc.createdAt | date: 'mediumDate' }}</td>
+            <td>
+              @if (doc.getPassId && doc.getPass?.passNo) {
+                <a class="brk-list__source-link" (click)="goGetPass(doc); $event.stopPropagation()">
+                  {{ doc.getPass?.passNo }}
+                </a>
+              } @else {
+                <span class="brk-list__source-badge">{{ sourceLabel(doc) }}</span>
+              }
+            </td>
+            <td>
+              <span class="status-badge" [ngClass]="'status-' + statusClass(doc.status)">
+                {{ 'BREAKAGE.STATUS.' + doc.status | translate }}
+              </span>
+            </td>
+            <td>
+              @if (doc.createdByUser) {
+                {{ doc.createdByUser.firstName }} {{ doc.createdByUser.lastName }}
+              } @else {
+                —
+              }
+            </td>
+            <td class="brk-list__truncate">{{ doc.reason ?? '—' }}</td>
+            <td nzAlign="center">{{ doc._count?.lines ?? 0 }}</td>
+            <td nzAlign="right">
+              <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
+                <lucide-icon [img]="lucideEye" [size]="16" />
+              </button>
+            </td>
+          } @else {
+            <td class="brk-list__mono text-brand-primary">{{ doc.documentNo }}</td>
+            <td>{{ doc.createdAt | date: 'mediumDate' }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="'status-' + statusClass(doc.status)">
+                {{ 'BREAKAGE.STATUS.' + doc.status | translate }}
+              </span>
+            </td>
+            <td nzAlign="right">{{ returnsQtyLabel(doc) }}</td>
+            <td class="brk-list__truncate">{{ accountabilityLabel(doc) }}</td>
+            <td>
+              @if (doc.getPassId && doc.getPass?.passNo) {
+                <a class="brk-list__source-link" (click)="goGetPass(doc); $event.stopPropagation()">
+                  {{ doc.getPass?.passNo }}
+                </a>
+              } @else {
+                <span class="brk-list__source-badge">{{ sourceLabel(doc) }}</span>
+              }
+            </td>
+            <td>
+              @if (doc.createdByUser) {
+                {{ doc.createdByUser.firstName }} {{ doc.createdByUser.lastName }}
+              } @else {
+                —
+              }
+            </td>
+            <td nzAlign="right">
+              <button nz-button nzType="link" type="button" (click)="goDetail(doc); $event.stopPropagation()">
+                <lucide-icon [img]="lucideEye" [size]="16" />
+              </button>
+            </td>
+          }
         </tr>
       }
     </tbody>

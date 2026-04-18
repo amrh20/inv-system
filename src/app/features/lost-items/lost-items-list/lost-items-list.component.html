@@ -43,20 +43,18 @@
         </button>
       }
     </div>
-    @if (activeSourceTab() === 'INTERNAL') {
-      <div class="li-list__tab-row">
-        @for (tab of statusTabs; track tab) {
-          <button
-            nz-button
-            type="button"
-            [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
-            (click)="setStatusTab(tab)"
-          >
-            {{ 'LOST_ITEMS.STATUS.' + tab | translate }}
-          </button>
-        }
-      </div>
-    }
+    <div class="li-list__tab-row">
+      @for (tab of statusTabs; track tab) {
+        <button
+          nz-button
+          type="button"
+          [nzType]="activeStatusTab() === tab ? 'primary' : 'default'"
+          (click)="setStatusTab(tab)"
+        >
+          {{ 'LOST_ITEMS.STATUS.' + tab | translate }}
+        </button>
+      }
+    </div>
     <div class="li-list__search-wrap">
       <lucide-icon [img]="lucideSearch" [size]="18" class="li-list__search-icon" />
       <input
@@ -89,53 +87,103 @@
     </ng-template>
     <thead>
       <tr>
-        <th>{{ 'LOST_ITEMS.LIST.COL_DOC' | translate }}</th>
-        <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
-        <th>{{ 'LOST_ITEMS.LIST.COL_QTY' | translate }}</th>
-        <th>{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
-        <th>{{ 'COMMON.STATUS' | translate }}</th>
-        <th>{{ 'COMMON.DATE' | translate }}</th>
-        <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
-        <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+        @if (activeSourceTab() === 'INTERNAL') {
+          <th>{{ 'LOST_ITEMS.LIST.COL_DOC' | translate }}</th>
+          <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+          <th>{{ 'LOST_ITEMS.LIST.COL_QTY' | translate }}</th>
+          <th>{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
+          <th>{{ 'COMMON.STATUS' | translate }}</th>
+          <th>{{ 'COMMON.DATE' | translate }}</th>
+          <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
+          <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+        } @else {
+          <th>{{ 'LOST_ITEMS.LIST.COL_DOC' | translate }}</th>
+          <th>{{ 'COMMON.DATE' | translate }}</th>
+          <th>{{ 'COMMON.STATUS' | translate }}</th>
+          <th>{{ 'LOST_ITEMS.LIST.COL_QTY' | translate }}</th>
+          <th>{{ 'LOST_ITEMS.LIST.COL_ACCOUNTABILITY' | translate }}</th>
+          <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
+          <th>{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
+          <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
+          <th>{{ 'COMMON.ACTIONS' | translate }}</th>
+        }
       </tr>
     </thead>
     <tbody>
       @for (row of rows(); track row.id) {
         <tr>
-          <td>{{ row.documentNo }}</td>
-          <td>
-            <div class="li-list__item-name">{{ row.itemName }}</div>
-            @if (row.itemBarcode) {
-              <div class="li-list__item-barcode">{{ row.itemBarcode }}</div>
-            }
-          </td>
-          <td>{{ row.qtyLost }}</td>
-          <td>
-            @if (row.sourceType === 'GET_PASS_RETURN' && (row.getPassId || row.getPass?.id)) {
-              <button nz-button nzType="link" type="button" (click)="goGetPass(row)">
-                {{ row.getPass?.passNo || sourceLabel(row) }}
-              </button>
-            } @else {
-              <span>{{ sourceLabel(row) }}</span>
-            }
-          </td>
-          <td>
-            <span class="status-badge" [ngClass]="row.status === 'APPROVED' ? 'status-active' : 'status-pending'">
-              {{ ('LOST_ITEMS.STATUS.' + row.status) | translate }}
-            </span>
-          </td>
-          <td>{{ row.createdAt | date: 'medium' }}</td>
-          <td>{{ displayUser(row) }}</td>
-          <td>
-            @if (canApprove(row)) {
-              <button nz-button nzType="default" type="button" (click)="approve(row)">
-                <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
-                {{ 'LOST_ITEMS.LIST.APPROVE' | translate }}
-              </button>
-            } @else {
-              —
-            }
-          </td>
+          @if (activeSourceTab() === 'INTERNAL') {
+            <td>{{ row.documentNo }}</td>
+            <td>
+              <div class="li-list__item-name">{{ row.itemName }}</div>
+              @if (row.itemBarcode) {
+                <div class="li-list__item-barcode">{{ row.itemBarcode }}</div>
+              }
+            </td>
+            <td>{{ row.qtyLost }}</td>
+            <td>
+              @if (row.sourceType === 'GET_PASS_RETURN' && (row.getPassId || row.getPass?.id)) {
+                <button nz-button nzType="link" type="button" (click)="goGetPass(row)">
+                  {{ row.getPass?.passNo || sourceLabel(row) }}
+                </button>
+              } @else {
+                <span>{{ sourceLabel(row) }}</span>
+              }
+            </td>
+            <td>
+              <span class="status-badge" [ngClass]="'status-' + statusBadgeClass(row.status)">
+                {{ ('LOST_ITEMS.STATUS.' + row.status) | translate }}
+              </span>
+            </td>
+            <td>{{ row.createdAt | date: 'medium' }}</td>
+            <td>{{ displayUser(row) }}</td>
+            <td>
+              @if (canApprove(row)) {
+                <button nz-button nzType="default" type="button" (click)="approve(row)">
+                  <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+                  {{ 'LOST_ITEMS.LIST.APPROVE' | translate }}
+                </button>
+              } @else {
+                —
+              }
+            </td>
+          } @else {
+            <td>{{ row.documentNo }}</td>
+            <td>{{ row.createdAt | date: 'mediumDate' }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="'status-' + statusBadgeClass(row.status)">
+                {{ ('LOST_ITEMS.STATUS.' + row.status) | translate }}
+              </span>
+            </td>
+            <td>{{ row.qtyLost }}</td>
+            <td class="li-list__truncate">{{ accountabilityLabel(row) }}</td>
+            <td>
+              <div class="li-list__item-name">{{ row.itemName }}</div>
+              @if (row.itemBarcode) {
+                <div class="li-list__item-barcode">{{ row.itemBarcode }}</div>
+              }
+            </td>
+            <td>
+              @if (row.getPassId || row.getPass?.id) {
+                <button nz-button nzType="link" type="button" (click)="goGetPass(row)">
+                  {{ row.getPass?.passNo || sourceLabel(row) }}
+                </button>
+              } @else {
+                <span>{{ sourceLabel(row) }}</span>
+              }
+            </td>
+            <td>{{ displayUser(row) }}</td>
+            <td>
+              @if (canApprove(row)) {
+                <button nz-button nzType="default" type="button" (click)="approve(row)">
+                  <lucide-icon [img]="lucideCheck" [size]="14" [strokeWidth]="2" />
+                  {{ 'LOST_ITEMS.LIST.APPROVE' | translate }}
+                </button>
+              } @else {
+                —
+              }
+            </td>
+          }
         </tr>
       }
     </tbody>

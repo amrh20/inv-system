@@ -1064,6 +1064,8 @@
       "COL_BY": "أنشئ بواسطة",
       "COL_REASON": "السبب",
       "COL_ITEMS": "الأصناف",
+      "COL_QTY_DAMAGED": "الكمية التالفة",
+      "COL_ACCOUNTABILITY": "المسؤولية / الملاحظات",
       "PAGE": "صفحة {{current}} · {{total}} سجلًا"
     },
     "STATUS": {
@@ -1182,6 +1184,7 @@
       "COL_QTY": "الكمية المفقودة",
       "COL_SOURCE": "المصدر",
       "COL_BY": "تم الإنشاء بواسطة",
+      "COL_ACCOUNTABILITY": "المسؤولية / الملاحظات",
       "SOURCE_INTERNAL": "داخلي",
       "SOURCE_FROM_RETURN": "من المرتجعات",
       "APPROVE": "اعتماد",
