@@ -1,59 +1,100 @@
-<div class="super-admin-layout">
-  <aside class="super-admin-layout__sider">
-    <div class="super-admin-layout__brand">
-      <div class="super-admin-layout__brand-icon">
-        <lucide-icon [img]="lucideShield" [size]="20" />
-      </div>
-      <div>
-        <p class="super-admin-layout__brand-title">iNV Central</p>
-        <p class="super-admin-layout__brand-subtitle">{{ 'SUPER_ADMIN.SUBTITLE' | translate }}</p>
-      </div>
+<ng-template #siderNav>
+  <div class="super-admin-layout__brand">
+    <div class="super-admin-layout__brand-icon">
+      <lucide-icon [img]="lucideShield" [size]="20" />
     </div>
+    <div>
+      <p class="super-admin-layout__brand-title">iNV Central</p>
+      <p class="super-admin-layout__brand-subtitle">{{ 'SUPER_ADMIN.SUBTITLE' | translate }}</p>
+    </div>
+  </div>
 
-    <nav class="super-admin-layout__nav">
-      <p class="super-admin-layout__nav-heading">{{ 'SUPER_ADMIN.PLATFORM_CONTROLS' | translate }}</p>
-      @for (item of navItems; track item.path) {
-        <a
-          [routerLink]="item.path"
-          routerLinkActive="super-admin-layout__nav-link--active"
-          [routerLinkActiveOptions]="{ exact: item.path === '/admin/tenants' }"
-          class="super-admin-layout__nav-link"
-        >
-          <lucide-icon [img]="item.icon" [size]="18" class="super-admin-layout__nav-icon" />
-          <div class="super-admin-layout__nav-text">
-            <span class="super-admin-layout__nav-label">{{ item.labelKey | translate }}</span>
-            <span class="super-admin-layout__nav-desc">{{ item.descKey | translate }}</span>
-          </div>
-          <lucide-icon [img]="lucideChevronRight" [size]="14" class="super-admin-layout__nav-chevron" />
-        </a>
-      }
-    </nav>
-
-    <div class="super-admin-layout__footer">
-      @if (currentUser(); as u) {
-        <div class="super-admin-layout__user">
-          <div class="super-admin-layout__user-avatar">
-            {{ (u.firstName?.charAt(0) ?? 'S') | uppercase }}
-          </div>
-          <div class="super-admin-layout__user-info">
-            <p class="super-admin-layout__user-name">{{ u.firstName }} {{ u.lastName }}</p>
-            <p class="super-admin-layout__user-email">{{ u.email }}</p>
-          </div>
-          <button
-            type="button"
-            class="super-admin-layout__logout-btn"
-            (click)="logout()"
-            [attr.aria-label]="'COMMON.LOGOUT' | translate"
-          >
-            <lucide-icon [img]="lucideLogOut" [size]="15" />
-          </button>
+  <nav class="super-admin-layout__nav">
+    <p class="super-admin-layout__nav-heading">{{ 'SUPER_ADMIN.PLATFORM_CONTROLS' | translate }}</p>
+    @for (item of navItems; track item.path) {
+      <a
+        [routerLink]="item.path"
+        routerLinkActive="super-admin-layout__nav-link--active"
+        [routerLinkActiveOptions]="{ exact: item.path === '/admin/tenants' }"
+        class="super-admin-layout__nav-link"
+      >
+        <lucide-icon [img]="item.icon" [size]="18" class="super-admin-layout__nav-icon" />
+        <div class="super-admin-layout__nav-text">
+          <span class="super-admin-layout__nav-label">{{ item.labelKey | translate }}</span>
+          <span class="super-admin-layout__nav-desc">{{ item.descKey | translate }}</span>
         </div>
-      }
-    </div>
-  </aside>
+        <lucide-icon [img]="lucideChevronRight" [size]="14" class="super-admin-layout__nav-chevron" />
+      </a>
+    }
+  </nav>
+
+  <div class="super-admin-layout__footer">
+    @if (currentUser(); as u) {
+      <div class="super-admin-layout__user">
+        <div class="super-admin-layout__user-avatar">
+          {{ (u.firstName?.charAt(0) ?? 'S') | uppercase }}
+        </div>
+        <div class="super-admin-layout__user-info">
+          <p class="super-admin-layout__user-name">{{ u.firstName }} {{ u.lastName }}</p>
+          <p class="super-admin-layout__user-email">{{ u.email }}</p>
+        </div>
+        <button
+          type="button"
+          class="super-admin-layout__logout-btn"
+          (click)="logout()"
+          [attr.aria-label]="'COMMON.LOGOUT' | translate"
+        >
+          <lucide-icon [img]="lucideLogOut" [size]="15" />
+        </button>
+      </div>
+    }
+  </div>
+</ng-template>
+
+<div class="super-admin-layout">
+  @if (layoutMode() !== 'mobile') {
+    <aside class="super-admin-layout__sider">
+      <ng-container [ngTemplateOutlet]="siderNav" />
+    </aside>
+  }
+
+  @if (layoutMode() === 'mobile') {
+    <nz-drawer
+      [nzVisible]="mobileDrawerOpen()"
+      nzPlacement="left"
+      [nzWidth]="280"
+      [nzClosable]="true"
+      [nzMaskClosable]="true"
+      [nzBodyStyle]="{ padding: '0', height: '100%' }"
+      nzWrapClassName="super-admin-layout__nav-drawer-wrap"
+      (nzOnClose)="mobileDrawerOpen.set(false)"
+    >
+      <ng-container *nzDrawerContent>
+        <aside class="super-admin-layout__sider super-admin-layout__sider--drawer">
+          <ng-container [ngTemplateOutlet]="siderNav" />
+        </aside>
+      </ng-container>
+    </nz-drawer>
+  }
 
   <main class="super-admin-layout__main">
     <header class="super-admin-layout__header">
+      @if (layoutMode() === 'mobile') {
+        <button
+          nz-button
+          nzType="text"
+          type="button"
+          class="super-admin-layout__nav-toggle"
+          (click)="toggleMobileNav()"
+          [attr.aria-label]="'LAYOUT.TOGGLE_SIDEBAR' | translate"
+        >
+          @if (mobileDrawerOpen()) {
+            <lucide-icon [img]="lucideClose" [size]="20" [strokeWidth]="2" />
+          } @else {
+            <lucide-icon [img]="lucideMenu" [size]="20" [strokeWidth]="2" />
+          }
+        </button>
+      }
       <div class="super-admin-layout__header-left">
         <lucide-icon [img]="lucideLayoutDashboard" [size]="16" />
         <span>{{ 'SUPER_ADMIN.SYSTEM_ADMIN' | translate }}</span>

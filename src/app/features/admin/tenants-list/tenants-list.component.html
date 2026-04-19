@@ -1,13 +1,13 @@
 <div class="tenants-page">
   <div class="tenants-page__header">
-    <div>
+    <div class="tenants-page__title-block">
       <h1 class="tenants-page__title">
         <lucide-icon [img]="lucideBuilding2" [size]="24" class="tenants-page__title-icon" />
         {{ 'SUPER_ADMIN.HOTEL_MANAGEMENT' | translate }}
       </h1>
       <p class="tenants-page__meta">{{ 'SUPER_ADMIN.HOTEL_MANAGEMENT_DESC' | translate }}</p>
     </div>
-    <button nz-button nzType="primary" type="button" (click)="openCreate()">
+    <button nz-button nzType="primary" type="button" class="tenants-page__cta" (click)="openCreate()">
       <lucide-icon [img]="lucidePlus" [size]="16" />
       {{ 'SUPER_ADMIN.NEW_ORGANIZATION' | translate }}
     </button>
@@ -69,7 +69,8 @@
     </button>
   </div>
 
-  <div class="tenants-page__table-wrap">
+  <div class="tenants-page__table-card">
+    <div class="tenants-page__table-scroll">
     <nz-table
       #tbl
       [nzData]="tenants()"
@@ -349,6 +350,7 @@
         }
       </tbody>
     </nz-table>
+    </div>
 
     @if (total() > 0) {
       <div class="tenants-page__pagination">
