@@ -1,6 +1,6 @@
 <div class="grn-list">
   <div class="grn-list__header">
-    <div>
+    <div class="grn-list__title-block">
       <h1 class="grn-list__title">
         <lucide-icon [img]="lucideFileText" [size]="24" class="text-brand-primary" />
         {{ 'GRN.LIST.TITLE' | translate }}
@@ -69,11 +69,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="grn-list__table-wrap">
   <nz-table
     #grnTable
     [nzData]="grns()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
+    [nzScroll]="{ x: grnTableScrollX() }"
     [nzShowPagination]="false"
     [nzNoResult]="noResultTpl"
   >
@@ -172,6 +175,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 
   <div class="grn-list__footer">
     {{ 'GRN.LIST.TOTAL' | translate: { count: total() } }}

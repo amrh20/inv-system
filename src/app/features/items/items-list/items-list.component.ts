@@ -38,6 +38,7 @@ import {
   X,
 } from 'lucide-angular';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
+import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusToggleComponent } from '../../../shared/components/status-toggle/status-toggle.component';
 import {
   getMissingItemCreationRequirements,
@@ -78,6 +79,7 @@ import { ItemsService } from '../services/items.service';
     TranslatePipe,
     RouterLink,
     LucideAngularModule,
+    EmptyStateComponent,
     StatusToggleComponent,
   ],
   templateUrl: './items-list.component.html',
@@ -125,6 +127,9 @@ export class ItemsListComponent implements OnInit {
 
   /** Explicit OB OPEN phase — drives draft setup columns and Total qty hint. */
   readonly showObDraftColumns = computed(() => this.obStatus() === 'OPEN');
+
+  /** Minimum table width for horizontal scroll — prevents fixed-layout columns from collapsing into single-character wraps. */
+  readonly itemsTableScrollX = computed(() => (this.showObDraftColumns() ? '1520px' : '1360px'));
   readonly deleteLockedAfterObFinalization = computed(() => this.obStatus() === 'FINALIZED');
 
   readonly showPrerequisitesBanner = computed(

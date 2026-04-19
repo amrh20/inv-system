@@ -436,6 +436,8 @@ export class AuthService {
     /** Align with backend `authorize.js` PERMISSION_ALIASES — JWT may store Excel-style codes. */
     CREATE_BREAKAGE: 'BREAKAGE_CREATE',
     CREATE_LOST: 'BREAKAGE_CREATE',
+    /** Backend renamed analytics permission; accept older JWTs until re-login. */
+    DASHBOARD_ADMIN_VIEW: 'DASHBOARD_VIEW',
   };
 
   private normalizePermissions(permissions: unknown): string[] {

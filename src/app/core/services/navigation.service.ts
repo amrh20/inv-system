@@ -8,6 +8,7 @@ import {
   Calendar,
   FileBarChart,
   FileInput,
+  FileText,
   FolderTree,
   GaugeCircle,
   History,
@@ -77,6 +78,8 @@ export interface NavSection {
   heading: string;
   items: readonly NavEntry[];
   permission?: string;
+  /** When true, sidebar renders items as top-level rows (no `nz-menu-group` heading). */
+  hideGroupHeading?: boolean;
 }
 
 const NAV_SECTIONS: readonly NavSection[] = [
@@ -259,9 +262,29 @@ function filterNavEntry(
   return { ...entry, children };
 }
 
+/** Minimal sidebar for gate/security staff: Dashboard + Get Pass only (flat, no group headers). */
+const SECURITY_NAV_ENTRIES: readonly NavEntry[] = [
+  {
+    kind: 'link',
+    path: '/dashboard',
+    label: 'NAV.DASHBOARD',
+    icon: LayoutDashboard,
+    pathMatch: 'full',
+    permission: 'VIEW_DASHBOARD',
+  },
+  {
+    kind: 'link',
+    path: '/get-passes',
+    label: 'NAV.GET_PASS_WORKFLOW',
+    icon: FileText,
+    permission: 'GET_PASS_VIEW',
+  },
+];
+
 function filterSections(
   orgDashboardOnly: boolean,
   hasPermission: (permission: string) => boolean,
+  isSecurityRole: boolean,
 ): NavSection[] {
   if (orgDashboardOnly) {
     return [
@@ -276,6 +299,22 @@ function filterSections(
             pathMatch: 'full',
           },
         ],
+      },
+    ];
+  }
+
+  if (isSecurityRole) {
+    const items = SECURITY_NAV_ENTRIES.map((e) => filterNavEntry(e, hasPermission)).filter(
+      (e): e is NavEntry => e !== null,
+    );
+    if (items.length === 0) {
+      return [];
+    }
+    return [
+      {
+        heading: 'NAV.SECTIONS.MENU',
+        hideGroupHeading: true,
+        items,
       },
     ];
   }
@@ -315,8 +354,11 @@ export class NavigationService {
   readonly sections = computed(() => {
     // Explicit dependency so the menu refreshes as soon as JWT/user permissions are available.
     this.auth.permissions();
-    return filterSections(this.auth.isParentOrganizationContext(), (permission) =>
-      this.auth.hasPermission(permission),
+    this.auth.userRole();
+    return filterSections(
+      this.auth.isParentOrganizationContext(),
+      (permission) => this.auth.hasPermission(permission),
+      this.auth.hasRole('SECURITY'),
     );
   });
 

@@ -1,6 +1,6 @@
 <div class="brk-list">
   <div class="brk-list__header">
-    <div>
+    <div class="brk-list__title-block">
       <h1 class="brk-list__title">
         <lucide-icon [img]="lucideAlert" [size]="24" class="text-brand-error" />
         {{ 'BREAKAGE.LIST.TITLE' | translate }}
@@ -84,12 +84,15 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="brk-list__table-wrap">
   <nz-table
     #docTable
     [nzData]="documents()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
     [nzShowPagination]="false"
+    [nzScroll]="{ x: '1200px' }"
     [nzNoResult]="noResultTpl"
   >
     <ng-template #noResultTpl>
@@ -103,9 +106,9 @@
         @if (activeSourceTab() === 'INTERNAL') {
           <th>{{ 'BREAKAGE.LIST.COL_DOC' | translate }}</th>
           <th>{{ 'COMMON.DATE' | translate }}</th>
-          <th>{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
+          <th class="brk-list__col--secondary">{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
           <th>{{ 'COMMON.STATUS' | translate }}</th>
-          <th>{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
+          <th class="brk-list__col--secondary">{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
           <th>{{ 'BREAKAGE.LIST.COL_REASON' | translate }}</th>
           <th nzAlign="center">{{ 'BREAKAGE.LIST.COL_ITEMS' | translate }}</th>
           <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
@@ -115,8 +118,8 @@
           <th>{{ 'COMMON.STATUS' | translate }}</th>
           <th nzAlign="right">{{ 'BREAKAGE.LIST.COL_QTY_DAMAGED' | translate }}</th>
           <th>{{ 'BREAKAGE.LIST.COL_ACCOUNTABILITY' | translate }}</th>
-          <th>{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
-          <th>{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
+          <th class="brk-list__col--secondary">{{ 'BREAKAGE.LIST.COL_SOURCE' | translate }}</th>
+          <th class="brk-list__col--secondary">{{ 'BREAKAGE.LIST.COL_BY' | translate }}</th>
           <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
         }
       </tr>
@@ -127,7 +130,7 @@
           @if (activeSourceTab() === 'INTERNAL') {
             <td class="brk-list__mono text-brand-primary">{{ doc.documentNo }}</td>
             <td>{{ doc.createdAt | date: 'mediumDate' }}</td>
-            <td>
+            <td class="brk-list__col--secondary">
               @if (doc.getPassId && doc.getPass?.passNo) {
                 <a class="brk-list__source-link" (click)="goGetPass(doc); $event.stopPropagation()">
                   {{ doc.getPass?.passNo }}
@@ -141,7 +144,7 @@
                 {{ 'BREAKAGE.STATUS.' + doc.status | translate }}
               </span>
             </td>
-            <td>
+            <td class="brk-list__col--secondary">
               @if (doc.createdByUser) {
                 {{ doc.createdByUser.firstName }} {{ doc.createdByUser.lastName }}
               } @else {
@@ -203,7 +206,7 @@
             </td>
             <td nzAlign="right">{{ returnsQtyLabel(doc) }}</td>
             <td class="brk-list__truncate">{{ accountabilityLabel(doc) }}</td>
-            <td>
+            <td class="brk-list__col--secondary">
               @if (doc.getPassId && doc.getPass?.passNo) {
                 <a class="brk-list__source-link" (click)="goGetPass(doc); $event.stopPropagation()">
                   {{ doc.getPass?.passNo }}
@@ -212,7 +215,7 @@
                 <span class="brk-list__source-badge">{{ sourceLabel(doc) }}</span>
               }
             </td>
-            <td>
+            <td class="brk-list__col--secondary">
               @if (doc.createdByUser) {
                 {{ doc.createdByUser.firstName }} {{ doc.createdByUser.lastName }}
               } @else {
@@ -267,6 +270,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 
   <div class="brk-list__footer">
     <button nz-button nzType="default" type="button" [disabled]="page() === 0" (click)="prevPage()">
@@ -296,6 +300,7 @@
   [contextLoading]="returnsContextLoading()"
   [submitting]="returnsSubmitting()"
   [documentContext]="returnsModalDetail()"
+  [isInternalSource]="returnsModalDoc()?.sourceType === 'INTERNAL'"
   (closed)="closeReturnsBreakageModal()"
   (submitted)="onReturnsBreakageSubmitted($event)"
 />

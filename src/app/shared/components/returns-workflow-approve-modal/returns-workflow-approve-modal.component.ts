@@ -1,4 +1,4 @@
-import { Component, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzMessageService } from 'ng-zorro-antd/message';
@@ -32,17 +32,37 @@ export class ReturnsWorkflowApproveModalComponent {
   readonly submitting = input(false);
   /** Loaded document (GET detail) so workflow history can render before the user acts. */
   readonly documentContext = input<ReturnsWorkflowDocumentContext | null>(null);
+  /**
+   * When true (lost/breakage `INTERNAL` source), use internal-request title and omit
+   * Target Hotel Compensation — that option applies to get-pass return flows only.
+   */
+  readonly isInternalSource = input(false);
 
   readonly closed = output<void>();
   readonly submitted = output<ReturnsAccountabilityType>();
 
   readonly accountability = signal<ReturnsAccountabilityType | null>(null);
 
-  readonly accountabilityOptions: ReturnsAccountabilityType[] = [
+  private static readonly ALL_ACCOUNTABILITY_OPTIONS: ReturnsAccountabilityType[] = [
     'EMPLOYEE_DEDUCTION',
     'COMPANY_LOSS',
     'TARGET_HOTEL_COMPENSATION',
   ];
+
+  readonly accountabilityOptions = computed(() => {
+    if (this.isInternalSource()) {
+      return ReturnsWorkflowApproveModalComponent.ALL_ACCOUNTABILITY_OPTIONS.filter(
+        (o) => o !== 'TARGET_HOTEL_COMPENSATION',
+      );
+    }
+    return [...ReturnsWorkflowApproveModalComponent.ALL_ACCOUNTABILITY_OPTIONS];
+  });
+
+  readonly modalTitleKey = computed(() =>
+    this.isInternalSource()
+      ? 'RETURNS_WORKFLOW.INTERNAL_REQUEST_APPROVE_TITLE'
+      : 'RETURNS_WORKFLOW.PROCESS_RETURN_TITLE',
+  );
 
   constructor() {
     effect(() => {

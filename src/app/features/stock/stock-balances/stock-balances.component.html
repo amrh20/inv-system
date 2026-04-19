@@ -1,6 +1,6 @@
 <div class="stock-page">
   <div class="stock-page__header">
-    <div>
+    <div class="stock-page__title-block">
       <h1 class="stock-page__title">{{ 'STOCK.TITLE' | translate }}</h1>
       <p class="stock-page__meta">{{ 'STOCK.SUBTITLE' | translate }}</p>
     </div>
@@ -192,6 +192,7 @@
       </span>
     </div>
 
+    <div class="stock-page__table-scroll">
     <nz-table
       #st
       [nzData]="balances()"
@@ -201,6 +202,7 @@
       nzTableLayout="fixed"
       nzSize="middle"
       class="stock-table"
+      [nzScroll]="{ x: '1680px' }"
       [nzNoResult]="noResultTpl"
     >
       <ng-template #noResultTpl>
@@ -337,6 +339,7 @@
         }
       </tbody>
     </nz-table>
+    </div>
 
     @if (totalRows() > 0) {
       <div class="stock-page__pagination">

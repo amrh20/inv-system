@@ -143,11 +143,12 @@ export const routes: Routes = [
       },
       {
         path: 'stock',
+        canActivate: [permissionGuard],
         loadComponent: () =>
           import('./features/stock/stock-balances/stock-balances.component').then(
             (m) => m.StockBalancesComponent,
           ),
-        data: { breadcrumb: 'NAV.STOCK_BALANCES' },
+        data: { breadcrumb: 'NAV.STOCK_BALANCES', permission: ROUTE_PERMISSIONS.inventoryView },
       },
       {
         path: 'par-levels',

@@ -15,6 +15,10 @@
 
 .settings-page__header {
   margin-bottom: var(--settings-space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-space-xs);
+  min-width: 0;
 }
 
 .settings-page__title {
@@ -25,9 +29,11 @@
   display: flex;
   align-items: center;
   gap: var(--settings-space-sm);
+  flex-wrap: wrap;
 }
 
 .settings-page__title-icon {
+  flex-shrink: 0;
   color: var(--brand-primary, #6366f1);
 }
 

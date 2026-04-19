@@ -12,6 +12,12 @@
   gap: 12px;
 }
 
+.suppliers-page__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
+}
+
 .suppliers-page__title {
   margin: 0;
   font-size: 22px;
@@ -35,12 +41,14 @@
 .suppliers-page__filters {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
 }
 
 .suppliers-page__search {
-  max-width: 320px;
+  flex: 1 1 240px;
+  min-width: min(100%, 220px);
+  max-width: 100%;
 }
 
 .suppliers-page__search-icon {
@@ -49,6 +57,25 @@
 
 .suppliers-page__filter-select {
   min-width: 140px;
+  flex: 0 1 220px;
+  max-width: 100%;
+  width: 100%;
+}
+
+@media (min-width: 480px) {
+  .suppliers-page__filter-select {
+    width: auto;
+  }
+}
+
+.suppliers-page__table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .suppliers-page__table-wrap .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 .suppliers-page__name {

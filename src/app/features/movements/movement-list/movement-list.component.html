@@ -1,6 +1,6 @@
 <div class="movements-page">
   <div class="movements-page__header">
-    <div>
+    <div class="movements-page__title-block">
       <h1 class="movements-page__title">{{ 'MOVEMENTS.TITLE' | translate }}</h1>
       <p class="movements-page__meta">{{ 'MOVEMENTS.SUBTITLE' | translate }}</p>
     </div>
@@ -40,11 +40,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="movements-page__table-wrap">
   <nz-table
     #docTable
     [nzData]="documents()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
+    [nzScroll]="{ x: '900px' }"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"
@@ -94,5 +97,6 @@
       }
     </tbody>
   </nz-table>
+  </div>
   }
 </div>

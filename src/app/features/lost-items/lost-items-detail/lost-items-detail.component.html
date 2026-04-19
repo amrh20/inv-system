@@ -146,6 +146,7 @@
     [contextLoading]="false"
     [submitting]="returnsWorkflowSubmitting()"
     [documentContext]="doc()"
+    [isInternalSource]="doc()?.sourceType === 'INTERNAL'"
     (closed)="closeReturnsWorkflow()"
     (submitted)="onReturnsWorkflowSubmitted($event)"
   />

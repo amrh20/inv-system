@@ -4,7 +4,18 @@
 }
 
 .audit-page__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1.25rem;
+}
+
+.audit-page__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
 }
 
 .audit-page__title {
@@ -18,7 +29,18 @@
 }
 
 .audit-page__title-icon {
+  flex-shrink: 0;
   color: var(--primary-color);
+}
+
+.audit-page__table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .audit-page__table-wrap .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 .audit-page__meta {

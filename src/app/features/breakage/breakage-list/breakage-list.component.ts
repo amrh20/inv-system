@@ -10,7 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -43,6 +43,7 @@ import {
   showReturnsWorkflowStatusTabBar,
   userCanActOnReturnsWorkflowListRow,
   visibleReturnsWorkflowListStatusTabs,
+  filterReturnsWorkflowListTabsBySource,
   WORKFLOW_PERMISSION_APPROVE_BREAKAGE,
 } from '../../../shared/utils/returns-workflow.helpers';
 import type { BreakageListRow, BreakageSourceType, BreakageWorkflowStatus } from '../models/breakage.model';
@@ -81,10 +82,12 @@ const SOURCE_TABS: BreakageSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
 })
 export class BreakageListComponent implements OnInit {
   private listViewReady = false;
+  private createFromQueryHandled = false;
 
   private readonly api = inject(BreakageService);
   private readonly itemsApi = inject(ItemsService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
   private readonly message = inject(NzMessageService);
   private readonly auth = inject(AuthService);
@@ -101,7 +104,10 @@ export class BreakageListComponent implements OnInit {
 
   /** Role-scoped workflow tabs (breakage & lost lists share rules). Role from {@link AuthService#userRole}. */
   readonly visibleStatusTabs = computed(() =>
-    visibleReturnsWorkflowListStatusTabs(this.auth.userRole()),
+    filterReturnsWorkflowListTabsBySource(
+      visibleReturnsWorkflowListStatusTabs(this.auth.userRole()),
+      this.activeSourceTab(),
+    ),
   );
   /** Workflow stage filter tabs — only org admins; functional roles use {@link listWorkflowStatusParam}. */
   readonly showWorkflowStatusTabBar = computed(() =>
@@ -171,6 +177,21 @@ export class BreakageListComponent implements OnInit {
     this.loadRequirements();
     this.load();
     this.listViewReady = true;
+    this.tryOpenCreateFromQuery();
+  }
+
+  private tryOpenCreateFromQuery(): void {
+    if (this.createFromQueryHandled) return;
+    if (this.route.snapshot.queryParamMap.get('create') !== '1') return;
+    if (this.disableCreateButton()) return;
+    this.createFromQueryHandled = true;
+    this.createOpen.set(true);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { create: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   /** If the active tab is hidden for this role, switch to the first visible tab. */
@@ -199,10 +220,12 @@ export class BreakageListComponent implements OnInit {
             (res.data.isOpeningBalanceAllowed ? 'OPEN' : BreakageListComponent.DEFAULT_OB_STATUS);
           this.requirements.set(res.data);
           this.obStatus.set(normalizedObStatus);
+          this.tryOpenCreateFromQuery();
         },
         error: () => {
           this.requirements.set(null);
           this.obStatus.set(BreakageListComponent.DEFAULT_OB_STATUS);
+          this.tryOpenCreateFromQuery();
         },
       });
   }
@@ -215,6 +238,9 @@ export class BreakageListComponent implements OnInit {
 
   setSourceTab(tab: BreakageSourceType): void {
     this.activeSourceTab.set(tab);
+    if (!this.visibleStatusTabs().includes(this.activeStatusTab())) {
+      this.activeStatusTab.set(this.visibleStatusTabs()[0] ?? 'DEPT_APPROVED');
+    }
     this.page.set(0);
     this.load();
   }
@@ -413,8 +439,7 @@ export class BreakageListComponent implements OnInit {
 
   statusClass(status: BreakageWorkflowStatus | string): string {
     switch (status) {
-      case 'DRAFT':
-        return 'pending';
+    
       case 'DEPT_APPROVED':
       case 'COST_CONTROL_APPROVED':
       case 'FINANCE_APPROVED':

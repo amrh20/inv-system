@@ -1,6 +1,6 @@
 <div class="audit-page">
   <div class="audit-page__header">
-    <div>
+    <div class="audit-page__title-block">
       <h1 class="audit-page__title">
         <lucide-icon [img]="lucideShield" [size]="24" class="audit-page__title-icon" />
         {{ 'AUDIT_LOG.TITLE' | translate }}
@@ -47,11 +47,14 @@
     </button>
   </div>
 
+  <div class="audit-page__table-wrap">
   <nz-table
     #tbl
     [nzData]="logs()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
+    [nzScroll]="{ x: '1200px' }"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"
@@ -129,4 +132,5 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>

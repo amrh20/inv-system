@@ -378,6 +378,20 @@ export function visibleReturnsWorkflowListStatusTabs(
   return [...PIPELINE_LIST_STATUS_TABS];
 }
 
+/**
+ * Internal lost/breakage lists do not offer a Draft filter — use Draft only under “From returns”
+ * (get-pass return documents). Admins still see Draft when {@link source} is `GET_PASS_RETURN`.
+ */
+export function filterReturnsWorkflowListTabsBySource(
+  tabs: readonly ReturnsWorkflowListStatusTab[],
+  source: 'INTERNAL' | 'GET_PASS_RETURN',
+): ReturnsWorkflowListStatusTab[] {
+  if (source === 'INTERNAL') {
+    return tabs.filter((t) => t !== 'DRAFT');
+  }
+  return [...tabs];
+}
+
 /** Tab bar (workflow stage filters) is shown only for org admins; functional roles get one unified list. */
 export function showReturnsWorkflowStatusTabBar(role: string | undefined): boolean {
   const r = (role ?? '').trim();

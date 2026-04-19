@@ -28,11 +28,16 @@
 
 .items-page__header {
   display: flex;
-  gap: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
 
-  > div:first-child {
-    min-width: 0;
-  }
+.items-page__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
 }
 
 .items-page__title {
@@ -45,6 +50,7 @@
 }
 
 .title-icon {
+  flex-shrink: 0;
   color: var(--primary-color);
 }
 
@@ -59,12 +65,12 @@
   margin-inline-end: 4px;
 }
 
-.items-page__toolbar-group .items-page__toolbar-btn lucide-icon,
+.items-page__toolbar-actions .items-page__toolbar-btn lucide-icon,
 .items-page__toolbar-btn--icon lucide-icon {
   margin-inline-end: 0;
 }
 
-.items-page__toolbar-group .items-page__toolbar-btn:not(.items-page__toolbar-btn--icon) lucide-icon {
+.items-page__toolbar-actions .items-page__toolbar-btn:not(.items-page__toolbar-btn--icon) lucide-icon {
   margin-inline-end: 6px;
 }
 
@@ -75,10 +81,8 @@
 
 .items-page__filters {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
-  row-gap: 10px;
   padding: 12px 14px;
   background: #fafafa;
   border: 1px solid var(--border-color-split);
@@ -98,13 +102,16 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 10px;
   flex-shrink: 0;
-  margin-inline-start: auto;
 }
 
-.items-page__toolbar-group {
-  display: inline-flex;
+.items-page__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
 .items-page__toolbar-btn {
@@ -142,10 +149,25 @@
   margin-bottom: 0;
 }
 
+.items-table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
 .items-table {
   background: #fff;
   border-radius: var(--radius-brand);
   overflow: hidden;
+  min-width: 0;
+}
+
+:host ::ng-deep .items-table-wrap .ant-table-thead > tr > th {
+  white-space: nowrap;
+}
+
+:host ::ng-deep .items-table-wrap .ant-table-tbody > tr > td {
+  word-break: normal;
 }
 
 .thumb {
@@ -206,7 +228,7 @@
 }
 
 /* Action dropdown menu items: icon + label inline, no wrap */
-.items-table ul[nz-menu] li[nz-menu-item].items-menu__item,
+.items-table-wrap ul[nz-menu] li[nz-menu-item].items-menu__item,
 .items-page__filters-toolbar ul[nz-menu] li[nz-menu-item].items-menu__item {
   display: inline-flex;
   align-items: center;

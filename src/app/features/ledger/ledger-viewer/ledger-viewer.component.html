@@ -1,6 +1,6 @@
 <div class="ledger-page">
   <div class="ledger-page__header">
-    <div>
+    <div class="ledger-page__title-block">
       <h1 class="ledger-page__title">{{ 'LEDGER.TITLE' | translate }}</h1>
       <p class="ledger-page__meta">{{ 'LEDGER.SUBTITLE' | translate }}</p>
     </div>
@@ -149,7 +149,7 @@
               [ngClass]="movementTypeClass(row)"
             >
               <lucide-icon [img]="rowTypeIcon(row)" class="ledger-page__tag-icon" />
-              <span class="mx-2 d-inline-block">
+              <span class="ledger-page__tag-text">
                 {{ movementTypeHuman(row) }}
               </span>
             </span>

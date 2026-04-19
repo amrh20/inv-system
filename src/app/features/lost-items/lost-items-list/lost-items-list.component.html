@@ -1,6 +1,6 @@
 <div class="li-list">
   <div class="li-list__header">
-    <div>
+    <div class="li-list__title-block">
       <h1 class="li-list__title">
         <lucide-icon [img]="lucidePackageX" [size]="24" class="text-brand-error" />
         {{ 'LOST_ITEMS.LIST.TITLE' | translate }}
@@ -74,11 +74,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="li-list__table-wrap">
   <nz-table
     [nzData]="rows()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
     [nzShowPagination]="false"
+    [nzScroll]="{ x: '1200px' }"
     [nzNoResult]="noResultTpl"
   >
     <ng-template #noResultTpl>
@@ -93,10 +96,10 @@
           <th>{{ 'LOST_ITEMS.LIST.COL_DOC' | translate }}</th>
           <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
           <th>{{ 'LOST_ITEMS.LIST.COL_QTY' | translate }}</th>
-          <th>{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
+          <th class="li-list__col--secondary">{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
           <th>{{ 'COMMON.STATUS' | translate }}</th>
           <th>{{ 'COMMON.DATE' | translate }}</th>
-          <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
+          <th class="li-list__col--secondary">{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
           <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
         } @else {
           <th>{{ 'LOST_ITEMS.LIST.COL_DOC' | translate }}</th>
@@ -105,8 +108,8 @@
           <th>{{ 'LOST_ITEMS.LIST.COL_QTY' | translate }}</th>
           <th>{{ 'LOST_ITEMS.LIST.COL_ACCOUNTABILITY' | translate }}</th>
           <th>{{ 'COMMON.ITEM_NAME' | translate }}</th>
-          <th>{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
-          <th>{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
+          <th class="li-list__col--secondary">{{ 'LOST_ITEMS.LIST.COL_SOURCE' | translate }}</th>
+          <th class="li-list__col--secondary">{{ 'LOST_ITEMS.LIST.COL_BY' | translate }}</th>
           <th nzAlign="right">{{ 'COMMON.ACTIONS' | translate }}</th>
         }
       </tr>
@@ -125,7 +128,7 @@
               }
             </td>
             <td>{{ row.qtyLost }}</td>
-            <td>
+            <td class="li-list__col--secondary">
               @if (row.sourceType === 'GET_PASS_RETURN' && (row.getPassId || row.getPass?.id)) {
                 <button nz-button nzType="link" type="button" (click)="goGetPass(row)">
                   {{ row.getPass?.passNo || sourceLabel(row) }}
@@ -140,7 +143,7 @@
               </span>
             </td>
             <td>{{ row.createdAt | date: 'medium' }}</td>
-            <td>{{ displayUser(row) }}</td>
+            <td class="li-list__col--secondary">{{ displayUser(row) }}</td>
             <td nzAlign="right" class="li-list__actions-returns">
               @if (canTakeLostWorkflowAction(row)) {
                 <button
@@ -202,7 +205,7 @@
                 <div class="li-list__item-barcode">{{ row.itemBarcode }}</div>
               }
             </td>
-            <td>
+            <td class="li-list__col--secondary">
               @if (row.getPassId || row.getPass?.id) {
                 <button nz-button nzType="link" type="button" (click)="goGetPass(row)">
                   {{ row.getPass?.passNo || sourceLabel(row) }}
@@ -211,7 +214,7 @@
                 <span>{{ sourceLabel(row) }}</span>
               }
             </td>
-            <td>{{ displayUser(row) }}</td>
+            <td class="li-list__col--secondary">{{ displayUser(row) }}</td>
             <td nzAlign="right" class="li-list__actions-returns">
               @if (canTakeLostWorkflowAction(row)) {
                 <button
@@ -260,6 +263,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 
   <div class="li-list__pager">
     <button nz-button nzType="default" type="button" [disabled]="page() === 0" (click)="prevPage()">
@@ -289,6 +293,7 @@
   [contextLoading]="returnsContextLoading()"
   [submitting]="returnsSubmitting()"
   [documentContext]="returnsModalDetail()"
+  [isInternalSource]="returnsModalRow()?.sourceType === 'INTERNAL'"
   (closed)="closeReturnsModal()"
   (submitted)="onReturnsSubmitted($event)"
 />

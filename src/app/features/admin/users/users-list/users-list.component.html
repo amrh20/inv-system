@@ -1,6 +1,6 @@
 <div class="admin-users">
   <div class="admin-users__header">
-    <div>
+    <div class="admin-users__title-block">
       <h1 class="admin-users__title">
         <lucide-icon [img]="lucideUsers" [size]="24" class="admin-users__title-icon" />
         {{ 'USERS.TITLE' | translate }}
@@ -79,11 +79,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="admin-users__table-wrap">
   <nz-table
     #tbl
     [nzData]="users()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
+    [nzScroll]="{ x: '1280px' }"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"
@@ -185,6 +188,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>
 
 <nz-modal

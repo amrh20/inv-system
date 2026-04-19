@@ -1,9 +1,9 @@
 import { Component, input } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { BarChart3, Box } from 'lucide-angular';
+import { BarChart3, Box, Search } from 'lucide-angular';
 
 /** Icons supported by `icon` input (extend when needed) */
-export type EmptyStateIcon = typeof Box | typeof BarChart3;
+export type EmptyStateIcon = typeof Box | typeof BarChart3 | typeof Search;
 
 @Component({
   selector: 'app-empty-state',

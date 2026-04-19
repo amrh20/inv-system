@@ -1,3 +1,30 @@
+/** Backend `meta.dashboardProfile` — drives adaptive widgets. */
+export type DashboardProfile = 'executive' | 'operations' | 'department' | 'security';
+
+export interface DashboardSummaryMeta {
+  dashboardProfile: DashboardProfile;
+  /** Present when `dashboardProfile === 'department'` */
+  departmentScoped?: boolean;
+  departmentId?: string;
+}
+
+export interface PendingApprovalPreviewRow {
+  id: string;
+  documentNo: string;
+  movementType: string;
+  status: string;
+}
+
+export interface MyRequestStatusRow {
+  status: string;
+  count: number;
+}
+
+export interface SecurityDashboardSnapshot {
+  pendingGateApprovals: number;
+  activeOutPasses: number;
+}
+
 /**
  * Dashboard summary API response — matches backend dashboard.service getDashboardSummary
  */
@@ -72,11 +99,68 @@ export interface OperationalHealth {
   };
 }
 
+/** Control Tower — extended analytics from GET /dashboard/summary */
+export interface ControlTowerMonthlyLoss {
+  totalValue: number;
+  documentCount: number;
+}
+
+export interface WorkflowHealthRow {
+  status: string;
+  count: number;
+}
+
+export interface StockAlertRow {
+  itemId: string;
+  itemName: string;
+  qtyOnHand: number;
+  minQty: number;
+  shortfall: number;
+}
+
+export interface AccountabilityDistribution {
+  companyLoss: number;
+  employeeDeduction: number;
+  targetHotelCompensation: number;
+  unspecified: number;
+}
+
+export interface LossVsBreakage {
+  breakageValue: number;
+  lostValue: number;
+}
+
+export interface TopVulnerableItem {
+  itemName: string;
+  eventCount: number;
+  totalCost: number;
+}
+
+export interface ControlTowerSummary {
+  monthlyApprovedLosses: ControlTowerMonthlyLoss;
+  workflowHealth: WorkflowHealthRow[];
+  stockAlerts: StockAlertRow[];
+  accountabilityDistribution: AccountabilityDistribution;
+  lossVsBreakage: LossVsBreakage;
+  topVulnerableItems: TopVulnerableItem[];
+  pendingMyActionCount: number;
+  activeUsersCount: number;
+  /** Present for `operations` profile */
+  pendingApprovalsPreview?: PendingApprovalPreviewRow[];
+}
+
 export interface DashboardSummary {
-  inventoryOverview: InventoryOverview;
-  monthlyPerformance: MonthlyPerformance;
-  riskIndicators: RiskIndicators;
-  operationalHealth: OperationalHealth;
+  meta?: DashboardSummaryMeta;
+  inventoryOverview: InventoryOverview | null;
+  monthlyPerformance: MonthlyPerformance | null;
+  riskIndicators: RiskIndicators | null;
+  operationalHealth: OperationalHealth | null;
+  /** Optional — present when API returns Control Tower payload */
+  controlTower?: ControlTowerSummary | null;
+  /** Department managers — breakage/lost documents created by the user, grouped by status */
+  myRequestStatus?: MyRequestStatusRow[];
+  /** Security profile — gate workload snapshot */
+  securitySnapshot?: SecurityDashboardSnapshot;
   generatedAt: string;
 }
 

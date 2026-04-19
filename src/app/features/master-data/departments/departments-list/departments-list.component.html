@@ -1,6 +1,6 @@
 <div class="departments-page">
   <div class="departments-page__header">
-    <div>
+    <div class="departments-page__title-block">
       <h1 class="departments-page__title">{{ 'DEPARTMENTS.TITLE' | translate }}</h1>
       <p class="departments-page__meta">{{ 'DEPARTMENTS.SUBTITLE' | translate }}</p>
     </div>
@@ -35,6 +35,7 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="departments-page__table-wrap">
   <nz-table
     #tbl
     [nzData]="departments()"
@@ -123,6 +124,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>
 
 <app-department-form

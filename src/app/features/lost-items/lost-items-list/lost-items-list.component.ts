@@ -10,7 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -42,6 +42,7 @@ import {
   showReturnsWorkflowStatusTabBar,
   userCanActOnReturnsWorkflowListRow,
   visibleReturnsWorkflowListStatusTabs,
+  filterReturnsWorkflowListTabsBySource,
   WORKFLOW_PERMISSION_APPROVE_LOST,
 } from '../../../shared/utils/returns-workflow.helpers';
 import type { LostDetail, LostItemsListRow, LostSourceType, LostWorkflowStatus } from '../models/lost-items.model';
@@ -78,10 +79,12 @@ const SOURCE_TABS: LostSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
 })
 export class LostItemsListComponent implements OnInit {
   private listViewReady = false;
+  private createFromQueryHandled = false;
 
   private readonly api = inject(LostItemsService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -96,7 +99,10 @@ export class LostItemsListComponent implements OnInit {
   readonly sourceTabs = SOURCE_TABS;
   /** Role-scoped workflow tabs; role from {@link AuthService#userRole}. */
   readonly visibleStatusTabs = computed(() =>
-    visibleReturnsWorkflowListStatusTabs(this.auth.userRole()),
+    filterReturnsWorkflowListTabsBySource(
+      visibleReturnsWorkflowListStatusTabs(this.auth.userRole()),
+      this.activeSourceTab(),
+    ),
   );
   readonly showWorkflowStatusTabBar = computed(() =>
     showReturnsWorkflowStatusTabBar(this.auth.userRole()),
@@ -158,6 +164,20 @@ export class LostItemsListComponent implements OnInit {
       });
     this.load();
     this.listViewReady = true;
+    this.tryOpenCreateFromQuery();
+  }
+
+  private tryOpenCreateFromQuery(): void {
+    if (this.createFromQueryHandled) return;
+    if (this.route.snapshot.queryParamMap.get('create') !== '1') return;
+    this.createFromQueryHandled = true;
+    this.createOpen.set(true);
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { create: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   /** If the active tab is hidden for this role, switch to the first visible tab. */
@@ -177,6 +197,9 @@ export class LostItemsListComponent implements OnInit {
 
   setSourceTab(tab: LostSourceType): void {
     this.activeSourceTab.set(tab);
+    if (!this.visibleStatusTabs().includes(this.activeStatusTab())) {
+      this.activeStatusTab.set(this.visibleStatusTabs()[0] ?? 'DEPT_APPROVED');
+    }
     this.page.set(0);
     this.load();
   }

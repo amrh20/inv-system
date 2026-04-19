@@ -1,6 +1,6 @@
 <div class="suppliers-page">
   <div class="suppliers-page__header">
-    <div>
+    <div class="suppliers-page__title-block">
       <h1 class="suppliers-page__title">{{ 'SUPPLIERS.TITLE' | translate }}</h1>
       <p class="suppliers-page__meta">{{ 'SUPPLIERS.SUBTITLE' | translate }}</p>
     </div>
@@ -44,6 +44,7 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="suppliers-page__table-wrap">
   <nz-table
     #tbl
     [nzData]="suppliers()"
@@ -131,6 +132,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>
 
 <app-supplier-form

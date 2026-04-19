@@ -94,6 +94,11 @@ export class GrnListComponent implements OnInit {
   readonly tabs = TABS;
 
   readonly activeTab = signal<GrnListTab>('All');
+
+  /** Wide enough for rejected tab extra columns; horizontal scroll on narrow viewports. */
+  readonly grnTableScrollX = computed(() =>
+    this.activeTab() === 'REJECTED' ? '1520px' : '1180px',
+  );
   readonly grns = signal<GrnListRow[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);

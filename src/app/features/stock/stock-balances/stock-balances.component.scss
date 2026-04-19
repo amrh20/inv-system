@@ -12,6 +12,12 @@
   gap: 12px;
 }
 
+.stock-page__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
+}
+
 .stock-page__title {
   margin: 0;
   font-size: 22px;
@@ -30,6 +36,7 @@
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .stock-page__export {
@@ -248,8 +255,18 @@
   gap: 4px;
 }
 
-.stock-table {
+.stock-page__table-scroll {
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
+}
+
+.stock-table {
+  min-width: 0;
+}
+
+:host ::ng-deep .stock-table .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 :host ::ng-deep .stock-table .ant-table-tbody > tr > td {

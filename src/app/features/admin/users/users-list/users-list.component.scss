@@ -12,6 +12,12 @@
   margin-bottom: 1.25rem;
 }
 
+.admin-users__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
+}
+
 .admin-users__title {
   margin: 0;
   font-size: 1.25rem;
@@ -23,7 +29,18 @@
 }
 
 .admin-users__title-icon {
+  flex-shrink: 0;
   color: var(--primary-color);
+}
+
+.admin-users__table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .admin-users__table-wrap .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 .admin-users__meta {

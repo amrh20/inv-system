@@ -1,4 +1,7 @@
-<div class="dashboard-page">
+<div
+  class="dashboard-page"
+  [ngClass]="{ 'dashboard-page--with-quick': hasAnalyticsAccess() && !isParentOrganizationContext() }"
+>
   @if (subscriptionBlocked()) {
     <div class="dashboard-page__subscription-soft px-6 py-10">
       <app-empty-state
@@ -7,7 +10,7 @@
       />
     </div>
   } @else if (isParentOrganizationContext()) {
-    <ng-container *ngIf="isAdmin">
+    <ng-container *ngIf="hasAnalyticsAccess()">
     <div>
       @if (orgError(); as orgErr) {
         <div class="dashboard-page__error">
@@ -33,6 +36,8 @@
             </h1>
             <p class="dashboard-page__meta">
               {{ tenantName() }} — {{ dateStr() }}
+              <span class="dashboard-page__role-pill" aria-hidden="true">{{ 'COMMON.SEPARATOR_DOT' | translate }}</span>
+              <span class="dashboard-page__role-pill">{{ roleRibbonKey() | translate }}</span>
             </p>
           </div>
           <div class="dashboard-page__header-actions">
@@ -201,29 +206,18 @@
       }
     </div>
     </ng-container>
-    <ng-container *ngIf="!isAdmin">
+    <ng-container *ngIf="!hasAnalyticsAccess()">
       <div
         class="flex flex-col items-center justify-center h-full min-h-[calc(100vh-64px)] px-6 transition-all duration-700 ease-out"
         [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
       >
-        <div
-          class="flex items-center justify-center w-28 h-28 rounded-full bg-indigo-50 mb-8 transition-all duration-700 delay-100"
-          [ngClass]="isVisible() ? 'opacity-100 scale-100' : 'opacity-0 scale-75'"
-        >
-          <i class="pi pi-user text-5xl text-indigo-300"></i>
-        </div>
-        <h2
-          class="text-3xl font-semibold text-gray-700 mb-3 transition-all duration-700 delay-150"
-          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
-        >
-          Welcome back, {{ userName }}!
-        </h2>
-        <p
-          class="text-gray-400 text-base text-center max-w-md transition-all duration-700 delay-200"
-          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
-        >
-          Please use the sidebar to navigate through the system modules.
-        </p>
+        <app-empty-state
+          class="dashboard-page__welcome-empty"
+          [icon]="lucideBox"
+          [iconSize]="56"
+          [title]="'DASHBOARD.WELCOME_BACK' | translate: { name: userName }"
+          [message]="'DASHBOARD.WELCOME_NAV_HINT' | translate"
+        />
       </div>
     </ng-container>
   } @else if (error()) {
@@ -237,15 +231,17 @@
       </button>
     </div>
   } @else {
-    <ng-container *ngIf="isAdmin">
+    <ng-container *ngIf="hasAnalyticsAccess()">
     <!-- Header -->
-    <div class="dashboard-page__header">
+    <div class="dashboard-page__header dashboard-page__header--slim">
       <div>
-        <h1 class="dashboard-page__title">
+        <h1 class="dashboard-page__title dashboard-page__title--slim">
           {{ 'DASHBOARD.WELCOME' | translate }}{{ currentUser()?.firstName || ('COMMON.USER' | translate) }}
         </h1>
         <p class="dashboard-page__meta">
           {{ tenantName() }} — {{ dateStr() }}
+          <span class="dashboard-page__role-pill" aria-hidden="true">{{ 'COMMON.SEPARATOR_DOT' | translate }}</span>
+          <span class="dashboard-page__role-pill">{{ roleRibbonKey() | translate }}</span>
         </p>
       </div>
       <div class="dashboard-page__header-actions">
@@ -270,7 +266,382 @@
       </div>
     </div>
 
-    <!-- KPI Cards -->
+    @if (loading()) {
+      <section class="dashboard-page__control-tower" aria-labelledby="dashboard-control-tower-title-loading" aria-busy="true">
+        <h2 id="dashboard-control-tower-title-loading" class="dashboard-page__section-title dashboard-page__section-title--compact">
+          {{ 'DASHBOARD.CONTROL_TOWER_TITLE' | translate }}
+        </h2>
+        <div class="dashboard-page__ct-kpis">
+          @for (i of [1, 2, 3]; track i) {
+            <nz-card [nzBordered]="true" class="dashboard-page__nz-kpi">
+              <nz-skeleton [nzActive]="true" [nzTitle]="false" [nzParagraph]="{ rows: 2, width: ['100%', '70%'] }"></nz-skeleton>
+            </nz-card>
+          }
+        </div>
+        <div class="dashboard-page__charts-grid">
+          @for (i of [1, 2]; track i) {
+            <nz-card [nzBordered]="true" class="dashboard-page__chart-card">
+              <nz-skeleton [nzActive]="true" [nzTitle]="{ width: '60%' }" [nzParagraph]="{ rows: 5 }"></nz-skeleton>
+            </nz-card>
+          }
+        </div>
+        <div class="dashboard-page__section dashboard-page__section--compact">
+          <nz-skeleton [nzActive]="true" [nzTitle]="{ width: '50%' }" [nzParagraph]="{ rows: 3 }"></nz-skeleton>
+        </div>
+        <div class="dashboard-page__section dashboard-page__section--compact">
+          <nz-skeleton [nzActive]="true" [nzTitle]="{ width: '55%' }" [nzParagraph]="{ rows: 2 }"></nz-skeleton>
+        </div>
+        <div class="dashboard-page__section dashboard-page__section--compact">
+          <nz-skeleton [nzActive]="true" [nzTitle]="{ width: '45%' }" [nzParagraph]="{ rows: 4 }"></nz-skeleton>
+        </div>
+      </section>
+    } @else if (isSecurityDashboard() && data()?.securitySnapshot; as sec) {
+      <section class="dashboard-page__security" [attr.aria-labelledby]="'dashboard-security-title'">
+        <h2 id="dashboard-security-title" class="dashboard-page__section-title dashboard-page__section-title--compact">
+          {{ 'DASHBOARD.SECURITY_OVERVIEW_TITLE' | translate }}
+        </h2>
+        <div class="dashboard-page__cards">
+          <div class="dashboard-page__card">
+            <div class="dashboard-page__card-head">
+              <span class="dashboard-page__card-label">{{ 'DASHBOARD.SECURITY_PENDING_GATE' | translate }}</span>
+              <div class="dashboard-page__card-icon dashboard-page__card-icon--amber">
+                <lucide-icon [img]="lucideBell" [size]="18" [strokeWidth]="2" />
+              </div>
+            </div>
+            <p class="dashboard-page__card-value">{{ fmt(sec.pendingGateApprovals) }}</p>
+          </div>
+          <div class="dashboard-page__card">
+            <div class="dashboard-page__card-head">
+              <span class="dashboard-page__card-label">{{ 'DASHBOARD.SECURITY_ACTIVE_OUT' | translate }}</span>
+              <div class="dashboard-page__card-icon dashboard-page__card-icon--blue">
+                <lucide-icon [img]="lucideKeyRound" [size]="18" [strokeWidth]="2" />
+              </div>
+            </div>
+            <p class="dashboard-page__card-value">{{ fmt(sec.activeOutPasses) }}</p>
+          </div>
+        </div>
+        @if (!hasData()) {
+          <div class="dashboard-page__chart-empty dashboard-page__chart-empty--section mt-4">
+            <app-empty-state
+              [icon]="lucideBox"
+              [title]="'DASHBOARD.SECURITY_EMPTY_TITLE' | translate"
+              [message]="'DASHBOARD.SECURITY_EMPTY_HINT' | translate"
+            />
+          </div>
+        }
+      </section>
+    } @else if (controlTowerResolved(); as ct) {
+      <section class="dashboard-page__control-tower" aria-labelledby="dashboard-control-tower-title">
+        <h2 id="dashboard-control-tower-title" class="dashboard-page__section-title dashboard-page__section-title--compact">
+          {{ 'DASHBOARD.CONTROL_TOWER_TITLE' | translate }}
+        </h2>
+        <div class="dashboard-page__ct-kpis">
+          <nz-card
+            [nzBordered]="true"
+            class="dashboard-page__nz-kpi"
+            [ngClass]="{ 'dashboard-page__nz-kpi--pulse': ct.pendingMyActionCount > 0 }"
+          >
+            <div class="dashboard-page__nz-kpi-inner">
+              <div class="dashboard-page__nz-kpi-icon dashboard-page__nz-kpi-icon--amber">
+                <lucide-icon [img]="lucideBell" [size]="20" [strokeWidth]="2" />
+              </div>
+              <div class="dashboard-page__nz-kpi-text">
+                <p class="dashboard-page__nz-kpi-label">{{ 'DASHBOARD.PENDING_MY_ACTION' | translate }}</p>
+                <p class="dashboard-page__nz-kpi-value">{{ fmt(ct.pendingMyActionCount) }}</p>
+              </div>
+            </div>
+          </nz-card>
+          @if (isExecutiveDashboard() || isDepartmentDashboard()) {
+            <nz-card
+              [nzBordered]="true"
+              class="dashboard-page__nz-kpi"
+              [ngClass]="{ 'dashboard-page__nz-kpi--loss-zero': ct.monthlyApprovedLosses.totalValue <= 0 }"
+            >
+              <div class="dashboard-page__nz-kpi-inner">
+                @if (ct.monthlyApprovedLosses.totalValue <= 0) {
+                  <div class="dashboard-page__nz-kpi-icon dashboard-page__nz-kpi-icon--success">
+                    <lucide-icon [img]="lucideCheck" [size]="20" [strokeWidth]="2" />
+                  </div>
+                } @else {
+                  <div class="dashboard-page__nz-kpi-icon dashboard-page__nz-kpi-icon--rose">
+                    <lucide-icon [img]="lucideTrendingDown" [size]="20" [strokeWidth]="2" />
+                  </div>
+                }
+                <div class="dashboard-page__nz-kpi-text">
+                  <p class="dashboard-page__nz-kpi-label">{{ 'DASHBOARD.MONTHLY_LOSS_VALUE' | translate }}</p>
+                  <p class="dashboard-page__nz-kpi-value">{{ fmtSARFull(ct.monthlyApprovedLosses.totalValue) }}</p>
+                  @if (ct.monthlyApprovedLosses.totalValue <= 0) {
+                    <p class="dashboard-page__nz-kpi-sub">{{ 'DASHBOARD.MONTHLY_LOSS_ZERO_SUB' | translate }}</p>
+                  } @else {
+                    <p class="dashboard-page__nz-kpi-sub">
+                      {{ fmt(ct.monthlyApprovedLosses.documentCount) }} {{ 'DASHBOARD.APPROVED_DOCS' | translate }}
+                    </p>
+                  }
+                </div>
+              </div>
+            </nz-card>
+          }
+          @if (isOperationsDashboard()) {
+            <nz-card [nzBordered]="true" class="dashboard-page__nz-kpi">
+              <div class="dashboard-page__nz-kpi-inner">
+                <div class="dashboard-page__nz-kpi-icon dashboard-page__nz-kpi-icon--green">
+                  <lucide-icon [img]="lucideArrowRightLeft" [size]="20" [strokeWidth]="2" />
+                </div>
+                <div class="dashboard-page__nz-kpi-text">
+                  <p class="dashboard-page__nz-kpi-label">{{ 'DASHBOARD.FILL_RATE' | translate }}</p>
+                  <p class="dashboard-page__nz-kpi-value">{{ mp()?.fillRate ?? 0 }}%</p>
+                  <p class="dashboard-page__nz-kpi-sub">{{ 'DASHBOARD.FILL_RATE_HINT' | translate }}</p>
+                </div>
+              </div>
+            </nz-card>
+            <nz-card [nzBordered]="true" class="dashboard-page__nz-kpi">
+              <div class="dashboard-page__nz-kpi-inner">
+                <div class="dashboard-page__nz-kpi-icon dashboard-page__nz-kpi-icon--indigo">
+                  <lucide-icon [img]="lucideArrowRightLeft" [size]="20" [strokeWidth]="2" />
+                </div>
+                <div class="dashboard-page__nz-kpi-text">
+                  <p class="dashboard-page__nz-kpi-label">{{ 'DASHBOARD.TRANSFERS' | translate }}</p>
+                  <p class="dashboard-page__nz-kpi-value">{{ fmt(mp()?.transfersCount ?? 0) }}</p>
+                  <p class="dashboard-page__nz-kpi-sub">{{ 'DASHBOARD.THIS_MONTH' | translate }}</p>
+                </div>
+              </div>
+            </nz-card>
+          }
+          @if (isExecutiveDashboard()) {
+            <nz-card [nzBordered]="true" class="dashboard-page__nz-kpi">
+              <div class="dashboard-page__nz-kpi-inner">
+                <div class="dashboard-page__nz-kpi-icon dashboard-page__nz-kpi-icon--blue">
+                  <lucide-icon [img]="lucideActivity" [size]="20" [strokeWidth]="2" />
+                </div>
+                <div class="dashboard-page__nz-kpi-text">
+                  <p class="dashboard-page__nz-kpi-label">{{ 'DASHBOARD.SYSTEM_HEALTH' | translate }}</p>
+                  <p class="dashboard-page__nz-kpi-value">{{ fmt(ct.activeUsersCount) }}</p>
+                  <p class="dashboard-page__nz-kpi-sub">{{ 'DASHBOARD.ACTIVE_USERS_HINT' | translate }}</p>
+                </div>
+              </div>
+            </nz-card>
+          }
+          @if (isDepartmentDashboard()) {
+            <nz-card [nzBordered]="true" class="dashboard-page__nz-kpi">
+              <div class="dashboard-page__nz-kpi-inner">
+                <div class="dashboard-page__nz-kpi-icon dashboard-page__nz-kpi-icon--blue">
+                  <lucide-icon [img]="lucideClipboardList" [size]="20" [strokeWidth]="2" />
+                </div>
+                <div class="dashboard-page__nz-kpi-text">
+                  <p class="dashboard-page__nz-kpi-label">{{ 'DASHBOARD.MY_REQUESTS_TOTAL' | translate }}</p>
+                  <p class="dashboard-page__nz-kpi-value">{{ fmt(myRequestsTotal()) }}</p>
+                  <p class="dashboard-page__nz-kpi-sub">{{ 'DASHBOARD.MY_REQUESTS_HINT' | translate }}</p>
+                </div>
+              </div>
+            </nz-card>
+          }
+        </div>
+
+        @if (isExecutiveDashboard()) {
+        <div class="dashboard-page__charts-grid">
+          <nz-card [nzBordered]="true" class="dashboard-page__chart-card">
+            <h3 class="dashboard-page__chart-title">{{ 'DASHBOARD.VULNERABLE_ITEMS_TITLE' | translate }}</h3>
+            @if (!hasData()) {
+              <div class="dashboard-page__chart-empty">
+                <app-empty-state
+                  [icon]="emptyChartIllustration"
+                  [title]="'DASHBOARD.EMPTY_CHART_TITLE' | translate"
+                  [message]="'DASHBOARD.EMPTY_CHART_SUBTEXT' | translate"
+                  [messageTone]="'caption'"
+                />
+              </div>
+            } @else if (ct.topVulnerableItems.length === 0) {
+              <app-empty-state
+                [title]="'DASHBOARD.CLEAN_SLATE_TITLE' | translate"
+                [message]="'DASHBOARD.CLEAN_SLATE_MESSAGE' | translate"
+              />
+            } @else {
+              <div class="dashboard-page__vuln-bars">
+                @for (v of ct.topVulnerableItems; track v.itemName) {
+                  <div
+                    class="dashboard-page__vuln-row"
+                    [nzTooltipTitle]="vulnerableTooltip(v)"
+                    nz-tooltip
+                    nzTooltipPlacement="top"
+                  >
+                    <div class="dashboard-page__vuln-head">
+                      <span class="dashboard-page__vuln-name">{{ v.itemName }}</span>
+                      <span class="dashboard-page__vuln-cost">{{ fmtSAR(v.totalCost) }}</span>
+                    </div>
+                    <div class="dashboard-page__bar-track dashboard-page__bar-track--chart">
+                      <div
+                        class="dashboard-page__bar-fill dashboard-page__bar-fill--vuln"
+                        [style.width.%]="vulnerableBarPct(v)"
+                      ></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </nz-card>
+          <nz-card [nzBordered]="true" class="dashboard-page__chart-card">
+            <h3 class="dashboard-page__chart-title">{{ 'DASHBOARD.LOSS_VS_BREAKAGE_TITLE' | translate }}</h3>
+            @if (!hasData()) {
+              <div class="dashboard-page__chart-empty">
+                <app-empty-state
+                  [icon]="emptyChartIllustration"
+                  [title]="'DASHBOARD.EMPTY_CHART_TITLE' | translate"
+                  [message]="'DASHBOARD.EMPTY_CHART_SUBTEXT' | translate"
+                  [messageTone]="'caption'"
+                />
+              </div>
+            } @else if (ct.lossVsBreakage.breakageValue + ct.lossVsBreakage.lostValue <= 0) {
+              <app-empty-state
+                [title]="'DASHBOARD.CLEAN_SLATE_TITLE' | translate"
+                [message]="'DASHBOARD.CHART_NO_LOSS_MONTH' | translate"
+              />
+            } @else {
+              <div class="dashboard-page__donut-wrap">
+                <div class="dashboard-page__donut" [style.background]="lossBreakageDonutStyle()" aria-hidden="true">
+                  <div class="dashboard-page__donut-hole"></div>
+                </div>
+                <ul class="dashboard-page__donut-legend">
+                  <li>
+                    <span class="dashboard-page__legend-swatch dashboard-page__legend-swatch--breakage"></span>
+                    {{ 'DASHBOARD.BREAKAGE_SEGMENT' | translate }} — {{ fmtSAR(ct.lossVsBreakage.breakageValue) }}
+                  </li>
+                  <li>
+                    <span class="dashboard-page__legend-swatch dashboard-page__legend-swatch--lost"></span>
+                    {{ 'DASHBOARD.LOST_SEGMENT' | translate }} — {{ fmtSAR(ct.lossVsBreakage.lostValue) }}
+                  </li>
+                </ul>
+              </div>
+            }
+          </nz-card>
+        </div>
+        }
+
+        @if (isExecutiveDashboard()) {
+        <div class="dashboard-page__section dashboard-page__section--compact">
+          <h3 class="dashboard-page__chart-title">{{ 'DASHBOARD.ACCOUNTABILITY_TITLE' | translate }}</h3>
+          @if (!hasData()) {
+            <div class="dashboard-page__chart-empty dashboard-page__chart-empty--section">
+              <app-empty-state
+                [icon]="emptyChartIllustration"
+                [title]="'DASHBOARD.EMPTY_CHART_TITLE' | translate"
+                [message]="'DASHBOARD.EMPTY_CHART_SUBTEXT' | translate"
+                [messageTone]="'caption'"
+              />
+            </div>
+          } @else if (!accountabilityAny()) {
+            <app-empty-state
+              [title]="'DASHBOARD.CLEAN_SLATE_TITLE' | translate"
+              [message]="'DASHBOARD.ACCOUNTABILITY_EMPTY' | translate"
+            />
+          } @else {
+            <div class="dashboard-page__acc-list">
+              @for (row of accountabilityRows(); track row.key) {
+                @if (row.value > 0) {
+                  <div class="dashboard-page__acc-row">
+                    <span class="dashboard-page__acc-label">{{ row.labelKey | translate }}</span>
+                    <div class="dashboard-page__acc-track">
+                      <div
+                        class="dashboard-page__acc-fill"
+                        [ngClass]="row.cls"
+                        [style.width.%]="accountabilityMax() > 0 ? (row.value / accountabilityMax()) * 100 : 0"
+                      ></div>
+                    </div>
+                    <span class="dashboard-page__acc-val">{{ fmtSAR(row.value) }}</span>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+        }
+
+        <div class="dashboard-page__section dashboard-page__section--compact">
+          <h3 class="dashboard-page__chart-title">{{ 'DASHBOARD.WORKFLOW_HEALTH_TITLE' | translate }}</h3>
+          @if (!hasData()) {
+            <div class="dashboard-page__chart-empty dashboard-page__chart-empty--section">
+              <app-empty-state
+                [icon]="emptyChartIllustration"
+                [title]="'DASHBOARD.EMPTY_CHART_TITLE' | translate"
+                [message]="'DASHBOARD.EMPTY_CHART_SUBTEXT' | translate"
+                [messageTone]="'caption'"
+              />
+            </div>
+          } @else if (ct.workflowHealth.length === 0) {
+            <p class="dashboard-page__empty">{{ 'DASHBOARD.NO_WORKFLOW_QUEUE' | translate }}</p>
+          } @else {
+            <div class="dashboard-page__workflow-tags">
+              @for (w of ct.workflowHealth; track w.status) {
+                <span class="dashboard-page__workflow-pill">
+                  <span class="dashboard-page__workflow-count">{{ w.count }}</span>
+                  {{ workflowStatusDisplay(w.status) }}
+                </span>
+              }
+            </div>
+          }
+        </div>
+
+        @if (isOperationsDashboard() && (ct.pendingApprovalsPreview?.length ?? 0) > 0) {
+          <div class="dashboard-page__section dashboard-page__section--compact">
+            <h3 class="dashboard-page__chart-title">{{ 'DASHBOARD.PENDING_APPROVALS_LIST_TITLE' | translate }}</h3>
+            <ul class="dashboard-page__pending-approvals">
+              @for (p of ct.pendingApprovalsPreview!; track p.id) {
+                <li class="dashboard-page__pending-approvals-li">
+                  <span class="dashboard-page__pending-doc">{{ p.documentNo }}</span>
+                  <span class="dashboard-page__pending-meta">{{ workflowStatusDisplay(p.status) }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        @if (isDepartmentDashboard() && (data()?.myRequestStatus?.length ?? 0) > 0) {
+          <div class="dashboard-page__section dashboard-page__section--compact">
+            <h3 class="dashboard-page__chart-title">{{ 'DASHBOARD.MY_REQUESTS_BY_STATUS_TITLE' | translate }}</h3>
+            <div class="dashboard-page__workflow-tags">
+              @for (row of data()!.myRequestStatus!; track row.status) {
+                <span class="dashboard-page__workflow-pill">
+                  <span class="dashboard-page__workflow-count">{{ fmt(row.count) }}</span>
+                  {{ workflowStatusDisplay(row.status) }}
+                </span>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="dashboard-page__section dashboard-page__section--compact">
+          <h3 class="dashboard-page__chart-title">{{ 'DASHBOARD.STOCK_ALERTS_TITLE' | translate }}</h3>
+          @if (!hasData()) {
+            <div class="dashboard-page__chart-empty dashboard-page__chart-empty--section">
+              <app-empty-state
+                [icon]="emptyChartIllustration"
+                [title]="'DASHBOARD.EMPTY_CHART_TITLE' | translate"
+                [message]="'DASHBOARD.EMPTY_CHART_SUBTEXT' | translate"
+                [messageTone]="'caption'"
+              />
+            </div>
+          } @else if (ct.stockAlerts.length === 0) {
+            <app-empty-state
+              [title]="'DASHBOARD.NO_STOCK_ALERTS' | translate"
+              [message]="'DASHBOARD.STOCK_ALERTS_HINT' | translate"
+            />
+          } @else {
+            <ul class="dashboard-page__alert-list">
+              @for (s of ct.stockAlerts; track s.itemId) {
+                <li class="dashboard-page__alert-li">
+                  <span class="dashboard-page__alert-name">{{ s.itemName }}</span>
+                  <span class="dashboard-page__alert-meta">
+                    {{ fmt(s.qtyOnHand) }} / {{ fmt(s.minQty) }} {{ 'DASHBOARD.QTY_MIN_LABEL' | translate }}
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </section>
+    }
+
+    @if (!isSecurityDashboard()) {
+    <!-- Inventory snapshot KPIs -->
     <div class="dashboard-page__cards">
       @if (loading()) {
         @for (i of [1, 2, 3]; track i) {
@@ -343,6 +714,15 @@
             </div>
           }
         </div>
+      } @else if (!hasData()) {
+        <div class="dashboard-page__chart-empty dashboard-page__chart-empty--inline">
+          <app-empty-state
+            [icon]="emptyChartIllustration"
+            [title]="'DASHBOARD.EMPTY_CHART_TITLE' | translate"
+            [message]="'DASHBOARD.EMPTY_CHART_SUBTEXT' | translate"
+            [messageTone]="'caption'"
+          />
+        </div>
       } @else {
         <p class="dashboard-page__empty">{{ 'DASHBOARD.NO_STOCK_DATA' | translate }}</p>
       }
@@ -392,6 +772,12 @@
           <h2 class="dashboard-page__section-title">{{ 'DASHBOARD.RISK_INDICATORS' | translate }}</h2>
           @if (loading()) {
             <div class="dashboard-page__skeleton dashboard-page__skeleton--risk"></div>
+          } @else if (!ri()) {
+            <app-empty-state
+              [title]="'DASHBOARD.RISK_NOT_SHOWN_TITLE' | translate"
+              [message]="'DASHBOARD.RISK_NOT_SHOWN_HINT' | translate"
+              [messageTone]="'caption'"
+            />
           } @else {
             <div class="dashboard-page__risk">
               <p class="dashboard-page__risk-label">
@@ -460,36 +846,132 @@
         }
       </div>
     </div>
+    }
 
     @if (data()?.generatedAt) {
       <p class="dashboard-page__footer">
         {{ 'DASHBOARD.DATA_AS_OF' | translate }} {{ data()!.generatedAt | date:'medium' }}
       </p>
     }
+
+    @if (
+      isMobileQuickUi() &&
+      (showQuickBreakage() || showQuickLost() || showQuickStockAudit() || showQuickGetPass())
+    ) {
+      <button
+        nz-button
+        nzType="primary"
+        nzShape="circle"
+        type="button"
+        class="dashboard-page__quick-fab"
+        (click)="quickSheetOpen.set(true)"
+        [attr.aria-label]="'DASHBOARD.QUICK_ACTIONS_LABEL' | translate"
+      >
+        <lucide-icon [img]="lucideLayoutGrid" [size]="22" [strokeWidth]="2" />
+      </button>
+
+      <nz-drawer
+        [nzVisible]="quickSheetOpen()"
+        nzPlacement="bottom"
+        [nzHeight]="'auto'"
+        [nzClosable]="true"
+        [nzMaskClosable]="true"
+        [nzBodyStyle]="{ padding: '16px' }"
+        [nzTitle]="('DASHBOARD.QUICK_ACTIONS_LABEL' | translate)"
+        (nzOnClose)="quickSheetOpen.set(false)"
+      >
+        <ng-container *nzDrawerContent>
+          <div class="dashboard-page__quick-sheet">
+            @if (!loading() && !hasData()) {
+              <p class="dashboard-page__quick-hint">{{ 'DASHBOARD.GET_STARTED_HINT' | translate }}</p>
+            }
+            <div class="dashboard-page__quick-actions-buttons dashboard-page__quick-actions-buttons--sheet">
+              @if (showQuickBreakage()) {
+                <button
+                  nz-button
+                  nzType="primary"
+                  type="button"
+                  nzBlock
+                  (click)="goQuickBreakage()"
+                  [ngClass]="{ 'dashboard-page__quick-primary--pulse': !loading() && !hasData() }"
+                >
+                  <span>{{ 'DASHBOARD.QUICK_REPORT_BREAKAGE' | translate }}</span>
+                </button>
+              }
+              @if (showQuickLost()) {
+                <button nz-button nzType="default" type="button" nzBlock (click)="goQuickLost()">
+                  <span>{{ 'DASHBOARD.QUICK_REPORT_LOST' | translate }}</span>
+                </button>
+              }
+              @if (showQuickStockAudit()) {
+                <button nz-button nzType="default" type="button" nzBlock (click)="goStockAudit()">
+                  <lucide-icon [img]="lucideClipboardList" [size]="16" [strokeWidth]="2" />
+                  <span>{{ 'DASHBOARD.QUICK_STOCK_AUDIT' | translate }}</span>
+                </button>
+              }
+              @if (showQuickGetPass()) {
+                <button nz-button nzType="default" type="button" nzBlock (click)="goGetPass()">
+                  <lucide-icon [img]="lucideKeyRound" [size]="16" [strokeWidth]="2" />
+                  <span>{{ 'DASHBOARD.QUICK_VIEW_GET_PASS' | translate }}</span>
+                </button>
+              }
+            </div>
+          </div>
+        </ng-container>
+      </nz-drawer>
+    }
+
+    <nav
+      class="dashboard-page__quick-actions dashboard-page__quick-actions--bar"
+      [attr.aria-label]="'DASHBOARD.QUICK_ACTIONS_LABEL' | translate"
+    >
+      @if (!loading() && !hasData()) {
+        <p class="dashboard-page__quick-hint">{{ 'DASHBOARD.GET_STARTED_HINT' | translate }}</p>
+      }
+      <div class="dashboard-page__quick-actions-buttons">
+        @if (showQuickBreakage()) {
+          <button
+            nz-button
+            nzType="primary"
+            type="button"
+            (click)="goQuickBreakage()"
+            [ngClass]="{ 'dashboard-page__quick-primary--pulse': !loading() && !hasData() }"
+          >
+            <span>{{ 'DASHBOARD.QUICK_REPORT_BREAKAGE' | translate }}</span>
+          </button>
+        }
+        @if (showQuickLost()) {
+          <button nz-button nzType="default" type="button" (click)="goQuickLost()">
+            <span>{{ 'DASHBOARD.QUICK_REPORT_LOST' | translate }}</span>
+          </button>
+        }
+        @if (showQuickStockAudit()) {
+          <button nz-button nzType="default" type="button" (click)="goStockAudit()">
+            <lucide-icon [img]="lucideClipboardList" [size]="16" [strokeWidth]="2" />
+            <span>{{ 'DASHBOARD.QUICK_STOCK_AUDIT' | translate }}</span>
+          </button>
+        }
+        @if (showQuickGetPass()) {
+          <button nz-button nzType="default" type="button" (click)="goGetPass()">
+            <lucide-icon [img]="lucideKeyRound" [size]="16" [strokeWidth]="2" />
+            <span>{{ 'DASHBOARD.QUICK_VIEW_GET_PASS' | translate }}</span>
+          </button>
+        }
+      </div>
+    </nav>
     </ng-container>
-    <ng-container *ngIf="!isAdmin">
+    <ng-container *ngIf="!hasAnalyticsAccess()">
       <div
         class="flex flex-col items-center justify-center h-full min-h-[calc(100vh-64px)] px-6 transition-all duration-700 ease-out"
         [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
       >
-        <div
-          class="flex items-center justify-center w-28 h-28 rounded-full bg-indigo-50 mb-8 transition-all duration-700 delay-100"
-          [ngClass]="isVisible() ? 'opacity-100 scale-100' : 'opacity-0 scale-75'"
-        >
-          <i class="pi pi-user text-5xl text-indigo-300"></i>
-        </div>
-        <h2
-          class="text-3xl font-semibold text-gray-700 mb-3 transition-all duration-700 delay-150"
-          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
-        >
-          Welcome back, {{ userName }}!
-        </h2>
-        <p
-          class="text-gray-400 text-base text-center max-w-md transition-all duration-700 delay-200"
-          [ngClass]="isVisible() ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'"
-        >
-          Please use the sidebar to navigate through the system modules.
-        </p>
+        <app-empty-state
+          class="dashboard-page__welcome-empty"
+          [icon]="lucideBox"
+          [iconSize]="56"
+          [title]="'DASHBOARD.WELCOME_BACK' | translate: { name: userName }"
+          [message]="'DASHBOARD.WELCOME_NAV_HINT' | translate"
+        />
       </div>
     </ng-container>
   }

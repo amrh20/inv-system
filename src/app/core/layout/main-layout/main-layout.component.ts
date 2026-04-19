@@ -1,10 +1,9 @@
-import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { filter, merge, of } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { filter } from 'rxjs';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
-import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzBreadCrumbModule } from 'ng-zorro-antd/breadcrumb';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -14,7 +13,8 @@ import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { LucideAngularModule } from 'lucide-angular';
 import { Check, ChevronDown, Languages, LogOut, Menu, Moon, Search, Sun, X } from 'lucide-angular';
 import { AuthService } from '../../services/auth.service';
-import { NavigationService, type NavEntry } from '../../services/navigation.service';
+import { NavigationService } from '../../services/navigation.service';
+import { ShellSidebarNavComponent } from './shell-sidebar-nav/shell-sidebar-nav.component';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '@ngx-translate/core';
 import { LanguageService } from '../../services/language.service';
@@ -27,7 +27,7 @@ import type { UserMembership } from '../../models';
     RouterOutlet,
     RouterLink,
     NzLayoutModule,
-    NzMenuModule,
+    NzDrawerModule,
     NzBreadCrumbModule,
     NzDropDownModule,
     NzButtonModule,
@@ -37,18 +37,44 @@ import type { UserMembership } from '../../models';
     LucideAngularModule,
     FormsModule,
     TranslatePipe,
+    ShellSidebarNavComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
 })
 export class MainLayoutComponent {
+  private static initialLayoutMode(): 'mobile' | 'tablet' | 'desktop' {
+    if (typeof window === 'undefined') {
+      return 'desktop';
+    }
+    const w = window.innerWidth;
+    if (w < 768) {
+      return 'mobile';
+    }
+    if (w < 1024) {
+      return 'tablet';
+    }
+    return 'desktop';
+  }
+
+  /** Icon rail on tablet/mobile; expanded by default on wide desktop only. */
+  private static initialSidebarExpanded(): boolean {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+    return window.innerWidth >= 1024;
+  }
+
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   readonly auth = inject(AuthService);
   readonly nav = inject(NavigationService);
   readonly language = inject(LanguageService);
 
-  readonly sidebarExpanded = signal(true);
+  readonly sidebarExpanded = signal(MainLayoutComponent.initialSidebarExpanded());
+  /** `<768px`: navigation uses a drawer; sider hidden. */
+  readonly layoutMode = signal<'mobile' | 'tablet' | 'desktop'>(MainLayoutComponent.initialLayoutMode());
+  readonly mobileDrawerOpen = signal(false);
   readonly isDarkMode = signal(this.readThemeFromStorage());
   readonly breadcrumbs = signal<{ label: string; link?: string }[]>([]);
   readonly searchQuery = signal('');
@@ -64,65 +90,17 @@ export class MainLayoutComponent {
   readonly lucideSearch = Search;
   readonly lucideLanguages = Languages;
 
-  private readonly currentUrl = toSignal(
-    merge(
-      of(this.router.url),
-      this.router.events.pipe(
-        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-        map(() => this.router.url),
-      ),
-    ),
-    { initialValue: this.router.url },
-  );
-
-  readonly pathOnly = () => {
-    const u = this.currentUrl() ?? '';
-    return u.split('?')[0] ?? u;
-  };
-
-  private submenuOpenByKey(): {
-    'master-data': boolean;
-    transactions: boolean;
-    reports: boolean;
-  } {
-    const p = this.pathOnly();
-    return {
-      'master-data': this.matchesPrefixes(p, [
-        '/departments',
-        '/suppliers',
-        '/categories',
-        '/units-manage',
-        '/locations',
-      ]),
-      transactions: this.matchesPrefixes(p, [
-        '/grn',
-        '/transfers',
-        '/breakage',
-        '/lost-items',
-        '/get-passes',
-      ]),
-      reports: this.matchesPrefixes(p, ['/reports', '/stock-report', '/period-close']),
-    };
-  }
-
-  submenuOpenFor(key: string): boolean {
-    // When sidebar is collapsed, never keep submenus "open" — prevents popup from
-    // staying visible and blocking reopen (NG-ZORRO #5348).
-    if (!this.sidebarExpanded()) {
-      return false;
+  /** Tablet and desktop collapsed use icon rail; mobile hides sider. */
+  readonly siderCollapsed = computed(() => {
+    const m = this.layoutMode();
+    if (m === 'mobile') {
+      return true;
     }
-    const map = this.submenuOpenByKey();
-    if (key === 'master-data') {
-      return map['master-data'];
+    if (m === 'tablet') {
+      return true;
     }
-    if (key === 'transactions') {
-      return map.transactions;
-    }
-    if (key === 'reports') {
-      return map.reports;
-    }
-    return false;
-  }
+    return !this.sidebarExpanded();
+  });
 
   constructor() {
     effect(() => {
@@ -136,22 +114,59 @@ export class MainLayoutComponent {
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe(() => this.refreshBreadcrumbs());
+      .subscribe(() => {
+        this.refreshBreadcrumbs();
+        if (this.layoutMode() === 'mobile') {
+          this.mobileDrawerOpen.set(false);
+        }
+      });
 
     this.refreshBreadcrumbs();
+
+    if (typeof window !== 'undefined') {
+      this.applyLayoutMode();
+      window.addEventListener('resize', this.onWindowResize, { passive: true });
+      this.destroyRef.onDestroy(() => window.removeEventListener('resize', this.onWindowResize));
+    }
   }
 
-  trackEntry(item: NavEntry): string {
-    return item.kind === 'link' ? item.path : item.key;
+  private readonly onWindowResize = (): void => {
+    this.applyLayoutMode();
+  };
+
+  private applyLayoutMode(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const w = window.innerWidth;
+    const next: 'mobile' | 'tablet' | 'desktop' =
+      w < 768 ? 'mobile' : w < 1024 ? 'tablet' : 'desktop';
+    const prev = this.layoutMode();
+    this.layoutMode.set(next);
+    if (prev === 'mobile' && next !== 'mobile') {
+      this.mobileDrawerOpen.set(false);
+    }
+    if (next === 'tablet' || next === 'mobile') {
+      this.sidebarExpanded.set(false);
+    }
   }
 
-  toggleSidebar(): void {
-    const next = !this.sidebarExpanded();
-    this.sidebarExpanded.set(next);
+  toggleHeaderNav(): void {
+    if (this.layoutMode() === 'mobile') {
+      this.mobileDrawerOpen.update((v) => !v);
+      return;
+    }
+    if (this.layoutMode() === 'tablet') {
+      return;
+    }
+    this.sidebarExpanded.update((v) => !v);
   }
 
-  /** Keep state in sync when nz-sider emits collapsed changes (e.g. breakpoint, internal updates). */
+  /** Keep state in sync when nz-sider emits collapsed changes (e.g. internal updates). */
   onSiderCollapsedChange(collapsed: boolean): void {
+    if (this.layoutMode() === 'tablet') {
+      return;
+    }
     this.sidebarExpanded.set(!collapsed);
   }
 
@@ -238,10 +253,6 @@ export class MainLayoutComponent {
       return false;
     }
     return localStorage.getItem('theme') === 'dark';
-  }
-
-  private matchesPrefixes(path: string, prefixes: string[]): boolean {
-    return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
   }
 
   private refreshBreadcrumbs(): void {

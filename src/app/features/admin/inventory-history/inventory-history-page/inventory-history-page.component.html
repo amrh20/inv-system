@@ -3,7 +3,7 @@
     <div class="ih-page__icon-wrap">
       <lucide-icon [img]="lucideHistory" [size]="20" />
     </div>
-    <div>
+    <div class="ih-page__title-block">
       <h1 class="ih-page__title">{{ 'INVENTORY_HISTORY.TITLE' | translate }}</h1>
       <p class="ih-page__subtitle">{{ 'INVENTORY_HISTORY.DESCRIPTION' | translate }}</p>
     </div>
@@ -57,11 +57,14 @@
     </button>
   </div>
 
+  <div class="ih-page__table-wrap">
   <nz-table
     #tbl
     [nzData]="logs()"
     [nzLoading]="loading()"
     nzSize="middle"
+    nzTableLayout="fixed"
+    [nzScroll]="{ x: '1040px' }"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"
@@ -113,4 +116,5 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>

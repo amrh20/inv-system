@@ -1,6 +1,6 @@
 <div class="items-page">
-  <div class="items-page__header d-flex justify-content-between gap-2">
-    <div>
+  <div class="items-page__header">
+    <div class="items-page__title-block">
       <h1 class="items-page__title">
         <lucide-icon [img]="lucidePackage" [size]="22" class="title-icon" />
         {{ 'ITEMS.TITLE' | translate }}
@@ -21,7 +21,7 @@
         </ul>
       </nz-dropdown-menu>
 
-      <span nz-button-group class="items-page__toolbar-group">
+      <div class="items-page__toolbar-actions">
         <button
           nz-button
           nzType="primary"
@@ -40,27 +40,25 @@
           class="items-page__toolbar-btn"
           [disabled]="itemCreationActionsDisabled()"
           (click)="goToImportPage()"
-          style="margin: 0 20px"
         >
           <lucide-icon [img]="lucideUpload" [size]="16" [strokeWidth]="2" />
           {{ 'ITEMS.IMPORT_FROM_EXCEL_ACTION' | translate }}
         </button>
-      </span>
-
-      <button
-        nz-button
-        nzType="default"
-        type="button"
-        class="items-page__toolbar-btn items-page__toolbar-btn--icon"
-        nz-dropdown
-        [nzDropdownMenu]="itemsToolsMenuTpl"
-        nzTrigger="click"
-        nzPlacement="bottomRight"
-        nz-tooltip
-        [nzTooltipTitle]="'ITEMS.TOOLS_MENU' | translate"
-      >
-        <lucide-icon [img]="lucideDownload" [size]="16" [strokeWidth]="2" />
-      </button>
+        <button
+          nz-button
+          nzType="default"
+          type="button"
+          class="items-page__toolbar-btn items-page__toolbar-btn--icon"
+          nz-dropdown
+          [nzDropdownMenu]="itemsToolsMenuTpl"
+          nzTrigger="click"
+          nzPlacement="bottomRight"
+          nz-tooltip
+          [nzTooltipTitle]="'ITEMS.TOOLS_MENU' | translate"
+        >
+          <lucide-icon [img]="lucideDownload" [size]="16" [strokeWidth]="2" />
+        </button>
+      </div>
     </div>
   </div>
 
@@ -196,17 +194,17 @@
         <lucide-icon [img]="lucideRefresh" [size]="16" [strokeWidth]="2" [class.spin]="loading()" />
       </button>
     </div>
-
-   
   </div>
 
   @if (listError()) {
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon class="items-alert" />
   }
 
-  <nz-table
+  <div class="items-table-wrap">
+    <nz-table
     #itemsTable
     class="items-table"
+    nzSize="middle"
     [nzData]="itemsList()"
     [nzLoading]="loading()"
     [nzTotal]="total()"
@@ -218,8 +216,17 @@
     [nzPageSizeOptions]="[10, 20, 50, 100]"
     nzShowSizeChanger
     [nzShowTotal]="totalTemplate"
+    [nzScroll]="{ x: itemsTableScrollX() }"
     nzTableLayout="fixed"
+    [nzNoResult]="noResultTpl"
   >
+    <ng-template #noResultTpl>
+      <app-empty-state
+        [title]="'ITEMS.LIST_EMPTY_TITLE' | translate"
+        [message]="'ITEMS.LIST_EMPTY_MSG' | translate"
+        [icon]="lucidePackage"
+      />
+    </ng-template>
     <ng-template #totalTemplate let-total let-range="range">
       {{ 'COMMON.RANGE_OF_ITEMS' | translate: { from: range[0], to: range[1], total: total } }}
     </ng-template>
@@ -233,9 +240,6 @@
         <th nzWidth="120" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>
           {{ 'COMMON.CATEGORY' | translate }}
         </th>
-
-      
-
         <th nzWidth="120">{{ 'COMMON.SUPPLIER' | translate }}</th>
         <th nzWidth="140">{{ 'COMMON.BASE_UNIT' | translate }}</th>
         <th nzWidth="100" nzAlign="right" nzColumnKey="unitPrice" [nzSortFn]="sortPriceFn" nzShowSort>
@@ -371,7 +375,8 @@
         </tr>
       }
     </tbody>
-  </nz-table>
+    </nz-table>
+  </div>
 </div>
 
 <nz-modal

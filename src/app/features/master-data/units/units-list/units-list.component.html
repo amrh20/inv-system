@@ -1,6 +1,6 @@
 <div class="units-page">
   <div class="units-page__header">
-    <div>
+    <div class="units-page__title-block">
       <h1 class="units-page__title">{{ 'UNITS.TITLE' | translate }}</h1>
       <p class="units-page__meta">{{ 'UNITS.SUBTITLE' | translate }}</p>
     </div>
@@ -35,6 +35,7 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="units-page__table-wrap">
   <nz-table
     #tbl
     [nzData]="units()"
@@ -109,6 +110,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>
 
 <app-unit-form

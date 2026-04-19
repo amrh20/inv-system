@@ -1,6 +1,6 @@
 <nz-modal
   [nzVisible]="open()"
-  [nzTitle]="'RETURNS_WORKFLOW.PROCESS_RETURN_TITLE' | translate"
+  [nzTitle]="modalTitleKey() | translate"
   [nzFooter]="footerTpl"
   [nzWidth]="600"
   (nzOnCancel)="onCancel()"
@@ -26,7 +26,7 @@
           [ngModel]="accountability()"
           (ngModelChange)="accountability.set($event)"
         >
-          @for (opt of accountabilityOptions; track opt) {
+          @for (opt of accountabilityOptions(); track opt) {
             <label nz-radio [nzValue]="opt">{{ optionLabelKey(opt) | translate }}</label>
           }
         </nz-radio-group>

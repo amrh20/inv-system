@@ -1,6 +1,6 @@
 <div class="categories-page">
   <div class="categories-page__header">
-    <div>
+    <div class="categories-page__title-block">
       <h1 class="categories-page__title">{{ 'CATEGORIES.TITLE' | translate }}</h1>
       <p class="categories-page__meta">{{ 'CATEGORIES.SUBTITLE' | translate }}</p>
     </div>
@@ -46,6 +46,7 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
+  <div class="categories-page__table-wrap">
   <nz-table
     #tbl
     [nzData]="categories()"
@@ -210,6 +211,7 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>
 
 <app-category-form

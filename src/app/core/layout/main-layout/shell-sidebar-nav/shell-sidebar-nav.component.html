@@ -1,0 +1,154 @@
+<div class="shell-sidebar-nav__inner">
+  <div class="brand" [class.brand--collapsed]="collapsed()">
+    <div class="brand__mark">iN</div>
+    @if (!collapsed()) {
+      <div class="brand__text">
+        <div class="brand__title">iNV Control</div>
+        <div class="brand__subtitle">{{ 'APP.INVENTORY_MANAGEMENT' | translate }}</div>
+      </div>
+    }
+  </div>
+
+  <ul
+    nz-menu
+    nzTheme="dark"
+    nzMode="inline"
+    [nzInlineCollapsed]="collapsed()"
+    class="main-shell__menu"
+  >
+    @for (section of nav.sections(); track section.heading) {
+      @if (!collapsed()) {
+        @if (section.hideGroupHeading) {
+          @for (item of section.items; track trackEntry(item)) {
+            @if (item.kind === 'link') {
+              <li
+                nz-menu-item
+                nzMatchRouter
+                [nzMatchRouterExact]="item.pathMatch === 'full'"
+                [routerLink]="item.path"
+              >
+                <span class="menu-item-row">
+                  <lucide-icon class="menu-lucide" [img]="item.icon" [size]="16" [strokeWidth]="2" />
+                  <span>{{ item.label | translate }}</span>
+                </span>
+              </li>
+            } @else {
+              <li nz-submenu [nzOpen]="submenuOpenFor(item.key)" [nzTitle]="item.label | translate">
+                @for (child of item.children; track child.path) {
+                  <li nz-menu-item nzMatchRouter [routerLink]="child.path">
+                    <span class="menu-item-row menu-item-row--nested">
+                      <lucide-icon class="menu-lucide" [img]="child.icon" [size]="14" [strokeWidth]="2" />
+                      <span>{{ child.label | translate }}</span>
+                    </span>
+                  </li>
+                }
+              </li>
+            }
+          }
+        } @else {
+          <li nz-menu-group [nzTitle]="section.heading | translate">
+            @for (item of section.items; track trackEntry(item)) {
+              @if (item.kind === 'link') {
+                <li
+                  nz-menu-item
+                  nzMatchRouter
+                  [nzMatchRouterExact]="item.pathMatch === 'full'"
+                  [routerLink]="item.path"
+                >
+                  <span class="menu-item-row">
+                    <lucide-icon class="menu-lucide" [img]="item.icon" [size]="16" [strokeWidth]="2" />
+                    <span>{{ item.label | translate }}</span>
+                  </span>
+                </li>
+              } @else {
+                <li nz-submenu [nzOpen]="submenuOpenFor(item.key)" [nzTitle]="item.label | translate">
+                  @for (child of item.children; track child.path) {
+                    <li nz-menu-item nzMatchRouter [routerLink]="child.path">
+                      <span class="menu-item-row menu-item-row--nested">
+                        <lucide-icon class="menu-lucide" [img]="child.icon" [size]="14" [strokeWidth]="2" />
+                        <span>{{ child.label | translate }}</span>
+                      </span>
+                    </li>
+                  }
+                </li>
+              }
+            }
+          </li>
+        }
+      } @else {
+        @for (item of section.items; track trackEntry(item)) {
+          @if (item.kind === 'link') {
+            <li
+              nz-menu-item
+              nzMatchRouter
+              [nzMatchRouterExact]="item.pathMatch === 'full'"
+              [routerLink]="item.path"
+              [nzTooltipTitle]="item.label | translate"
+              nz-tooltip
+              nzTooltipPlacement="right"
+            >
+              <lucide-icon class="menu-lucide" [img]="item.icon" [size]="18" [strokeWidth]="2" />
+            </li>
+          } @else {
+            <li
+              nz-submenu
+              [nzOpen]="submenuOpenFor(item.key)"
+              [nzTitle]="submenuCollapsedTitle"
+              nzMenuClassName="collapsed-submenu-popup"
+            >
+              <ng-template #submenuCollapsedTitle>
+                <lucide-icon class="menu-lucide" [img]="item.icon" [size]="18" [strokeWidth]="2" />
+              </ng-template>
+              @for (child of item.children; track child.path) {
+                <li nz-menu-item nzMatchRouter [routerLink]="child.path">
+                  <span class="menu-item-row">
+                    <lucide-icon class="menu-lucide" [img]="child.icon" [size]="14" [strokeWidth]="2" />
+                    <span>{{ child.label | translate }}</span>
+                  </span>
+                </li>
+              }
+            </li>
+          }
+        }
+      }
+    }
+  </ul>
+
+  <div class="sider-footer" [class.sider-footer--collapsed]="collapsed()">
+    @if (!collapsed()) {
+      <div class="sider-footer__user">
+        <div class="sider-footer__avatar">{{ avatarLetter() }}</div>
+        <div class="sider-footer__meta">
+          <div class="sider-footer__name">{{ displayName() }}</div>
+          <div class="sider-footer__tenant">{{ auth.currentUser()?.email ?? tenantLabel() }}</div>
+        </div>
+        <div class="sider-footer__actions">
+          <button
+            type="button"
+            class="sider-footer__theme"
+            (click)="themeToggle.emit()"
+            [attr.aria-label]="
+              isDarkMode()
+                ? ('LAYOUT.SWITCH_TO_LIGHT_MODE' | translate)
+                : ('LAYOUT.SWITCH_TO_DARK_MODE' | translate)
+            "
+          >
+            @if (isDarkMode()) {
+              <lucide-icon [img]="lucideSun" [size]="14" class="sider-footer__sun" [strokeWidth]="2" />
+            } @else {
+              <lucide-icon [img]="lucideMoon" [size]="14" class="sider-footer__moon" [strokeWidth]="2" />
+            }
+          </button>
+          <button
+            type="button"
+            class="sider-footer__logout"
+            (click)="logoutClick.emit()"
+            [attr.aria-label]="'COMMON.LOGOUT' | translate"
+          >
+            <lucide-icon [img]="lucideLogOut" [size]="15" [strokeWidth]="2" />
+          </button>
+        </div>
+      </div>
+    }
+  </div>
+</div>

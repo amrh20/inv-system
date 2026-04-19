@@ -12,6 +12,12 @@
   gap: 12px;
 }
 
+.li-list__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
+}
+
 .li-list__title {
   display: flex;
   align-items: center;
@@ -20,6 +26,10 @@
   font-weight: 600;
   margin: 0;
   color: rgba(0, 0, 0, 0.85);
+
+  lucide-icon {
+    flex-shrink: 0;
+  }
 }
 
 .li-list__meta {
@@ -30,7 +40,19 @@
 
 .li-list__actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
+}
+
+.li-list__table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .li-list__table-wrap .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 .li-list__actions-returns {
@@ -157,5 +179,16 @@
 @keyframes li-list-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 575px) {
+  .li-list__col--secondary {
+    display: none !important;
+  }
+
+  .li-list__tab--source {
+    min-height: 44px;
+    padding: 10px 14px;
   }
 }

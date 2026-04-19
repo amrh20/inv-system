@@ -10,6 +10,17 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  overflow-x: auto;
+}
+
+.ledger-page__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
+}
+
+:host ::ng-deep .ledger-page__table-wrap .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 .ledger-page__header {
@@ -144,6 +155,11 @@
 .ledger-page__tag-icon {
   width: 12px;
   height: 12px;
+}
+
+.ledger-page__tag-text {
+  display: inline-block;
+  margin-inline: 0.5rem;
 }
 
 .ledger-page__num {

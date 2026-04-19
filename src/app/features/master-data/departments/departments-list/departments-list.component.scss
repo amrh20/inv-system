@@ -12,6 +12,12 @@
   gap: 12px;
 }
 
+.departments-page__title-block {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  max-width: 100%;
+}
+
 .departments-page__title {
   margin: 0;
   font-size: 22px;
@@ -33,7 +39,19 @@
 }
 
 .departments-page__search {
-  max-width: 400px;
+  width: 100%;
+  max-width: min(100%, 420px);
+  min-width: 0;
+}
+
+.departments-page__table-wrap {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+:host ::ng-deep .departments-page__table-wrap .ant-table-thead > tr > th {
+  white-space: nowrap;
 }
 
 .departments-page__search-icon {

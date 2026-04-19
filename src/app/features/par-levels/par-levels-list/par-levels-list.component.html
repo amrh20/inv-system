@@ -3,7 +3,7 @@
   [class.par-levels-page--unsaved]="hasEdits()"
 >
   <div class="par-levels-page__header">
-    <div>
+    <div class="par-levels-page__title-block">
       <h1 class="par-levels-page__title">
         <lucide-icon [img]="lucideGauge" class="par-levels-page__icon" [strokeWidth]="2" />
         {{ 'PAR_LEVELS.TITLE' | translate }}
@@ -22,7 +22,7 @@
     />
   }
 
-  <div class="par-levels-page__filters align-items-center">
+  <div class="par-levels-page__filters">
     <!-- <nz-select
       class="par-levels-page__select"
       [ngModel]="departmentId()"
@@ -151,12 +151,15 @@
           </button>
         </div>
       }
+      <div class="par-levels-page__table-scroll">
       <nz-table
         #st
         [nzData]="filteredBalances()"
         [nzLoading]="loading()"
         [nzShowPagination]="false"
         nzSize="small"
+        nzTableLayout="fixed"
+        [nzScroll]="{ x: '760px' }"
         class="par-levels-table"
       >
         <thead>
@@ -239,6 +242,7 @@
           }
         </tbody>
       </nz-table>
+      </div>
     </div>
   }
 
