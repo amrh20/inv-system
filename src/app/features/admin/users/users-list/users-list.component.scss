@@ -36,11 +36,6 @@
 .admin-users__table-wrap {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
-}
-
-:host ::ng-deep .admin-users__table-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
 }
 
 .admin-users__meta {
@@ -124,6 +119,17 @@
   color: rgba(0, 0, 0, 0.65);
 }
 
+.admin-users__email-cell {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-users__email-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .admin-users__tag-inner {
   display: inline-flex;
   align-items: center;
@@ -177,6 +183,33 @@
 
 .admin-users__full-width {
   width: 100%;
+}
+
+.admin-users__password-toggle {
+  border: 0;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.45);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.admin-users__password-toggle:hover {
+  color: rgba(0, 0, 0, 0.65);
+}
+
+/* Keep role options scrollable on short viewports (mobile/small laptop heights). */
+:host ::ng-deep .admin-users__role-dropdown .rc-virtual-list-holder {
+  max-height: min(220px, 35vh) !important;
+  overflow-y: auto !important;
+}
+
+:host ::ng-deep .admin-users__role-dropdown .ant-select-item {
+  white-space: nowrap;
 }
 
 .admin-users__department-empty {

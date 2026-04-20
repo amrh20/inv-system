@@ -224,7 +224,7 @@
                 {{ 'ITEMS.PREVIEW_FILTER_VALID' | translate }}
               </button>
             </div>
-            <div class="preview-table-outer">
+            <div class="preview-table-outer app-table-responsive-wrap">
               <nz-table
                 class="preview-nz-table"
                 [nzData]="previewRows()"
@@ -232,7 +232,7 @@
                 [nzShowPagination]="false"
                 nzSize="small"
                 nzTableLayout="fixed"
-                [nzScroll]="previewTableScroll"
+                [nzScroll]="previewTableScroll()"
               >
                 <thead>
                   <tr>

@@ -32,6 +32,7 @@ import { ItemsService } from '../../items/services/items.service';
 import type { LedgerEntryRow } from '../models/ledger-entry.model';
 import { LedgerService } from '../services/ledger.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 import type { RequirementsResponse } from '../../items/models/item.model';
 
 const LEDGER_DEBOUNCE_MS = 300;
@@ -73,8 +74,12 @@ export class LedgerViewerComponent implements OnInit, OnDestroy {
 
   readonly movementTypes = LEDGER_MOVEMENT_TYPES;
 
-  /** Horizontal scroll — column widths sum to ~1280px; extra room for padding/borders. */
-  readonly ledgerTableScroll = { x: '1360px' };
+  /** Web: no horizontal scroll (cells wrap). Mobile: min width + horizontal scroll. */
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly ledgerTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '1360px' },
+  );
 
   private readonly ledgerApi = inject(LedgerService);
   private readonly itemsApi = inject(ItemsService);

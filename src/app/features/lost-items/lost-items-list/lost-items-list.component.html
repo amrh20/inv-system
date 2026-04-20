@@ -74,14 +74,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  <div class="li-list__table-wrap">
+  <div class="li-list__table-wrap app-table-responsive-wrap">
   <nz-table
     [nzData]="rows()"
     [nzLoading]="loading()"
     nzSize="middle"
     nzTableLayout="fixed"
     [nzShowPagination]="false"
-    [nzScroll]="{ x: '1200px' }"
+    [nzScroll]="nzTableScroll()"
     [nzNoResult]="noResultTpl"
   >
     <ng-template #noResultTpl>

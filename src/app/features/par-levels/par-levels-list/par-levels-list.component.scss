@@ -173,7 +173,6 @@
 .par-levels-page__table-scroll {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
 }
 
 .par-levels-table {
@@ -182,7 +181,10 @@
   :host ::ng-deep .ant-table-thead > tr > th {
     padding: 6px 8px;
     font-size: 12px;
-    white-space: nowrap;
+
+    @media (max-width: 767px) {
+      white-space: nowrap;
+    }
   }
 
   :host ::ng-deep .ant-table-tbody > tr > td {

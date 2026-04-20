@@ -10,6 +10,15 @@
     <nz-alert nzType="warning" [nzMessage]="'TRANSACTIONS.DISABLED_UNTIL_OB_FINALIZED' | translate" nzShowIcon />
   }
 
+  @if (showOrgManagerHotelHint()) {
+    <nz-alert
+      nzType="info"
+      [nzMessage]="'GRN.CREATE.ORG_MANAGER_HOTEL_HINT' | translate"
+      nzShowIcon
+      class="grn-create-page__alert"
+    />
+  }
+
   @if (error()) {
     <nz-alert nzType="error" [nzMessage]="error()" nzShowIcon class="grn-create-page__alert" />
   }

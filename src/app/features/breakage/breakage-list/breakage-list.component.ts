@@ -51,6 +51,7 @@ import { BreakageService } from '../services/breakage.service';
 import { BreakageCreateModalComponent } from '../breakage-create-modal/breakage-create-modal.component';
 import type { RequirementsResponse } from '../../items/models/item.model';
 import { ItemsService } from '../../items/services/items.service';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 const SOURCE_TABS: BreakageSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
 
@@ -101,6 +102,12 @@ export class BreakageListComponent implements OnInit {
   readonly lucideSearch = Search;
   readonly lucideEllipsisVertical = EllipsisVertical;
   readonly lucideCheck = Check;
+
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly nzTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '1200px' },
+  );
 
   /** Role-scoped workflow tabs (breakage & lost lists share rules). Role from {@link AuthService#userRole}. */
   readonly visibleStatusTabs = computed(() =>

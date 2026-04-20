@@ -79,14 +79,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  <div class="admin-users__table-wrap">
+  <div class="admin-users__table-wrap app-table-responsive-wrap">
   <nz-table
     #tbl
     [nzData]="users()"
     [nzLoading]="loading()"
     nzSize="middle"
     nzTableLayout="fixed"
-    [nzScroll]="{ x: '1280px' }"
+    [nzScroll]="nzTableScroll()"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"
@@ -112,14 +112,14 @@
     </ng-template>
     <thead>
       <tr>
-        <th>{{ 'USERS.COL_USER' | translate }}</th>
-        <th>{{ 'USERS.COL_EMAIL' | translate }}</th>
-        <th>{{ 'USERS.COL_ROLE' | translate }}</th>
-        <th>{{ 'USERS.COL_DEPARTMENT' | translate }}</th>
-        <th>{{ 'USERS.COL_PHONE' | translate }}</th>
-        <th nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
-        <th>{{ 'USERS.COL_LAST_LOGIN' | translate }}</th>
-        <th nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        <th nzWidth="210px">{{ 'USERS.COL_USER' | translate }}</th>
+        <th nzWidth="280px">{{ 'USERS.COL_EMAIL' | translate }}</th>
+        <th nzWidth="150px">{{ 'USERS.COL_ROLE' | translate }}</th>
+        <th nzWidth="150px">{{ 'USERS.COL_DEPARTMENT' | translate }}</th>
+        <th nzWidth="140px">{{ 'USERS.COL_PHONE' | translate }}</th>
+        <th nzAlign="center" nzWidth="130px">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="160px">{{ 'USERS.COL_LAST_LOGIN' | translate }}</th>
+        <th nzAlign="center" nzWidth="100px">{{ 'COMMON.ACTIONS' | translate }}</th>
       </tr>
     </thead>
     <tbody>
@@ -132,9 +132,9 @@
             </div>
           </td>
           <td>
-            <span class="admin-users__muted">
+            <span class="admin-users__muted admin-users__email-cell">
               <lucide-icon [img]="lucideMail" [size]="14" />
-              {{ u.email }}
+              <span class="admin-users__email-text">{{ u.email }}</span>
             </span>
           </td>
           <td>
@@ -273,13 +273,15 @@
             {{ 'USERS.FORM.PASSWORD' | translate }}
             *
           </label>
-          <input
-            nz-input
-            type="password"
-            [(ngModel)]="formPassword"
-            name="pw"
-            [attr.placeholder]="''"
-          />
+          <nz-input-group [nzSuffix]="passwordToggleTpl">
+            <input
+              nz-input
+              [type]="showPassword() ? 'text' : 'password'"
+              [(ngModel)]="formPassword"
+              name="pw"
+              [attr.placeholder]="''"
+            />
+          </nz-input-group>
         </div>
       }
       @if (editRow()) {
@@ -287,15 +289,27 @@
           <label class="admin-users__label">
             {{ 'USERS.FORM.PASSWORD' | translate }}
           </label>
-          <input
-            nz-input
-            type="password"
-            [(ngModel)]="formPassword"
-            name="pw"
-            [attr.placeholder]="'USERS.FORM.PASSWORD_PLACEHOLDER_EDIT' | translate"
-          />
+          <nz-input-group [nzSuffix]="passwordToggleTpl">
+            <input
+              nz-input
+              [type]="showPassword() ? 'text' : 'password'"
+              [(ngModel)]="formPassword"
+              name="pw"
+              [attr.placeholder]="'USERS.FORM.PASSWORD_PLACEHOLDER_EDIT' | translate"
+            />
+          </nz-input-group>
         </div>
       }
+      <ng-template #passwordToggleTpl>
+        <button
+          type="button"
+          class="admin-users__password-toggle"
+          (click)="togglePasswordVisibility()"
+          [attr.aria-label]="(showPassword() ? 'LOGIN.HIDE_PASSWORD' : 'LOGIN.SHOW_PASSWORD') | translate"
+        >
+          <lucide-icon [img]="showPassword() ? lucideEyeOff : lucideEye" [size]="16" />
+        </button>
+      </ng-template>
       <div class="admin-users__form-row admin-users__form-row--2">
         <div>
           <label class="admin-users__label">{{ 'USERS.FORM.ROLE' | translate }}</label>
@@ -304,6 +318,7 @@
             name="role"
             class="admin-users__full-width"
             [nzDropdownStyle]="modalSelectDropdownStyle"
+            nzDropdownClassName="admin-users__role-dropdown"
           >
             @for (r of assignableRoles; track r) {
               <nz-option [nzValue]="r" [nzLabel]="('USERS.ROLES.' + r) | translate" />

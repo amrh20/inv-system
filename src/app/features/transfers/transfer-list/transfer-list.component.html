@@ -46,6 +46,7 @@
       {{ 'TRANSFER.LIST.FOUND_COUNT' | translate: { count: total() } }}
     </div>
 
+    <div class="app-table-responsive-wrap">
     <nz-table
       #trfTable
       [nzData]="transfers()"
@@ -108,5 +109,6 @@
         }
       </tbody>
     </nz-table>
+    </div>
   </div>
 </div>

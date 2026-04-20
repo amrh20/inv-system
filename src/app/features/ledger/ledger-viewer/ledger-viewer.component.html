@@ -101,15 +101,14 @@
     </div>
   }
 
-  <div class="ledger-page__table-wrap">
+  <div class="ledger-page__table-wrap app-table-responsive-wrap">
   <nz-table
     #ledgerTable
     [nzData]="entries()"
     [nzLoading]="loading()"
     [nzFrontPagination]="false"
     nzSize="middle"
-    nzTableLayout="fixed"
-    [nzScroll]="ledgerTableScroll"
+    [nzScroll]="ledgerTableScroll()"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"
@@ -127,16 +126,16 @@
     </ng-template>
     <thead>
       <tr>
-        <th nzWidth="160px">{{ 'COMMON.DATE' | translate }}</th>
-        <th nzWidth="130px">{{ 'COMMON.TYPE' | translate }}</th>
-        <th nzWidth="120px">{{ 'LEDGER.REF_NO' | translate }}</th>
-        <th nzWidth="180px">{{ 'COMMON.ITEM' | translate }}</th>
-        <th nzWidth="140px">{{ 'COMMON.LOCATION' | translate }}</th>
-        <th nzWidth="100px" class="ledger-page__num">{{ 'COMMON.QTY_IN' | translate }}</th>
-        <th nzWidth="100px" class="ledger-page__num">{{ 'COMMON.QTY_OUT' | translate }}</th>
-        <th nzWidth="110px" class="ledger-page__num">{{ 'COMMON.UNIT_COST' | translate }}</th>
-        <th nzWidth="120px" class="ledger-page__num">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
-        <th nzWidth="120px" class="ledger-page__num">{{ 'LEDGER.RUNNING_BAL' | translate }}</th>
+        <th>{{ 'COMMON.DATE' | translate }}</th>
+        <th>{{ 'COMMON.TYPE' | translate }}</th>
+        <th>{{ 'LEDGER.REF_NO' | translate }}</th>
+        <th>{{ 'COMMON.ITEM' | translate }}</th>
+        <th>{{ 'COMMON.LOCATION' | translate }}</th>
+        <th class="ledger-page__num">{{ 'COMMON.QTY_IN' | translate }}</th>
+        <th class="ledger-page__num">{{ 'COMMON.QTY_OUT' | translate }}</th>
+        <th class="ledger-page__num">{{ 'COMMON.UNIT_COST' | translate }}</th>
+        <th class="ledger-page__num">{{ 'COMMON.TOTAL_VALUE' | translate }}</th>
+        <th class="ledger-page__num">{{ 'LEDGER.RUNNING_BAL' | translate }}</th>
       </tr>
     </thead>
     <tbody>

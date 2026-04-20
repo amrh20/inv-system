@@ -268,3 +268,27 @@ textarea.ant-input {
 .cdk-overlay-container > .cdk-global-overlay-wrapper:has(.ant-modal-wrap) {
   z-index: 2000 !important;
 }
+
+/* --- Responsive nz-table wrappers: desktop = wrap cells, no page-wide horizontal scroll; mobile = scroll table --- */
+.app-table-responsive-wrap {
+  width: 100%;
+  min-width: 0;
+
+  @media (max-width: 767px) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (min-width: 768px) {
+    overflow-x: visible;
+  }
+
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    @media (min-width: 768px) {
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+  }
+}

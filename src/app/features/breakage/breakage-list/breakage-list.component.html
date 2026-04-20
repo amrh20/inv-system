@@ -84,7 +84,7 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  <div class="brk-list__table-wrap">
+  <div class="brk-list__table-wrap app-table-responsive-wrap">
   <nz-table
     #docTable
     [nzData]="documents()"
@@ -92,7 +92,7 @@
     nzSize="middle"
     nzTableLayout="fixed"
     [nzShowPagination]="false"
-    [nzScroll]="{ x: '1200px' }"
+    [nzScroll]="nzTableScroll()"
     [nzNoResult]="noResultTpl"
   >
     <ng-template #noResultTpl>

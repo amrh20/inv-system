@@ -19,6 +19,7 @@ import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { Plus, Search } from 'lucide-angular';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 import { Router } from '@angular/router';
 import type { MovementDocumentRow } from '../models/movement-document.model';
 import { MovementDocumentsService } from '../services/movement-documents.service';
@@ -55,6 +56,12 @@ export class MovementListComponent implements OnInit {
 
   readonly lucidePlus = Plus;
   readonly lucideSearch = Search;
+
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly nzTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '900px' },
+  );
 
   readonly documents = signal<MovementDocumentRow[]>([]);
   readonly total = signal(0);

@@ -96,9 +96,7 @@ export class MainLayoutComponent {
     if (m === 'mobile') {
       return true;
     }
-    if (m === 'tablet') {
-      return true;
-    }
+    /* Tablet + desktop: header menu toggles expanded vs icon rail / collapsed. */
     return !this.sidebarExpanded();
   });
 
@@ -156,17 +154,11 @@ export class MainLayoutComponent {
       this.mobileDrawerOpen.update((v) => !v);
       return;
     }
-    if (this.layoutMode() === 'tablet') {
-      return;
-    }
     this.sidebarExpanded.update((v) => !v);
   }
 
   /** Keep state in sync when nz-sider emits collapsed changes (e.g. internal updates). */
   onSiderCollapsedChange(collapsed: boolean): void {
-    if (this.layoutMode() === 'tablet') {
-      return;
-    }
     this.sidebarExpanded.set(!collapsed);
   }
 

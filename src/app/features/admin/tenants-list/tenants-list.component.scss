@@ -231,12 +231,12 @@
 .tenants-page__table-scroll {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
-:host ::ng-deep .tenants-page__table-scroll .ant-table-thead > tr > th {
-  white-space: nowrap;
+@media (max-width: 767px) {
+  :host ::ng-deep .tenants-page__table-scroll .ant-table-thead > tr > th {
+    white-space: nowrap;
+  }
 }
 
 :host ::ng-deep .tenants-page__table-scroll .ant-table-tbody > tr > td {
@@ -361,8 +361,6 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .tenants-page__branches-head {
@@ -371,8 +369,10 @@
   margin-bottom: 8px;
 }
 
-:host ::ng-deep .tenants-page__branches-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
+@media (max-width: 767px) {
+  :host ::ng-deep .tenants-page__branches-wrap .ant-table-thead > tr > th {
+    white-space: nowrap;
+  }
 }
 
 .tenants-page__branch-table-row {

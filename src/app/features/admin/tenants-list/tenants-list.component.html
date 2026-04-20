@@ -70,7 +70,7 @@
   </div>
 
   <div class="tenants-page__table-card">
-    <div class="tenants-page__table-scroll">
+    <div class="tenants-page__table-scroll app-table-responsive-wrap">
     <nz-table
       #tbl
       [nzData]="tenants()"
@@ -209,7 +209,7 @@
           </tr>
           <tr [nzExpand]="isExpanded(t.id)">
             <td [attr.colspan]="5">
-              <div class="tenants-page__branches-wrap">
+              <div class="tenants-page__branches-wrap app-table-responsive-wrap">
                 <div class="tenants-page__branches-head">
                   <nz-tag nzColor="processing">
                     {{ 'COMMON.BRANCHES' | translate }}: {{ t.branches?.length ?? 0 }}

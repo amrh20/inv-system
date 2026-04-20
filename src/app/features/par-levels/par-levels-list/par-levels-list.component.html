@@ -151,7 +151,7 @@
           </button>
         </div>
       }
-      <div class="par-levels-page__table-scroll">
+      <div class="par-levels-page__table-scroll app-table-responsive-wrap">
       <nz-table
         #st
         [nzData]="filteredBalances()"
@@ -159,7 +159,7 @@
         [nzShowPagination]="false"
         nzSize="small"
         nzTableLayout="fixed"
-        [nzScroll]="{ x: '760px' }"
+        [nzScroll]="nzTableScroll()"
         class="par-levels-table"
       >
         <thead>

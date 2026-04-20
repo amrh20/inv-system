@@ -871,6 +871,7 @@
     },
     "CREATE": {
       "PAGE_TITLE": "Create New GRN",
+      "ORG_MANAGER_HOTEL_HINT": "Select the hotel or property in the header switcher first. Suppliers, warehouses, and line items load for the active property; then choose the destination warehouse for this GRN.",
       "TITLE": "New Goods Receipt Note",
       "TAB_MANUAL": "Manual Entry",
       "TAB_EXCEL": "Import Excel",

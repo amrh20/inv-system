@@ -40,14 +40,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  <div class="movements-page__table-wrap">
+  <div class="movements-page__table-wrap app-table-responsive-wrap">
   <nz-table
     #docTable
     [nzData]="documents()"
     [nzLoading]="loading()"
     nzSize="middle"
     nzTableLayout="fixed"
-    [nzScroll]="{ x: '900px' }"
+    [nzScroll]="nzTableScroll()"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"

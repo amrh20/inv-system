@@ -94,8 +94,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  flex: 1 1 280px;
+ 
   min-width: 0;
+  @media (max-width: 992px) {
+    flex: 1 1 280px;
+  }
 }
 
 .items-page__filters-toolbar {
@@ -152,7 +155,6 @@
 .items-table-wrap {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
 }
 
 .items-table {
@@ -160,14 +162,23 @@
   border-radius: var(--radius-brand);
   overflow: hidden;
   min-width: 0;
+
+  /* `overflow: hidden` clips horizontal overflow; mobile table scroll lives on the wrapper / nzScroll. */
+  @media (max-width: 767px) {
+    overflow: visible;
+  }
 }
 
 :host ::ng-deep .items-table-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
+  padding: 10px 8px;
 }
 
 :host ::ng-deep .items-table-wrap .ant-table-tbody > tr > td {
-  word-break: normal;
+  padding: 8px;
+}
+
+:host ::ng-deep .items-table-wrap .ant-table-thead > tr > th.ant-table-cell-scrollbar {
+  padding: 0;
 }
 
 .thumb {

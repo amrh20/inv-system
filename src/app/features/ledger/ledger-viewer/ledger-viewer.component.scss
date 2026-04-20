@@ -5,12 +5,10 @@
   min-width: 0;
 }
 
-/** Lets the table shrink inside flex layouts; horizontal scroll comes from `[nzScroll]`. */
 .ledger-page__table-wrap {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: auto;
 }
 
 .ledger-page__title-block {
@@ -19,8 +17,18 @@
   max-width: 100%;
 }
 
-:host ::ng-deep .ledger-page__table-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
+/* Mobile: horizontal scroll + single-line headers; web: wrap via global `.app-table-responsive-wrap`. */
+@media (max-width: 767px) {
+  :host ::ng-deep .ledger-page__table-wrap .ant-table-thead > tr > th {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 768px) {
+  :host ::ng-deep .ledger-page__table-wrap .ledger-page__tag {
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
 }
 
 .ledger-page__header {

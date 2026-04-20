@@ -37,12 +37,14 @@ import { grnStatusI18nSuffix, type GrnListRow } from '../models/grn.model';
 import { GrnService } from '../services/grn.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 const GRN_CREATE_ALLOWED_ROLES = new Set([
   'COST_CONTROL',
   'STOREKEEPER',
   'ADMIN',
   'SUPER_ADMIN',
+  'ORG_MANAGER',
 ]);
 
 /** List tabs: `All` or backend status filter (Pending tab → VALIDATED). */
@@ -95,10 +97,16 @@ export class GrnListComponent implements OnInit {
 
   readonly activeTab = signal<GrnListTab>('All');
 
-  /** Wide enough for rejected tab extra columns; horizontal scroll on narrow viewports. */
-  readonly grnTableScrollX = computed(() =>
-    this.activeTab() === 'REJECTED' ? '1520px' : '1180px',
-  );
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  /** Desktop: wrap; mobile: min width for horizontal scroll inside wrapper. */
+  readonly grnTableScroll = computed(() => {
+    if (this.viewportIsDesktop()) {
+      return {};
+    }
+    const x = this.activeTab() === 'REJECTED' ? '1520px' : '1180px';
+    return { x };
+  });
   readonly grns = signal<GrnListRow[]>([]);
   readonly total = signal(0);
   readonly loading = signal(false);

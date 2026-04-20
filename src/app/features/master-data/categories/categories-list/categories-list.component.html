@@ -46,7 +46,7 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  <div class="categories-page__table-wrap">
+  <div class="categories-page__table-wrap app-table-responsive-wrap">
   <nz-table
     #tbl
     [nzData]="categories()"
@@ -138,7 +138,7 @@
         </tr>
         <tr [nzExpand]="expandedIds().has(row.id)">
           <td [attr.colspan]="basicDataTableColspan()" class="categories-page__expand-td">
-            <div class="categories-page__sub-table-wrap">
+            <div class="categories-page__sub-table-wrap app-table-responsive-wrap">
               <div class="categories-page__sub-table-header">
                 <span>{{ 'COMMON.SUBCATEGORY' | translate }}</span>
                 <button

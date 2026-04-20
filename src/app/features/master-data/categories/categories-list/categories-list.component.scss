@@ -71,11 +71,12 @@
 .categories-page__table-wrap {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
 }
 
-:host ::ng-deep .categories-page__table-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
+@media (max-width: 767px) {
+  :host ::ng-deep .categories-page__table-wrap .ant-table-thead > tr > th {
+    white-space: nowrap;
+  }
 }
 
 .categories-page__name {
@@ -95,7 +96,6 @@
 
 .categories-page__sub-table-wrap {
   padding: 12px 16px 12px 40px;
-  overflow-x: auto;
   min-width: 0;
 }
 
@@ -105,8 +105,10 @@
   }
 }
 
-:host ::ng-deep .categories-page__sub-table-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
+@media (max-width: 767px) {
+  :host ::ng-deep .categories-page__sub-table-wrap .ant-table-thead > tr > th {
+    white-space: nowrap;
+  }
 }
 
 .categories-page__sub-table-header {

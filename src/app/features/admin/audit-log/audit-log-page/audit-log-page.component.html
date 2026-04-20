@@ -47,14 +47,14 @@
     </button>
   </div>
 
-  <div class="audit-page__table-wrap">
+  <div class="audit-page__table-wrap app-table-responsive-wrap">
   <nz-table
     #tbl
     [nzData]="logs()"
     [nzLoading]="loading()"
     nzSize="middle"
     nzTableLayout="fixed"
-    [nzScroll]="{ x: '1200px' }"
+    [nzScroll]="nzTableScroll()"
     [nzShowPagination]="true"
     [nzTotal]="total()"
     [nzPageIndex]="pageIndex()"

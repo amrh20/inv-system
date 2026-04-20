@@ -48,30 +48,28 @@
   <nz-layout>
     <nz-header class="main-shell__header">
       <div class="header-left">
-        @if (layoutMode() !== 'tablet') {
-          <button
-            nz-button
-            nzType="text"
-            type="button"
-            class="header-icon-btn header-toggle-btn"
-            (click)="toggleHeaderNav()"
-            [attr.aria-label]="'LAYOUT.TOGGLE_SIDEBAR' | translate"
-          >
-            @if (layoutMode() === 'mobile') {
-              @if (mobileDrawerOpen()) {
-                <lucide-icon [img]="lucideClose" [size]="20" [strokeWidth]="2" />
-              } @else {
-                <lucide-icon [img]="lucideMenu" [size]="20" [strokeWidth]="2" />
-              }
+        <button
+          nz-button
+          nzType="text"
+          type="button"
+          class="header-icon-btn header-toggle-btn"
+          (click)="toggleHeaderNav()"
+          [attr.aria-label]="'LAYOUT.TOGGLE_SIDEBAR' | translate"
+        >
+          @if (layoutMode() === 'mobile') {
+            @if (mobileDrawerOpen()) {
+              <lucide-icon [img]="lucideClose" [size]="20" [strokeWidth]="2" />
             } @else {
-              @if (!siderCollapsed()) {
-                <lucide-icon [img]="lucideClose" [size]="20" [strokeWidth]="2" />
-              } @else {
-                <lucide-icon [img]="lucideMenu" [size]="20" [strokeWidth]="2" />
-              }
+              <lucide-icon [img]="lucideMenu" [size]="20" [strokeWidth]="2" />
             }
-          </button>
-        }
+          } @else {
+            @if (!siderCollapsed()) {
+              <lucide-icon [img]="lucideClose" [size]="20" [strokeWidth]="2" />
+            } @else {
+              <lucide-icon [img]="lucideMenu" [size]="20" [strokeWidth]="2" />
+            }
+          }
+        </button>
         <nz-breadcrumb nzSeparator="/">
           @for (crumb of breadcrumbs(); track $index) {
             <nz-breadcrumb-item>

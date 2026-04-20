@@ -69,14 +69,14 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon />
   }
 
-  <div class="grn-list__table-wrap">
+  <div class="grn-list__table-wrap app-table-responsive-wrap">
   <nz-table
     #grnTable
     [nzData]="grns()"
     [nzLoading]="loading()"
     nzSize="middle"
     nzTableLayout="fixed"
-    [nzScroll]="{ x: grnTableScrollX() }"
+    [nzScroll]="grnTableScroll()"
     [nzShowPagination]="false"
     [nzNoResult]="noResultTpl"
   >

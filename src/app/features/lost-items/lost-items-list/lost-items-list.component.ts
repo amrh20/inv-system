@@ -48,6 +48,7 @@ import {
 import type { LostDetail, LostItemsListRow, LostSourceType, LostWorkflowStatus } from '../models/lost-items.model';
 import { LostItemsService } from '../services/lost-items.service';
 import { LostCreateModalComponent } from '../lost-create-modal/lost-create-modal.component';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 const SOURCE_TABS: LostSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
 
@@ -96,6 +97,13 @@ export class LostItemsListComponent implements OnInit {
   readonly lucideCheck = Check;
   readonly lucideEye = Eye;
   readonly lucideEllipsisVertical = EllipsisVertical;
+
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly nzTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '1200px' },
+  );
+
   readonly sourceTabs = SOURCE_TABS;
   /** Role-scoped workflow tabs; role from {@link AuthService#userRole}. */
   readonly visibleStatusTabs = computed(() =>

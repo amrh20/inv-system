@@ -48,6 +48,7 @@ import type {
 } from '../models/stock-balance.model';
 import { StockService } from '../services/stock.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 /** Page size options for stock balances table (must match template `nzPageSizeOptions`). */
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const;
@@ -84,6 +85,13 @@ export class StockBalancesComponent implements OnInit {
   private readonly message = inject(NzMessageService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
+
+  /** Desktop: wrap cells; mobile: `[nzScroll]` min width + wrapper horizontal scroll. */
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly nzTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '1680px' },
+  );
 
   private readonly reload$ = new Subject<void>();
 

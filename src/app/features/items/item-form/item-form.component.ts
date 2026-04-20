@@ -458,7 +458,7 @@ export class ItemFormComponent {
     const openingQty =
       raw.openingQty != null && raw.openingQty !== '' ? Number(raw.openingQty) : 0;
 
-    if (!currentId && this.showOpeningBalanceFields()) {
+    if (this.showOpeningBalanceFields() && (!currentId || this.isOpeningBalanceActive())) {
       const oq = Number.isFinite(openingQty) && openingQty >= 0 ? openingQty : 0;
       payload.openingQuantity = oq;
     }

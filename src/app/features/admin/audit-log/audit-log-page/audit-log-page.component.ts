@@ -1,5 +1,5 @@
 import { DatePipe, SlicePipe } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzTableModule } from 'ng-zorro-antd/table';
@@ -11,6 +11,7 @@ import { first } from 'rxjs';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import type { AuditLogRow } from '../../models/admin.models';
 import { AuditLogService } from '../../services/audit-log.service';
+import { injectMatchMinWidth } from '../../../../shared/utils/viewport-media';
 
 const ENTITY_TYPES = [
   'USER',
@@ -51,6 +52,12 @@ export class AuditLogPageComponent implements OnInit {
   readonly lucideClock = Clock;
 
   readonly entityTypes = ENTITY_TYPES;
+
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly nzTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '1200px' },
+  );
 
   readonly logs = signal<AuditLogRow[]>([]);
   readonly total = signal(0);

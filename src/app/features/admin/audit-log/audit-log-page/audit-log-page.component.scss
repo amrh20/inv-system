@@ -36,11 +36,6 @@
 .audit-page__table-wrap {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
-}
-
-:host ::ng-deep .audit-page__table-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
 }
 
 .audit-page__meta {

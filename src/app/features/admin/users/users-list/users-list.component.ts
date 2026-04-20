@@ -25,7 +25,7 @@ import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzTooltipModule } from 'ng-zorro-antd/tooltip';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { Calendar, Mail, Pencil, Phone, Plus, RefreshCw, Search, Shield, Users, X } from 'lucide-angular';
+import { Calendar, Eye, EyeOff, Mail, Pencil, Phone, Plus, RefreshCw, Search, Shield, Users, X } from 'lucide-angular';
 import { ConfirmationService } from '../../../../core/services/confirmation.service';
 import { EmptyStateComponent } from '../../../../shared/components/empty-state/empty-state.component';
 import { StatusToggleComponent } from '../../../../shared/components/status-toggle/status-toggle.component';
@@ -41,6 +41,7 @@ import {
 import { UsersAdminService } from '../../services/users-admin.service';
 import { DepartmentsService } from '../../../master-data/services/departments.service';
 import type { DepartmentRow } from '../../../master-data/models/department.model';
+import { injectMatchMinWidth } from '../../../../shared/utils/viewport-media';
 
 @Component({
   selector: 'app-users-list',
@@ -89,8 +90,16 @@ export class UsersListComponent implements OnInit {
   readonly lucidePhone = Phone;
   readonly lucideCalendar = Calendar;
   readonly lucidePencil = Pencil;
+  readonly lucideEye = Eye;
+  readonly lucideEyeOff = EyeOff;
 
   readonly assignableRoles = ASSIGNABLE_USER_ROLES;
+
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly nzTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '1400px' },
+  );
 
   /** Modal `nz-select` overlays: cap height so the option list scrolls instead of clipping the viewport. */
   readonly modalSelectDropdownStyle: { maxHeight: string; overflowY: string } = {
@@ -140,6 +149,7 @@ export class UsersListComponent implements OnInit {
   readonly modalOpen = signal(false);
   readonly saving = signal(false);
   readonly editRow = signal<UserListRow | null>(null);
+  readonly showPassword = signal(false);
 
   /** Create modal: selected email option (existing user import vs new email). */
   emailPick: EmailPickOption | null = null;
@@ -257,6 +267,7 @@ export class UsersListComponent implements OnInit {
     this.editRow.set(null);
     this.resetForm();
     this.formError = '';
+    this.showPassword.set(false);
     this.modalOpen.set(true);
   }
 
@@ -276,6 +287,7 @@ export class UsersListComponent implements OnInit {
     this.formPhone = row.phone ?? '';
     this.formActive = row.isActive !== false;
     this.formError = '';
+    this.showPassword.set(false);
     this.modalOpen.set(true);
     this.loadDepartments(() => {
       if (!hadDepartmentId && row.department?.trim()) {
@@ -288,6 +300,7 @@ export class UsersListComponent implements OnInit {
     this.modalOpen.set(v);
     if (!v) {
       this.editRow.set(null);
+      this.showPassword.set(false);
     }
   }
 
@@ -310,6 +323,11 @@ export class UsersListComponent implements OnInit {
     this.isImporting.set(false);
     this.emailSelectOptions.set([]);
     this.createEmailQuery = '';
+    this.showPassword.set(false);
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword.update((value) => !value);
   }
 
   /** Clears email / import state when switching between new email and link-existing modes. */

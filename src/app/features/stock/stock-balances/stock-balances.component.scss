@@ -4,6 +4,48 @@
   gap: 16px;
 }
 
+@media (min-width: 768px) {
+  :host {
+    display: flex;
+    flex-direction: column;
+    /* App header 56px + main-shell__inner vertical padding 24px × 2 */
+  
+    overflow-x: hidden;
+  }
+
+  .stock-page {
+    flex: 1 1 auto;
+    min-height: 0;
+    /*
+      Fixed sections (header + summary + filters) do not shrink. If the viewport
+      becomes short (DevTools, small window), they can exceed the flex height and
+      the table was clipped with `overflow: hidden`; vertical scroll keeps the
+      table reachable.
+    */
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .stock-page__header,
+  .stock-page__summary,
+  .stock-page__filters,
+  .stock-page__alert {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  :host {
+    display: block;
+    min-height: unset;
+    max-height: none;
+  }
+
+  .stock-page {
+    overflow: visible;
+  }
+}
+
 .stock-page__header {
   display: flex;
   flex-wrap: wrap;
@@ -200,6 +242,13 @@
   min-height: 200px;
 }
 
+@media (min-width: 768px) {
+  .stock-page__table-card {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
 .stock-page__legend {
   display: flex;
   flex-wrap: wrap;
@@ -210,6 +259,7 @@
   color: rgba(0, 0, 0, 0.45);
   background: #fafafa;
   border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
 }
 
 .legend-swatch {
@@ -247,6 +297,7 @@
   padding: 0.75rem 1rem;
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
+  flex-shrink: 0;
 }
 
 .stock-th-loc {
@@ -258,15 +309,35 @@
 .stock-page__table-scroll {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
+}
+
+@media (min-width: 768px) {
+  .stock-page__table-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: visible;
+    overflow-y: auto;
+  }
 }
 
 .stock-table {
   min-width: 0;
 }
 
-:host ::ng-deep .stock-table .ant-table-thead > tr > th {
-  white-space: nowrap;
+@media (max-width: 767px) {
+  :host ::ng-deep .stock-table .ant-table-thead > tr > th {
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 768px) {
+  :host ::ng-deep .stock-table .ant-table-thead > tr > th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #fafafa;
+    box-shadow: 0 1px 0 #f0f0f0;
+  }
 }
 
 :host ::ng-deep .stock-table .ant-table-tbody > tr > td {
@@ -320,9 +391,9 @@
 .cell-item__name {
   font-weight: 500;
   color: rgba(0, 0, 0, 0.88);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cell-item__meta {
@@ -418,6 +489,7 @@
   color: #fff;
   font-size: 13px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 .stock-page__footer-row > td {

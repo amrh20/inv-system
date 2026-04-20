@@ -48,11 +48,6 @@
 .brk-list__table-wrap {
   width: 100%;
   min-width: 0;
-  overflow-x: auto;
-}
-
-:host ::ng-deep .brk-list__table-wrap .ant-table-thead > tr > th {
-  white-space: nowrap;
 }
 
 .brk-list__actions-returns {

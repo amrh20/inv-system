@@ -154,7 +154,7 @@
         </div>
       }
 
-      <div class="stock-table-wrap overflow-hidden rounded-[6px] bg-surface-elevated shadow-sm">
+      <div class="stock-table-wrap app-table-responsive-wrap overflow-hidden rounded-[6px] bg-surface-elevated shadow-sm">
         <div class="max-h-[calc(100vh-240px)] overflow-auto">
           <table class="stock-table min-w-[900px] border-collapse text-left text-sm">
             <thead>
@@ -254,6 +254,7 @@
   }
 
   @if (activeTab() === 'saved') {
+    <div class="app-table-responsive-wrap">
     <nz-table [nzData]="savedRows()" [nzLoading]="savedLoading()" [nzShowPagination]="false" nzSize="middle" [nzNoResult]="savedEmpty">
       <ng-template #savedEmpty>
         <app-empty-state [title]="'STOCK_REPORT.SAVED_EMPTY' | translate" [message]="'STOCK_REPORT.SAVED_EMPTY_HINT' | translate" />
@@ -287,5 +288,6 @@
         }
       </tbody>
     </nz-table>
+    </div>
   }
 </div>

@@ -42,6 +42,7 @@ import { LocationsService } from '../../master-data/services/locations.service';
 import type { LowStockItem, ParLevelRow, ParLevelUpdate } from '../models/par-level.model';
 import { ParLevelService } from '../services/par-level.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 /** Edit draft key: itemId_locationId */
 type EditKey = string;
@@ -87,6 +88,12 @@ export class ParLevelsListComponent implements OnInit {
   readonly lucideLayers = Layers;
   readonly lucideCheckSquare = CheckSquare;
   readonly lucideRotateCcw = RotateCcw;
+
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  readonly nzTableScroll = computed(() =>
+    this.viewportIsDesktop() ? {} : { x: '760px' },
+  );
 
   readonly departments = signal<DepartmentOption[]>([]);
   readonly allLocations = signal<LocationOption[]>([]);

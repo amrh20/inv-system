@@ -53,6 +53,7 @@ import {
 import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 @Component({
   selector: 'app-items-list',
@@ -97,6 +98,17 @@ export class ItemsListComponent implements OnInit {
   private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
 
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  /** Web: cell wrap, no horizontal table scroll. Mobile: min width + horizontal scroll. */
+  readonly itemsTableScroll = computed(() => {
+    if (this.viewportIsDesktop()) {
+      return {};
+    }
+    const obExtra = this.obStatus() === 'OPEN' ? 96 : 0;
+    return { x: `${1080 + obExtra}px` };
+  });
+
   readonly lucidePackage = Package;
   readonly lucidePlus = Plus;
   readonly lucideSearch = Search;
@@ -128,8 +140,6 @@ export class ItemsListComponent implements OnInit {
   /** Explicit OB OPEN phase — drives draft setup columns and Total qty hint. */
   readonly showObDraftColumns = computed(() => this.obStatus() === 'OPEN');
 
-  /** Minimum table width for horizontal scroll — prevents fixed-layout columns from collapsing into single-character wraps. */
-  readonly itemsTableScrollX = computed(() => (this.showObDraftColumns() ? '1520px' : '1360px'));
   readonly deleteLockedAfterObFinalization = computed(() => this.obStatus() === 'FINALIZED');
 
   readonly showPrerequisitesBanner = computed(

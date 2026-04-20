@@ -90,6 +90,7 @@
     </div>
   }
 
+  <div class="app-table-responsive-wrap">
   <nz-table [nzData]="periods()" [nzLoading]="loading()" [nzShowPagination]="false" nzSize="middle" [nzNoResult]="emptyTpl">
     <ng-template #emptyTpl>
       <app-empty-state [title]="'PERIOD_CLOSE.EMPTY_TITLE' | translate" [message]="'PERIOD_CLOSE.EMPTY_HINT' | translate" />
@@ -134,4 +135,5 @@
       }
     </tbody>
   </nz-table>
+  </div>
 </div>

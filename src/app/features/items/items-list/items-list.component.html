@@ -200,7 +200,7 @@
     <nz-alert nzType="error" [nzMessage]="listError()" nzShowIcon class="items-alert" />
   }
 
-  <div class="items-table-wrap">
+  <div class="items-table-wrap app-table-responsive-wrap">
     <nz-table
     #itemsTable
     class="items-table"
@@ -216,8 +216,8 @@
     [nzPageSizeOptions]="[10, 20, 50, 100]"
     nzShowSizeChanger
     [nzShowTotal]="totalTemplate"
-    [nzScroll]="{ x: itemsTableScrollX() }"
-    nzTableLayout="fixed"
+    nzTableLayout="auto"
+    [nzScroll]="itemsTableScroll()"
     [nzNoResult]="noResultTpl"
   >
     <ng-template #noResultTpl>
@@ -232,22 +232,22 @@
     </ng-template>
     <thead>
       <tr>
-        <th nzWidth="56"></th>
+        <th nzWidth="44"></th>
         <th nzColumnKey="name" [nzSortFn]="sortNameFn" nzShowSort>{{ 'COMMON.ITEM_NAME' | translate }}</th>
-        <th nzWidth="120" nzColumnKey="barcode" [nzSortFn]="sortBarcodeFn" nzShowSort>
+        <!-- <th nzWidth="120" nzColumnKey="barcode" [nzSortFn]="sortBarcodeFn" nzShowSort>
           {{ 'COMMON.BARCODE' | translate }}
-        </th>
-        <th nzWidth="120" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>
+        </th> -->
+        <th nzWidth="108" nzColumnKey="category" [nzSortFn]="sortCategoryFn" nzShowSort>
           {{ 'COMMON.CATEGORY' | translate }}
         </th>
-        <th nzWidth="120">{{ 'COMMON.SUPPLIER' | translate }}</th>
-        <th nzWidth="140">{{ 'COMMON.BASE_UNIT' | translate }}</th>
-        <th nzWidth="100" nzAlign="right" nzColumnKey="unitPrice" [nzSortFn]="sortPriceFn" nzShowSort>
+        <th nzWidth="108">{{ 'COMMON.SUPPLIER' | translate }}</th>
+        <th nzWidth="88">{{ 'COMMON.BASE_UNIT' | translate }}</th>
+        <th nzWidth="88" nzAlign="right" nzColumnKey="unitPrice" [nzSortFn]="sortPriceFn" nzShowSort>
           {{ 'COMMON.UNIT_PRICE' | translate }}
         </th>
         @if (showObDraftColumns()) {
           <th
-            nzWidth="108"
+            nzWidth="96"
             nzAlign="right"
             nzColumnKey="openingQtySetup"
             [nzSortFn]="sortOpeningQtyFn"
@@ -256,11 +256,11 @@
             {{ 'ITEMS.COL_OPENING_QTY_SETUP' | translate }}
           </th>
         }
-        <th nzWidth="100" nzAlign="right" nzColumnKey="displayTotalQty" [nzSortFn]="sortQtyFn" nzShowSort>
+        <th nzWidth="88" nzAlign="right" nzColumnKey="displayTotalQty" [nzSortFn]="sortQtyFn" nzShowSort>
           {{ 'COMMON.TOTAL_QTY' | translate }}
         </th>
-        <th nzWidth="140" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
-        <th nzWidth="176" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
+        <th nzWidth="110" nzAlign="center">{{ 'COMMON.STATUS' | translate }}</th>
+        <th nzWidth="96" nzAlign="center">{{ 'COMMON.ACTIONS' | translate }}</th>
       </tr>
     </thead>
     <tbody>
@@ -281,7 +281,7 @@
               <div class="cell-sub">{{ row.department?.name }}</div>
             }
           </td>
-          <td class="mono">{{ row.barcode || '—' }}</td>
+          <!-- <td class="mono">{{ row.barcode || '—' }}</td> -->
           <td>{{ row.category?.name || '—' }}</td>
           <td>{{ row.supplier?.name || '—' }}</td>
           <td>{{ baseUnitLabel(row) }}</td>

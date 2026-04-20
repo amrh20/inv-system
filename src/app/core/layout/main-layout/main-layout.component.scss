@@ -35,13 +35,23 @@ $sider-bg: linear-gradient(to bottom, #0f172a, #1e293b);
   border-bottom: 1px solid var(--border-color-split);
   position: relative;
   z-index: 100;
+
+  @media (max-width: 767px) {
+    gap: 10px;
+  }
 }
 
 .header-left {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Take remaining row space so the right cluster stays end-aligned without overlapping siblings. */
+  flex: 1 1 0%;
   min-width: 0;
+
+  @media (max-width: 767px) {
+    gap: 12px;
+  }
 }
 
 .header-icon-btn {
@@ -49,9 +59,43 @@ $sider-bg: linear-gradient(to bottom, #0f172a, #1e293b);
 }
 
 .header-toggle-btn {
+  flex-shrink: 0;
   min-width: 40px;
   min-height: 40px;
   pointer-events: auto;
+}
+
+/* Breadcrumb sits between menu and right cluster; must shrink so tenant/lang controls never paint over the menu. */
+:host ::ng-deep .header-left nz-breadcrumb {
+  display: block;
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+:host ::ng-deep .header-left .ant-breadcrumb {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+:host ::ng-deep .header-left .ant-breadcrumb > span {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+:host ::ng-deep .header-left .ant-breadcrumb ol {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .header-search {
@@ -80,10 +124,16 @@ $sider-bg: linear-gradient(to bottom, #0f172a, #1e293b);
 }
 
 .header-right {
-  margin-inline-start: auto;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+
+  @media (max-width: 767px) {
+    gap: 8px;
+    padding-inline-start: 8px;
+  }
 }
 
 .tenant-switcher.ant-btn {
@@ -92,6 +142,7 @@ $sider-bg: linear-gradient(to bottom, #0f172a, #1e293b);
   gap: 0.375rem;
   height: 38px;
   border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .tenant-switcher--static {

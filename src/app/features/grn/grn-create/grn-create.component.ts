@@ -38,6 +38,7 @@ import {
   Download,
 } from 'lucide-angular';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
+import { AuthService } from '../../../core/services/auth.service';
 import type { ItemListRow } from '../../items/models/item.model';
 import type { RequirementsResponse } from '../../items/models/item.model';
 import {
@@ -88,6 +89,7 @@ export class GrnCreateComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly confirmation = inject(ConfirmationService);
+  private readonly auth = inject(AuthService);
 
   readonly lucideFileText = FileText;
   readonly lucideSearch = Search;
@@ -141,6 +143,14 @@ export class GrnCreateComponent implements OnInit {
 
   readonly openingBalanceBlocksGrn = computed(
     () => this.requirements()?.isOpeningBalanceAllowed === true,
+  );
+
+  /**
+   * Org managers at the root org must switch the active property (header) so suppliers,
+   * warehouses, and items load for the intended hotel; then choose destination warehouse.
+   */
+  readonly showOrgManagerHotelHint = computed(
+    () => this.auth.hasRole('ORG_MANAGER') && this.auth.isParentOrganizationContext(),
   );
 
   readonly manualGrandTotal = computed(() =>

@@ -46,6 +46,7 @@ import {
 } from '../models/item.model';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
+import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 /** Fixed import preview columns (order: Name → … → Unit Price) before dynamic store quantity columns. */
 const IMPORT_PREVIEW_FIXED_COLUMNS: readonly {
@@ -185,8 +186,13 @@ export class ItemImportComponent implements OnInit {
     return this.importLoading() || validRows === 0 || obReasonMissing;
   });
 
-  /** Scroll area for preview table (large datasets). */
-  readonly previewTableScroll = { x: 'max-content', y: 'calc(100vh - 380px)' };
+  private readonly viewportIsDesktop = injectMatchMinWidth(768);
+
+  /** Desktop: vertical scroll only; mobile: horizontal + vertical for wide preview. */
+  readonly previewTableScroll = computed(() => {
+    const y = 'calc(100vh - 380px)';
+    return this.viewportIsDesktop() ? { y } : { x: 'max-content', y };
+  });
 
   ngOnInit(): void {
     this.loadRequirements();
