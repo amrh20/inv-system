@@ -210,14 +210,17 @@ export class MainLayoutComponent {
   }
 
   tenantSwitcherItems(): UserMembership[] {
-    const user = this.auth.currentUser();
-    return (user?.memberships ?? []).filter(
-      (membership) => !!membership.tenantId && !!membership.tenantSlug,
-    );
+    return this.auth.getSwitchableMemberships();
   }
 
   showTenantSwitcher(): boolean {
-    return !this.isSuperAdmin() && this.tenantSwitcherItems().length > 0;
+    if (this.isSuperAdmin()) {
+      return false;
+    }
+    if (this.auth.getSinglePropertyTenantSlugForOrgManager()) {
+      return false;
+    }
+    return this.tenantSwitcherItems().length > 1;
   }
 
   onSwitchTenant(tenantSlug: string): void {
@@ -228,7 +231,8 @@ export class MainLayoutComponent {
     this.auth.switchTenant(tenantSlug).subscribe({
       next: () => {
         this.switchingTenant.set(false);
-        window.location.href = '/dashboard';
+        const targetSlug = this.auth.currentTenant()?.slug;
+        window.location.href = targetSlug ? `/${targetSlug}/dashboard` : '/dashboard';
       },
       error: () => {
         this.switchingTenant.set(false);

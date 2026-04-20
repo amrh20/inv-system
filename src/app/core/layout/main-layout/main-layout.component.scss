@@ -94,6 +94,16 @@ $sider-bg: linear-gradient(to bottom, #0f172a, #1e293b);
   border-radius: 6px;
 }
 
+.tenant-switcher--static {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color-base, #d9d9d9);
+  background: #fff;
+}
+
 .tenant-switcher__label {
   max-width: 150px;
   overflow: hidden;
@@ -245,6 +255,12 @@ $sider-bg: linear-gradient(to bottom, #0f172a, #1e293b);
 }
 
 .main-shell--dark .tenant-switcher.ant-btn {
+  color: rgba(255, 255, 255, 0.85);
+  border-color: #434343;
+  background: #141414;
+}
+
+.main-shell--dark .tenant-switcher--static {
   color: rgba(255, 255, 255, 0.85);
   border-color: #434343;
   background: #141414;

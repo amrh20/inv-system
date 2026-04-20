@@ -140,6 +140,10 @@
               }
             </ul>
           </nz-dropdown-menu>
+        } @else if (!isSuperAdmin()) {
+          <span class="tenant-switcher tenant-switcher--static">
+            <span class="tenant-switcher__label">{{ currentTenantName() }}</span>
+          </span>
         } @else if (isSuperAdmin()) {
           <a nz-button nzType="default" routerLink="/admin/tenants" class="admin-link-btn">
             {{ 'LAYOUT.GO_TO_ADMIN_PANEL' | translate }}

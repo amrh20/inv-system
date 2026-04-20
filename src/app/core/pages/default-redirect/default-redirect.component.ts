@@ -24,6 +24,9 @@ export class DefaultRedirectComponent {
     let target = '/forbidden';
     if (role === 'SUPER_ADMIN') {
       target = '/admin/tenants';
+    } else if (role === 'ORG_MANAGER') {
+      const singlePropertySlug = this.auth.getSinglePropertyTenantSlugForOrgManager();
+      target = singlePropertySlug ? `/${singlePropertySlug}/dashboard` : '/dashboard';
     } else if (this.auth.hasPermission('VIEW_DASHBOARD')) {
       target = '/dashboard';
     } else if (this.auth.hasPermission('GET_PASS_VIEW')) {

@@ -8,6 +8,7 @@ import { blockSuperAdminDashboardGuard } from './core/guards/block-super-admin-d
 import { permissionGuard } from './core/guards/permission.guard';
 import { defaultRedirectGuard } from './core/guards/super-admin-redirect.guard';
 import { requireSuperAdminGuard } from './core/guards/require-super-admin.guard';
+import { tenantDashboardContextGuard } from './core/guards/tenant-dashboard-context.guard';
 import { grnCreateCanDeactivateGuard } from './features/grn/grn-create/grn-create-can-deactivate.guard';
 
 const ROUTE_PERMISSIONS = {
@@ -82,6 +83,13 @@ export const routes: Routes = [
           import('./core/pages/default-redirect/default-redirect.component').then(
             (m) => m.DefaultRedirectComponent,
           ),
+      },
+      {
+        path: ':tenantSlug/dashboard',
+        canActivate: [tenantDashboardContextGuard, permissionGuard],
+        loadComponent: () =>
+          import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+        data: { breadcrumb: 'NAV.DASHBOARD', permission: ROUTE_PERMISSIONS.viewDashboard },
       },
       {
         path: 'dashboard',

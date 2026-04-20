@@ -446,6 +446,10 @@ export class DashboardComponent implements OnInit {
   }
 
   ngOnInit() {
+    if (this.redirectOrgManagerWithSingleProperty()) {
+      return;
+    }
+
     const user = this.auth.currentUser();
     if (user) {
       const full = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
@@ -486,6 +490,31 @@ export class DashboardComponent implements OnInit {
       return;
     }
     this.fetchDashboard();
+  }
+
+  private redirectOrgManagerWithSingleProperty(): boolean {
+    const tenantSlug = this.auth.getSinglePropertyTenantSlugForOrgManager();
+    if (!tenantSlug) {
+      return false;
+    }
+
+    // Already scoped to the only property; continue normal dashboard loading.
+    if (this.auth.currentTenant()?.slug === tenantSlug) {
+      return false;
+    }
+
+    this.auth
+      .switchTenant(tenantSlug)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          void this.router.navigateByUrl(`/${tenantSlug}/dashboard`, { replaceUrl: true });
+        },
+        error: () => {
+          void this.router.navigateByUrl('/dashboard', { replaceUrl: true });
+        },
+      });
+    return true;
   }
 
   private applyMobileQuickUiFlag(): void {
@@ -567,7 +596,8 @@ export class DashboardComponent implements OnInit {
       .subscribe({
         next: () => {
           this.switchingBranchSlug.set(null);
-          window.location.href = '/dashboard';
+          const targetSlug = this.auth.currentTenant()?.slug;
+          window.location.href = targetSlug ? `/${targetSlug}/dashboard` : '/dashboard';
         },
         error: () => {
           this.switchingBranchSlug.set(null);

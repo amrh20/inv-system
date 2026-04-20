@@ -11,6 +11,7 @@ import type {
   LoginApiEnvelope,
   LoginCredentials,
   ResetPasswordPayload,
+  UserMembership,
   UserProfileDto,
 } from '../models';
 import { SubscriptionNoticeService } from './subscription-notice.service';
@@ -322,6 +323,44 @@ export class AuthService {
     }
     const permissions = this.permissions();
     return permissions.includes(key);
+  }
+
+  /**
+   * Memberships that can be used for tenant-context switching.
+   */
+  getSwitchableMemberships(): UserMembership[] {
+    return (this._currentUser()?.memberships ?? []).filter(
+      (membership) => !!membership.tenantId && !!membership.tenantSlug,
+    );
+  }
+
+  /**
+   * Returns the single property slug when ORG_MANAGER has exactly one hotel/property.
+   * Prefers child-property memberships (`parentId !== null`) to avoid matching the org root.
+   */
+  getSinglePropertyTenantSlugForOrgManager(): string | null {
+    const user = this._currentUser();
+    if (!user || user.role !== 'ORG_MANAGER') {
+      return null;
+    }
+
+    const memberships = this.getSwitchableMemberships();
+    if (memberships.length === 0) {
+      return null;
+    }
+
+    const propertyMemberships = memberships.filter((membership) => membership.parentId !== null);
+    const uniquePropertySlugs = [...new Set(propertyMemberships.map((membership) => membership.tenantSlug))];
+    if (uniquePropertySlugs.length === 1) {
+      return uniquePropertySlugs[0] ?? null;
+    }
+
+    const uniqueAllSlugs = [...new Set(memberships.map((membership) => membership.tenantSlug))];
+    if (uniqueAllSlugs.length === 1) {
+      return uniqueAllSlugs[0] ?? null;
+    }
+
+    return null;
   }
 
   /**

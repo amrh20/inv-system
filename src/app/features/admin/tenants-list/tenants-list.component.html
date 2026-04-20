@@ -210,6 +210,11 @@
           <tr [nzExpand]="isExpanded(t.id)">
             <td [attr.colspan]="5">
               <div class="tenants-page__branches-wrap">
+                <div class="tenants-page__branches-head">
+                  <nz-tag nzColor="processing">
+                    {{ 'COMMON.BRANCHES' | translate }}: {{ t.branches?.length ?? 0 }}
+                  </nz-tag>
+                </div>
                 <nz-table
                   class="tenants-page__branch-table"
                   [nzData]="t.branches ?? []"
@@ -293,7 +298,7 @@
                             <span>{{ licenseEndDisplay(branch) }}</span>
                           </div>
                         </td>
-                        <td nzAlign="right">
+                        <td nzAlign="right" class="tenants-page__branch-actions-cell">
                           <button
                             nz-button
                             nzType="text"
@@ -301,6 +306,7 @@
                             [nzDropdownMenu]="childActionMenu"
                             nzTrigger="click"
                             nzPlacement="bottomRight"
+                            class="tenants-page__branch-actions-btn"
                           >
                             <lucide-icon [img]="lucideMoreVertical" [size]="15" />
                           </button>

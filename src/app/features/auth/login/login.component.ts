@@ -228,6 +228,24 @@ export class LoginComponent implements OnInit {
       void this.router.navigate(['/admin/tenants'], { replaceUrl: true });
       return;
     }
+
+    const singlePropertySlug = this.auth.getSinglePropertyTenantSlugForOrgManager();
+    if (singlePropertySlug) {
+      if (this.auth.currentTenant()?.slug === singlePropertySlug) {
+        void this.router.navigateByUrl(`/${singlePropertySlug}/dashboard`, { replaceUrl: true });
+        return;
+      }
+      this.auth.switchTenant(singlePropertySlug).subscribe({
+        next: () => {
+          void this.router.navigateByUrl(`/${singlePropertySlug}/dashboard`, { replaceUrl: true });
+        },
+        error: () => {
+          void this.router.navigate(['/dashboard'], { replaceUrl: true });
+        },
+      });
+      return;
+    }
+
     const target = LoginComponent.LOGIN_REDIRECTS.find((route) => {
       if (route.permissionsAny && route.permissionsAny.length > 0) {
         return route.permissionsAny.some((p) => this.auth.hasPermission(p));

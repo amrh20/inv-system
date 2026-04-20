@@ -353,8 +353,9 @@
 
 .tenants-page__branches-wrap {
   margin: 0;
-  padding: 0;
-  background: transparent;
+  padding: 10px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-top: 1px solid #e2e8f0;
   border-radius: 0;
   animation: branches-expand-in 0.18s ease-out;
   width: 100%;
@@ -364,16 +365,52 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.tenants-page__branches-head {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
 :host ::ng-deep .tenants-page__branches-wrap .ant-table-thead > tr > th {
   white-space: nowrap;
 }
 
 .tenants-page__branch-table-row {
-  background: #f8fafc;
+  background: #ffffff;
+}
+
+:host ::ng-deep .tenants-page__branch-table .ant-table-tbody > tr.tenants-page__branch-table-row > td {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+:host ::ng-deep .tenants-page__branch-table .ant-table-tbody > tr.tenants-page__branch-table-row:hover > td {
+  background: #eff6ff;
 }
 
 .tenants-page__branch-table {
   width: 100%;
+}
+
+.tenants-page__branch-actions-cell {
+  width: 72px;
+  min-width: 72px;
+  text-align: right;
+}
+
+.tenants-page__branch-actions-btn.ant-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.tenants-page__branch-actions-btn.ant-btn:hover,
+.tenants-page__branch-actions-btn.ant-btn:focus {
+  border-color: #93c5fd;
+  background: #dbeafe;
+  color: #1e40af;
 }
 
 :host ::ng-deep .tenants-page__branch-table .ant-table,
