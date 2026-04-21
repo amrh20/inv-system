@@ -172,8 +172,8 @@
                   <tr [class.grn-create-page__tr--invalid]="invalidLineIndexes().includes(idx)">
                     <td>
                       <div class="grn-create-page__line-cell">
-                        @if (line.imageUrl) {
-                          <img [src]="line.imageUrl" [alt]="line.itemName" class="grn-create-page__line-thumb" />
+                        @if (lineImageSrc(line); as src) {
+                          <img [src]="src" [alt]="line.itemName" class="grn-create-page__line-thumb" />
                         } @else {
                           <span class="grn-create-page__line-thumb grn-create-page__line-thumb--ph">
                             <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
@@ -263,6 +263,20 @@
                 hidden
                 (change)="onInvoiceSelected($any($event.target).files)"
               />
+              @if (invoiceFile(); as f) {
+                <div class="grn-create-page__invoice-review">
+                  @if (invoiceIsImage() && invoicePreviewUrl()) {
+                    <a [href]="invoicePreviewUrl()" target="_blank" rel="noreferrer" class="grn-create-page__invoice-link">
+                      <img [src]="invoicePreviewUrl()" [alt]="f.name" class="grn-create-page__invoice-image" />
+                    </a>
+                  } @else if (invoicePreviewUrl()) {
+                    <a [href]="invoicePreviewUrl()" target="_blank" rel="noreferrer" class="grn-create-page__invoice-link">
+                      <lucide-icon [img]="lucideFileText" [size]="18" [strokeWidth]="2" />
+                      <span class="grn-create-page__invoice-name">{{ f.name }}</span>
+                    </a>
+                  }
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -352,8 +366,8 @@
                     <td>{{ row.rowNum }}</td>
                     <td>
                       <div class="grn-create-page__line-cell">
-                        @if (row.imageUrl) {
-                          <img [src]="row.imageUrl" [alt]="row.itemName ?? ''" class="grn-create-page__line-thumb" />
+                        @if (previewImageSrc(row); as src) {
+                          <img [src]="src" [alt]="row.itemName ?? ''" class="grn-create-page__line-thumb" />
                         } @else {
                           <span class="grn-create-page__line-thumb grn-create-page__line-thumb--ph">
                             <lucide-icon [img]="lucidePackage" [size]="14" [strokeWidth]="2" />
@@ -433,6 +447,20 @@
                 hidden
                 (change)="onInvoiceSelected($any($event.target).files)"
               />
+              @if (invoiceFile(); as f) {
+                <div class="grn-create-page__invoice-review">
+                  @if (invoiceIsImage() && invoicePreviewUrl()) {
+                    <a [href]="invoicePreviewUrl()" target="_blank" rel="noreferrer" class="grn-create-page__invoice-link">
+                      <img [src]="invoicePreviewUrl()" [alt]="f.name" class="grn-create-page__invoice-image" />
+                    </a>
+                  } @else if (invoicePreviewUrl()) {
+                    <a [href]="invoicePreviewUrl()" target="_blank" rel="noreferrer" class="grn-create-page__invoice-link">
+                      <lucide-icon [img]="lucideFileText" [size]="18" [strokeWidth]="2" />
+                      <span class="grn-create-page__invoice-name">{{ f.name }}</span>
+                    </a>
+                  }
+                </div>
+              }
             </div>
           </div>
         </div>

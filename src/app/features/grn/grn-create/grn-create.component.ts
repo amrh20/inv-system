@@ -110,6 +110,7 @@ export class GrnCreateComponent implements OnInit {
 
   readonly lines = signal<GrnManualLineDraft[]>([]);
   readonly invoiceFile = signal<File | null>(null);
+  readonly invoicePreviewUrl = signal<string | null>(null);
   readonly excelFile = signal<File | null>(null);
   readonly preview = signal<GrnImportPreviewData | null>(null);
 
@@ -127,11 +128,13 @@ export class GrnCreateComponent implements OnInit {
   readonly itemDropdownOpen = signal(false);
 
   readonly invalidLineIndexes = signal<number[]>([]);
+  readonly previewImageUrls = signal<Record<number, string | null>>({});
 
   private readonly search$ = new Subject<string>();
   /** Fires when a non-empty warehouse is selected/changed — immediate fetch (no debounce). */
   private readonly locationPrefetch$ = new Subject<void>();
   private skipDeactivate = false;
+  private invoiceObjectUrl: string | null = null;
 
   readonly receivingDatePicker = computed(() => {
     const s = this.receivingDate();
@@ -171,8 +174,20 @@ export class GrnCreateComponent implements OnInit {
   });
 
   readonly itemSearchDisabled = computed(() => !this.locationId().trim());
+  readonly invoiceIsImage = computed(() => {
+    const file = this.invoiceFile();
+    if (!file) {
+      return false;
+    }
+    if (file.type.startsWith('image/')) {
+      return true;
+    }
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name);
+  });
 
   ngOnInit(): void {
+    this.destroyRef.onDestroy(() => this.revokeInvoiceObjectUrl());
+
     this.itemsApi
       .checkRequirements()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -300,13 +315,14 @@ export class GrnCreateComponent implements OnInit {
               itemId,
               itemName: itemDetail.name,
               barcode: itemDetail.barcode ?? '',
-              imageUrl: itemDetail.imageUrl ?? null,
+              imageUrl: itemDetail.imageDisplayUrl ?? null,
               uomId: baseUom.uomId,
               uomName: baseUom.uomName,
               receivedQty: '',
               unitPrice: itemDetail.unitPrice ?? '',
             },
           ]);
+          this.hydrateLineImageUrl(itemId, itemDetail.imageDisplayUrl ?? itemDetail.imageUrl ?? null);
           this.clearLineValidationUi();
           this.itemQuery.set('');
           this.itemResults.set([]);
@@ -334,7 +350,15 @@ export class GrnCreateComponent implements OnInit {
   }
 
   onInvoiceSelected(files: FileList | null): void {
-    this.invoiceFile.set(files?.[0] ?? null);
+    const file = files?.[0] ?? null;
+    this.invoiceFile.set(file);
+    this.revokeInvoiceObjectUrl();
+    if (!file) {
+      this.invoicePreviewUrl.set(null);
+      return;
+    }
+    this.invoiceObjectUrl = URL.createObjectURL(file);
+    this.invoicePreviewUrl.set(this.invoiceObjectUrl);
   }
 
   onExcelSelected(files: FileList | null): void {
@@ -385,6 +409,7 @@ export class GrnCreateComponent implements OnInit {
     this.grnApi.importPreview(fd).subscribe({
       next: (data) => {
         this.preview.set(data);
+        this.hydratePreviewImageUrls(data.rows ?? []);
         this.parseLoading.set(false);
       },
       error: (err: { error?: { message?: string } }) => {
@@ -632,5 +657,64 @@ export class GrnCreateComponent implements OnInit {
     const msg = this.translate.instant('GRN.CREATE.ERROR_LINE_IDS', { name: firstBadName });
     this.error.set(msg);
     this.message.error(msg);
+  }
+
+  lineImageSrc(line: GrnManualLineDraft): string | null {
+    return line.imageUrl ?? null;
+  }
+
+  previewImageSrc(row: { rowNum?: number; imageUrl?: string | null }): string | null {
+    const rowNum = Number(row.rowNum ?? 0);
+    const resolved = this.previewImageUrls()[rowNum];
+    if (resolved !== undefined) {
+      return resolved;
+    }
+    return row.imageUrl ?? null;
+  }
+
+  private hydrateLineImageUrl(itemId: string, imagePathOrUrl: string | null): void {
+    if (!imagePathOrUrl) {
+      return;
+    }
+    this.itemsApi
+      .resolveDisplayUrl$(imagePathOrUrl)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((url) => {
+        if (!url) {
+          return;
+        }
+        this.lines.update((rows) =>
+          rows.map((row) => (row.itemId === itemId ? { ...row, imageUrl: url } : row)),
+        );
+      });
+  }
+
+  private hydratePreviewImageUrls(
+    rows: Array<{ rowNum?: number; imageUrl?: string | null }>,
+  ): void {
+    const map: Record<number, string | null> = {};
+    for (const row of rows) {
+      const rowNum = Number(row.rowNum ?? 0);
+      const raw = row.imageUrl ?? null;
+      if (!rowNum || !raw) {
+        map[rowNum] = null;
+        continue;
+      }
+      this.itemsApi
+        .resolveDisplayUrl$(raw)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((url) => {
+          this.previewImageUrls.update((curr) => ({ ...curr, [rowNum]: url }));
+        });
+    }
+    this.previewImageUrls.set(map);
+  }
+
+  private revokeInvoiceObjectUrl(): void {
+    if (!this.invoiceObjectUrl) {
+      return;
+    }
+    URL.revokeObjectURL(this.invoiceObjectUrl);
+    this.invoiceObjectUrl = null;
   }
 }

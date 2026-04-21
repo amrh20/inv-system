@@ -294,6 +294,35 @@
   }
 }
 
+.grn-create-page__invoice-review {
+  margin-top: 8px;
+}
+
+.grn-create-page__invoice-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-brand-success, #389e0d);
+  text-decoration: none;
+  max-width: 100%;
+}
+
+.grn-create-page__invoice-name {
+  text-decoration: underline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grn-create-page__invoice-image {
+  width: 100%;
+  max-width: 220px;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius-brand, 6px);
+  border: 1px solid #d9d9d9;
+}
+
 .grn-create-page__excel-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

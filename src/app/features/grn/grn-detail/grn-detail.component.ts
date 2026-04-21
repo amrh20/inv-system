@@ -107,6 +107,7 @@ export class GrnDetailComponent implements OnInit {
   readonly itemDropdownOpen = signal(false);
   readonly updatingItems = signal(false);
   readonly invalidRejectedLineIndexes = signal<number[]>([]);
+  readonly invoiceDisplayUrl = signal<string | null>(null);
 
   private readonly search$ = new Subject<string>();
 
@@ -282,12 +283,23 @@ export class GrnDetailComponent implements OnInit {
     this.router.navigate(['/grn']);
   }
 
-  invoiceHref(pdfAttachmentUrl: string): string {
-    const base = environment.apiUrl.replace(/\/api\/?$/, '');
-    const normalized = pdfAttachmentUrl.replace(/\\/g, '/');
-    const filename = normalized.split('/').pop() ?? '';
-    const subfolder = normalized.includes('/invoices/') ? '/invoices/' : '/';
-    return `${base}/uploads/grn${subfolder}${filename}`;
+  invoiceHref(g: GrnDetail): string {
+    if (g.pdfAttachmentDisplayUrl) {
+      return g.pdfAttachmentDisplayUrl;
+    }
+    if (this.invoiceDisplayUrl()) {
+      return this.invoiceDisplayUrl()!;
+    }
+    const raw = g.pdfAttachmentUrl ?? '';
+    if (!raw) return '#';
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+    if (raw.startsWith('/uploads/')) {
+      const base = environment.apiUrl.replace(/\/api\/?$/, '');
+      return `${base}${raw}`;
+    }
+    return '#';
   }
 
   statusLabelSuffix(status: GrnDetail['status']): string {
@@ -606,6 +618,7 @@ export class GrnDetailComponent implements OnInit {
       .subscribe({
         next: (g) => {
           this.grn.set(g);
+          this.hydrateInvoiceDisplayUrl(g);
           if (g.status === 'REJECTED' && this.auth.hasPermission('GRN_MANAGE')) {
             this.rejectedEditLines.set(this.initRejectedEditLinesFromDetail(g.lines ?? []));
           } else {
@@ -615,9 +628,21 @@ export class GrnDetailComponent implements OnInit {
         },
         error: () => {
           this.error.set(this.translate.instant('GRN.DETAIL.LOAD_ERROR'));
+          this.invoiceDisplayUrl.set(null);
           this.loading.set(false);
         },
       });
+  }
+
+  private hydrateInvoiceDisplayUrl(g: GrnDetail): void {
+    this.invoiceDisplayUrl.set(null);
+    if (!g.pdfAttachmentUrl || g.pdfAttachmentDisplayUrl) {
+      return;
+    }
+    this.itemsApi
+      .resolveDisplayUrl$(g.pdfAttachmentUrl)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((url) => this.invoiceDisplayUrl.set(url));
   }
 
   private runAction(

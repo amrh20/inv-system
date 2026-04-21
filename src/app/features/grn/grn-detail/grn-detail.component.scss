@@ -240,6 +240,12 @@
   }
 }
 
+.grn-detail__invoice-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
 .grn-detail__invoice-frame {
   max-height: 360px;
   overflow: auto;

@@ -71,6 +71,7 @@ export interface GrnRejectedLineDraft {
 export interface GrnDetail extends Omit<GrnListRow, '_count'> {
   vendorNameSnapshot: string;
   pdfAttachmentUrl: string;
+  pdfAttachmentDisplayUrl?: string | null;
   notes: string | null;
   rejectionReason: string | null;
   postedAt: string | null;

@@ -50,35 +50,10 @@
       }
     }
 
-    @if (showStorekeeperValidatedAlert()) {
-      <div class="grn-detail__workflow-info-banner">
-        <nz-alert
-          nzType="info"
-          nzShowIcon
-          [nzMessage]="'GRN.DETAIL.COST_CONTROL_REVIEW_PENDING' | translate"
-        />
-      </div>
-    }
+   
 
-    @if (g.status === 'APPROVED') {
-      <div class="grn-detail__workflow-info-banner">
-        <nz-alert
-          nzType="info"
-          nzShowIcon
-          [nzMessage]="'GRN.DETAIL.WAITING_FINANCE_POSTING' | translate"
-        />
-      </div>
-    }
 
-    @if (g.status === 'POSTED') {
-      <div class="grn-detail__workflow-info-banner">
-        <nz-alert
-          nzType="success"
-          nzShowIcon
-          [nzMessage]="'GRN.DETAIL.POSTED_LOCKED' | translate"
-        />
-      </div>
-    }
+ 
 
     <div class="grn-detail__card">
       <div class="grn-detail__head">
@@ -118,7 +93,7 @@
           <a
             nz-button
             nzType="default"
-            [href]="invoiceHref(g.pdfAttachmentUrl)"
+            [href]="invoiceHref(g)"
             target="_blank"
             rel="noreferrer"
           >
@@ -128,23 +103,24 @@
       </div>
     </div>
 
-    @if (showValidatedReviewBar() && g.pdfAttachmentUrl) {
+    @if (g.pdfAttachmentUrl) {
       <div class="grn-detail__card grn-detail__invoice-card">
         <h3 class="grn-detail__invoice-title">{{ 'GRN.DETAIL.INVOICE_PREVIEW' | translate }}</h3>
-        @if (isInvoiceImageUrl(g.pdfAttachmentUrl)) {
+        @if (isInvoiceImageUrl(invoiceHref(g))) {
           <div class="grn-detail__invoice-frame">
-            <img [src]="invoiceHref(g.pdfAttachmentUrl)" alt="" class="grn-detail__invoice-img" />
+            <img [src]="invoiceHref(g)" alt="" class="grn-detail__invoice-img" />
+          </div>
+          <div class="grn-detail__invoice-actions">
+            <a nz-button nzType="default" [href]="invoiceHref(g)" target="_blank" rel="noreferrer">
+              {{ 'GRN.DETAIL.PDF' | translate }}
+            </a>
           </div>
         } @else {
-          <a
-            nz-button
-            nzType="default"
-            [href]="invoiceHref(g.pdfAttachmentUrl)"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {{ 'GRN.DETAIL.PDF' | translate }}
-          </a>
+          <div class="grn-detail__invoice-actions">
+            <a nz-button nzType="primary" [href]="invoiceHref(g)" target="_blank" rel="noreferrer">
+              {{ 'GRN.DETAIL.PDF' | translate }}
+            </a>
+          </div>
         }
       </div>
     }
