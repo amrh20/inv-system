@@ -197,6 +197,17 @@
   color: rgba(0, 0, 0, 0.25);
 }
 
+.items-view-image-wrap {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 12px;
+
+  .thumb {
+    width: 92px;
+    height: 92px;
+  }
+}
+
 .cell-name {
   font-weight: 500;
 }

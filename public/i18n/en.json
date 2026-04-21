@@ -254,6 +254,7 @@
       "SUBTITLE": "Enter your email address. If an account exists, we will send a 6-digit verification code.",
       "EMAIL": "Email",
       "SUBMIT": "Send reset code",
+      "ALREADY_HAVE_CODE": "I already have a verification code",
       "BACK_TO_LOGIN": "Back to sign in",
       "MSG_SENT": "If an account exists for this email, a reset code has been sent.",
       "ERROR_GENERIC": "Something went wrong. Please try again."
@@ -267,10 +268,19 @@
       "NEW_PASSWORD": "New password",
       "CONFIRM_PASSWORD": "Confirm new password",
       "SUBMIT": "Reset password",
+      "RESEND_CODE": "Resend verification code",
       "BACK_TO_LOGIN": "Back to sign in",
       "MSG_SUCCESS": "Password reset successfully. You can sign in now.",
+      "MSG_RESEND_SUCCESS": "If an account exists for this email, a new verification code has been sent.",
       "ERROR_GENERIC": "Could not reset password. Check your code and try again.",
-      "ERR_PASSWORD_MATCH": "Passwords do not match."
+      "ERR_PASSWORD_MATCH": "Passwords do not match.",
+      "ERR_EMAIL_REQUIRED": "Email is required.",
+      "ERR_EMAIL_INVALID": "Enter a valid email address.",
+      "ERR_OTP_REQUIRED": "Verification code is required.",
+      "ERR_OTP_INVALID": "Verification code must be 6 digits.",
+      "ERR_PASSWORD_REQUIRED": "New password is required.",
+      "ERR_PASSWORD_MIN_LENGTH": "New password must be at least 8 characters.",
+      "ERR_CONFIRM_PASSWORD_REQUIRED": "Please confirm your new password."
     }
   },
   "ITEMS": {
@@ -398,6 +408,8 @@
     "DEFAULT_STORE": "Default store",
     "SELECT_STORE": "Select store",
     "REMOVE_IMAGE": "Remove image",
+    "CHOOSE_FILE": "Choose file",
+    "NO_FILE_CHOSEN": "No file chosen",
     "CLICK_TO_UPLOAD": "Click to upload",
     "UPLOAD_HINT": "JPG, PNG, WebP - uploaded when you save",
     "UNITS_HINT": "One BASE unit (rate = 1) is typical. PURCHASE and ISSUE are optional; rates are relative to BASE.",

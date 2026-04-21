@@ -793,7 +793,7 @@ export class ItemFormComponent {
             },
             { emitEvent: false },
           );
-          this.imagePreview.set(this.itemsApi.resolveAssetUrl(itemRow.imageUrl));
+          this.setImagePreviewFromApi(itemRow.imageDisplayUrl ?? itemRow.imageUrl, gen);
           this.removeImage.set(false);
           this.imageFile.set(null);
           this.patchBaseUnitFromListRow(itemRow);
@@ -837,7 +837,7 @@ export class ItemFormComponent {
         })
           .pipe(first())
           .subscribe();
-        this.imagePreview.set(this.itemsApi.resolveAssetUrl(detail.imageUrl));
+        this.setImagePreviewFromApi(detail.imageDisplayUrl ?? detail.imageUrl, gen);
         this.removeImage.set(false);
         this.imageFile.set(null);
         this.itemsApi
@@ -1103,5 +1103,21 @@ export class ItemFormComponent {
 
   private t(key: string, params?: Record<string, unknown>): string {
     return this.translate.instant(key, params);
+  }
+
+  private setImagePreviewFromApi(pathOrUrl: string | null | undefined, gen: number): void {
+    if (!pathOrUrl) {
+      this.imagePreview.set(null);
+      return;
+    }
+    this.itemsApi
+      .resolveDisplayUrl$(pathOrUrl)
+      .pipe(first())
+      .subscribe((url) => {
+        if (gen !== this.dataLoadGen) {
+          return;
+        }
+        this.imagePreview.set(url);
+      });
   }
 }

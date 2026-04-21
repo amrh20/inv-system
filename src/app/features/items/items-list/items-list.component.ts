@@ -185,6 +185,7 @@ export class ItemsListComponent implements OnInit {
 
   /** Current page rows — mirrors React `ItemMasterPage` `items` state. */
   readonly itemsList = signal<ItemListRow[]>([]);
+  readonly listImageUrls = signal<Record<string, string | null>>({});
   readonly total = signal(0);
   readonly loading = signal(false);
   readonly listError = signal('');
@@ -210,6 +211,7 @@ export class ItemsListComponent implements OnInit {
   /** List row: fallback while detail loads or if `GET /items/:id` fails. */
   readonly viewItem = signal<ItemListRow | null>(null);
   readonly viewItemDetail = signal<ItemDetail | null>(null);
+  readonly viewImageUrl = signal<string | null>(null);
   readonly viewDetailLoading = signal(false);
   private viewDetailRequestGen = 0;
 
@@ -367,6 +369,7 @@ export class ItemsListComponent implements OnInit {
       .subscribe({
         next: (res) => {
           this.itemsList.set(res.items);
+          this.hydrateListImageUrls(res.items);
           this.total.set(res.total);
           this.loading.set(false);
         },
@@ -385,6 +388,7 @@ export class ItemsListComponent implements OnInit {
     const gen = ++this.viewDetailRequestGen;
     this.viewItem.set(row);
     this.viewItemDetail.set(null);
+    this.viewImageUrl.set(row.imageDisplayUrl ?? this.listImageUrls()[row.id] ?? null);
     this.viewOpen.set(true);
     this.viewDetailLoading.set(true);
     this.itemsApi
@@ -396,6 +400,7 @@ export class ItemsListComponent implements OnInit {
             return;
           }
           this.viewItemDetail.set(detail);
+          this.hydrateViewImageUrl(detail.imageDisplayUrl ?? detail.imageUrl);
           this.viewDetailLoading.set(false);
         },
         error: () => {
@@ -413,6 +418,7 @@ export class ItemsListComponent implements OnInit {
     this.viewOpen.set(false);
     this.viewItem.set(null);
     this.viewItemDetail.set(null);
+    this.viewImageUrl.set(null);
     this.viewDetailLoading.set(false);
   }
 
@@ -492,7 +498,11 @@ export class ItemsListComponent implements OnInit {
   }
 
   imageSrc(row: ItemListRow): string | null {
-    return this.itemsApi.resolveAssetUrl(row.imageUrl);
+    return row.imageDisplayUrl ?? this.listImageUrls()[row.id] ?? null;
+  }
+
+  viewImageSrc(): string | null {
+    return this.viewImageUrl();
   }
 
   baseUnitLabel(row: ItemListRow): string {
@@ -632,5 +642,38 @@ export class ItemsListComponent implements OnInit {
 
   private t(key: string, params?: Record<string, unknown>): string {
     return this.translate.instant(key, params);
+  }
+
+  private hydrateListImageUrls(rows: ItemListRow[]): void {
+    const nextMap: Record<string, string | null> = {};
+    for (const row of rows) {
+      if (row.imageDisplayUrl) {
+        nextMap[row.id] = row.imageDisplayUrl;
+        continue;
+      }
+      const imageKey = row.imageUrl;
+      if (!imageKey) {
+        nextMap[row.id] = null;
+        continue;
+      }
+      this.itemsApi
+        .resolveDisplayUrl$(imageKey)
+        .pipe(first(), takeUntilDestroyed(this.destroyRef))
+        .subscribe((url) => {
+          this.listImageUrls.update((curr) => ({ ...curr, [row.id]: url }));
+        });
+    }
+    this.listImageUrls.set(nextMap);
+  }
+
+  private hydrateViewImageUrl(pathOrUrl: string | null | undefined): void {
+    if (!pathOrUrl) {
+      this.viewImageUrl.set(null);
+      return;
+    }
+    this.itemsApi
+      .resolveDisplayUrl$(pathOrUrl)
+      .pipe(first(), takeUntilDestroyed(this.destroyRef))
+      .subscribe((url) => this.viewImageUrl.set(url));
   }
 }

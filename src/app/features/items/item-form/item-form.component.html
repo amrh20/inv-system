@@ -242,26 +242,40 @@
 
 
         <div nz-row [nzGutter]="16" class="image-section-row">
-          <div nz-col nzSpan="24" nzMd="14" class="image-section-copy">
-            <p class="image-section-hint">{{ 'ITEM_FORM.CLICK_TO_UPLOAD' | translate }}</p>
-            <p class="image-section-hint image-section-hint--muted">{{ 'ITEM_FORM.UPLOAD_HINT' | translate }}</p>
-          </div>
-          <div nz-col nzSpan="24" nzMd="10">
-            <div class="image-card">
+          <div nz-col nzSpan="24" nzMd="12">
+            <div class="image-upload-field">
+              <label class="image-upload-field__label">{{ 'ITEM_FORM.CLICK_TO_UPLOAD' | translate }}</label>
+              <p class="image-upload-field__hint">{{ 'ITEM_FORM.UPLOAD_HINT' | translate }}</p>
+
               @if (imagePreview()) {
-                <div class="image-preview-wrap">
-                  <img [src]="imagePreview()!" [alt]="'COMMON.PREVIEW' | translate" class="image-preview" />
-                  <button nz-button nzType="link" nzDanger type="button" (click)="clearImage()">
-                    {{ 'ITEM_FORM.REMOVE_IMAGE' | translate }}
-                  </button>
+                <div class="image-upload-field__preview-state">
+                  <div class="image-upload-field__thumb-wrap">
+                    <img [src]="imagePreview()!" [alt]="'COMMON.PREVIEW' | translate" class="image-upload-field__thumb" />
+                  </div>
+                  <div class="image-upload-field__actions">
+                    <p class="image-upload-field__file-text">
+                      <span class="image-upload-field__file-label">{{ 'ITEM_FORM.CHOOSE_FILE' | translate }}</span>
+                      <span class="image-upload-field__file-name">
+                        {{ imageFile()?.name || ('ITEM_FORM.NO_FILE_CHOSEN' | translate) }}
+                      </span>
+                    </p>
+                    <button nz-button nzType="link" type="button" class="image-upload-field__remove" (click)="clearImage()">
+                      {{ 'ITEM_FORM.REMOVE_IMAGE' | translate }}
+                    </button>
+                    <button nz-button type="button" class="image-upload-field__browse" (click)="fileInput.click()">
+                      {{ 'COMMON.BROWSE' | translate }}
+                    </button>
+                  </div>
                 </div>
               } @else {
-                <div class="image-drop" (click)="fileInput.click()">
-                  <lucide-icon [img]="lucideImage" [size]="36" [strokeWidth]="2" class="muted-icon" />
-                  <p>{{ 'ITEM_FORM.CLICK_TO_UPLOAD' | translate }}</p>
-                  <p class="hint">{{ 'ITEM_FORM.UPLOAD_HINT' | translate }}</p>
-                </div>
+                <button type="button" class="image-upload-field__dropzone" (click)="fileInput.click()">
+                  <lucide-icon [img]="lucideImage" [size]="28" [strokeWidth]="2" class="image-upload-field__icon" />
+                  <span class="image-upload-field__drop-title">{{ 'ITEM_FORM.CLICK_TO_UPLOAD' | translate }}</span>
+                  <span class="image-upload-field__drop-subtitle">{{ 'ITEM_FORM.UPLOAD_HINT' | translate }}</span>
+                  <span class="image-upload-field__browse-inline">{{ 'COMMON.BROWSE' | translate }}</span>
+                </button>
               }
+
               <input
                 #fileInput
                 type="file"
@@ -269,11 +283,6 @@
                 class="hidden-file"
                 (change)="onImagePicked($event)"
               />
-              @if (!imagePreview()) {
-                <button nz-button nzBlock type="button" class="browse-btn" (click)="fileInput.click()">
-                  {{ 'COMMON.BROWSE' | translate }}
-                </button>
-              }
             </div>
           </div>
         </div>

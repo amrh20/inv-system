@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { ApiResponse } from '../../../core/models/api-response.model';
 import type {
@@ -19,6 +19,7 @@ import type {
 export class ItemsService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/items`;
+  private readonly filesBase = `${environment.apiUrl}/files`;
 
   /**
    * Paginated list — mirrors React `itemsAPI.list`.
@@ -196,6 +197,26 @@ export class ItemsService {
     );
   }
 
+  getSignedUrl(
+    key: string,
+    ttl?: number,
+  ): Observable<{ url: string; expiresAt?: string }> {
+    let params = new HttpParams().set('key', key);
+    if (ttl != null && Number.isFinite(ttl) && ttl > 0) {
+      params = params.set('ttl', String(ttl));
+    }
+    return this.http
+      .get<ApiResponse<{ url: string; expiresAt?: string }>>(`${this.filesBase}/signed-url`, { params })
+      .pipe(
+        map((res) => {
+          if (!res.success || !res.data?.url) {
+            throw new Error(res.message || 'Failed to resolve image URL');
+          }
+          return res.data;
+        }),
+      );
+  }
+
   downloadTemplate(): Observable<Blob> {
     return this.http.get(`${this.base}/import/template`, {
       responseType: 'blob',
@@ -237,5 +258,30 @@ export class ItemsService {
     const root = environment.apiUrl.replace(/\/api\/?$/, '');
     const p = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
     return `${root}${p}`;
+  }
+
+  /**
+   * Returns a browser-usable image URL:
+   * - absolute URL => returned as-is
+   * - `/uploads/...` => API host prefixed
+   * - `tenants/...` key => resolved through `GET /files/signed-url`
+   */
+  resolveDisplayUrl$(pathOrUrl: string | null | undefined): Observable<string | null> {
+    if (!pathOrUrl) {
+      return of(null);
+    }
+    if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+      return of(pathOrUrl);
+    }
+    if (pathOrUrl.startsWith('/uploads/')) {
+      return of(this.resolveAssetUrl(pathOrUrl));
+    }
+    if (pathOrUrl.startsWith('tenants/')) {
+      return this.getSignedUrl(pathOrUrl).pipe(
+        map((res) => res.url),
+        catchError(() => of(null)),
+      );
+    }
+    return of(this.resolveAssetUrl(pathOrUrl));
   }
 }

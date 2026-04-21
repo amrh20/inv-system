@@ -389,6 +389,11 @@
   <ng-container *nzModalContent>
     @if (viewDisplay(); as v) {
       <nz-spin [nzSpinning]="viewDetailLoading()">
+        @if (viewImageSrc(); as viewSrc) {
+          <div class="items-view-image-wrap">
+            <img [src]="viewSrc" [alt]="v.name" class="thumb" />
+          </div>
+        }
         <nz-descriptions nzBordered [nzColumn]="1" nzSize="small">
           <nz-descriptions-item [nzTitle]="'COMMON.NAME' | translate">{{ v.name }}</nz-descriptions-item>
           <nz-descriptions-item [nzTitle]="'COMMON.BARCODE' | translate">{{ v.barcode || '—' }}</nz-descriptions-item>

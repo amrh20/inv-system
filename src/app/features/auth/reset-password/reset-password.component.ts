@@ -49,6 +49,7 @@ export class ResetPasswordComponent implements OnInit {
   readonly language = inject(LanguageService);
 
   readonly loading = signal(false);
+  readonly resendLoading = signal(false);
   readonly error = signal('');
   readonly showPassword = signal(false);
 
@@ -89,6 +90,53 @@ export class ResetPasswordComponent implements OnInit {
     this.showPassword.update((v) => !v);
   }
 
+  onOtpInput(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input) {
+      return;
+    }
+    const normalized = input.value.replace(/\D/g, '').slice(0, 6);
+    if (normalized !== input.value) {
+      input.value = normalized;
+    }
+    this.form.controls.otp.setValue(normalized, { emitEvent: false });
+  }
+
+  resendCode(): void {
+    this.error.set('');
+    const emailControl = this.form.controls.email;
+    emailControl.markAsTouched();
+    if (emailControl.invalid) {
+      return;
+    }
+    const email = emailControl.value.trim();
+    this.resendLoading.set(true);
+    this.auth
+      .forgotPassword(email)
+      .pipe(first())
+      .subscribe({
+        next: (res) => {
+          this.resendLoading.set(false);
+          if (res.success) {
+            this.message.success(this.translate.instant('AUTH.RESET_PASSWORD.MSG_RESEND_SUCCESS'));
+            return;
+          }
+          this.error.set(
+            res.message?.trim() || this.translate.instant('AUTH.RESET_PASSWORD.ERROR_GENERIC'),
+          );
+        },
+        error: (err: HttpErrorResponse) => {
+          this.resendLoading.set(false);
+          const body = err.error as { message?: string } | undefined;
+          this.error.set(
+            body?.message?.trim() ||
+              err.message ||
+              this.translate.instant('AUTH.RESET_PASSWORD.ERROR_GENERIC'),
+          );
+        },
+      });
+  }
+
   submit(): void {
     this.error.set('');
     if (this.form.invalid) {
@@ -115,18 +163,20 @@ export class ResetPasswordComponent implements OnInit {
             void this.router.navigate(['/login'], { replaceUrl: true });
             return;
           }
-          this.error.set(
-            res.message?.trim() || this.translate.instant('AUTH.RESET_PASSWORD.ERROR_GENERIC'),
-          );
+          const messageText =
+            res.message?.trim() || this.translate.instant('AUTH.RESET_PASSWORD.ERROR_GENERIC');
+          this.error.set(messageText);
+          this.message.error(messageText);
         },
         error: (err: HttpErrorResponse) => {
           this.loading.set(false);
           const body = err.error as { message?: string } | undefined;
-          this.error.set(
+          const messageText =
             body?.message?.trim() ||
-              err.message ||
-              this.translate.instant('AUTH.RESET_PASSWORD.ERROR_GENERIC'),
-          );
+            err.message ||
+            this.translate.instant('AUTH.RESET_PASSWORD.ERROR_GENERIC');
+          this.error.set(messageText);
+          this.message.error(messageText);
         },
       });
   }

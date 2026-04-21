@@ -18,6 +18,7 @@ export interface ItemListRow {
   unitPrice: string | number;
   isActive: boolean;
   imageUrl: string | null;
+  imageDisplayUrl?: string | null;
   department?: { id: string; name: string } | null;
   category?: { id: string; name: string } | null;
   /** Populated on item detail (`GET /items/:id`) when API includes nested subcategory. */
