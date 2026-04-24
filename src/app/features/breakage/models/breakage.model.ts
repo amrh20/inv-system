@@ -1,6 +1,7 @@
 import type { MovementStatus } from '../../../core/models/enums';
 
 export type BreakageSourceType = 'INTERNAL' | 'GET_PASS_RETURN';
+export type SuggestedActionType = 'EMPLOYEE' | 'HOTEL';
 export type BreakageWorkflowStatus =
   | 'DRAFT'
   | 'DEPT_APPROVED'
@@ -46,10 +47,14 @@ export interface BreakageListRow {
   getPass?: { id: string; passNo: string } | null;
   createdAt: string;
   reason?: string | null;
+  suggestedAction?: SuggestedActionType | null;
+  responsibleEmployeeName?: string | null;
   /** Accountability / remarks; used heavily on GET_PASS_RETURN list rows. */
   notes?: string | null;
   /** Total qty (damaged) in base units when the list API supplies an aggregate. */
   totalQtyDamaged?: number | null;
+  photoKey?: string | null;
+  photoUrl?: string | null;
   createdByUser?: BreakageUserRef | null;
   _count?: { lines: number };
   /** Present for tenant-wide approvers; drives list workflow actions. */
@@ -84,11 +89,15 @@ export interface BreakageDetail {
   getPassId?: string | null;
   getPass?: { id: string; passNo: string } | null;
   reason?: string | null;
+  suggestedAction?: SuggestedActionType | null;
+  responsibleEmployeeName?: string | null;
   notes?: string | null;
   createdAt: string;
   postedAt?: string | null;
   attachmentUrl?: string | null;
   sourceLocationId?: string | null;
+  photoKey?: string | null;
+  photoUrl?: string | null;
   createdBy?: string;
   createdByUser?: BreakageUserRef | null;
   lines: BreakageLineDetail[];
@@ -100,5 +109,8 @@ export interface BreakageCreatePayload {
   reason: string;
   notes?: string | null;
   documentDate?: string;
+  suggestedAction: SuggestedActionType;
+  responsibleEmployeeName?: string | null;
   lines: Array<{ itemId: string; qty: number; notes?: string | null }>;
+  photo?: File | null;
 }

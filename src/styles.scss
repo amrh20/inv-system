@@ -196,6 +196,12 @@ textarea.ant-input {
   font-size: 13px !important;
 }
 
+/* Unified required-field asterisk color across forms */
+.app-required-asterisk,
+.gp-form__req {
+  color: var(--color-brand-error) !important;
+}
+
 /* --- NG-ZORRO: Tables --- */
 .ant-table-thead > tr > th {
   background: #fafafa !important;

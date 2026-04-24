@@ -1,6 +1,7 @@
-import { Component, DestroyRef, effect, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -8,10 +9,10 @@ import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { AlertTriangle, Plus, Trash2 } from 'lucide-angular';
@@ -26,6 +27,7 @@ import { CategoriesService } from '../../master-data/services/categories.service
 import { DepartmentsService } from '../../master-data/services/departments.service';
 import { LocationsService } from '../../master-data/services/locations.service';
 import { LostItemsService } from '../services/lost-items.service';
+import type { SuggestedActionType } from '../models/lost-items.model';
 
 interface LineDraft {
   itemId: string;
@@ -45,29 +47,26 @@ interface LineDraft {
     NzDatePickerModule,
     NzInputModule,
     NzInputNumberModule,
-    NzModalModule,
     NzSelectModule,
     NzSpinModule,
     NzTableModule,
+    NzRadioModule,
     TranslatePipe,
     LucideAngularModule,
   ],
   templateUrl: './lost-create-modal.component.html',
   styleUrl: './lost-create-modal.component.scss',
 })
-export class LostCreateModalComponent {
+export class LostCreateModalComponent implements OnInit {
   private readonly departmentsApi = inject(DepartmentsService);
   private readonly categoriesApi = inject(CategoriesService);
   private readonly locationsApi = inject(LocationsService);
   private readonly inventoryApi = inject(InventoryService);
   private readonly lostApi = inject(LostItemsService);
+  private readonly router = inject(Router);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
-
-  readonly open = input.required<boolean>();
-  readonly closed = output<void>();
-  readonly created = output<void>();
 
   readonly lucideAlert = AlertTriangle;
   readonly lucidePlus = Plus;
@@ -87,31 +86,14 @@ export class LostCreateModalComponent {
   readonly lines = signal<LineDraft[]>([]);
   readonly searchQuery = signal('');
   readonly selectedItemId = signal('');
+  readonly suggestedAction = signal<SuggestedActionType>('HOTEL');
+  readonly responsibleEmployeeName = signal('');
   readonly loading = signal(false);
   readonly lookupsLoading = signal(false);
   readonly itemOptionsLoading = signal(false);
   private readonly itemSearch$ = new Subject<string>();
 
   constructor() {
-    effect(() => {
-      if (!this.open()) return;
-      this.resetForm();
-      this.lookupsLoading.set(true);
-      this.departmentsApi
-        .list({ take: 100, isActive: true })
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (r) => {
-            this.departments.set(r.departments);
-            this.lookupsLoading.set(false);
-          },
-          error: () => {
-            this.lookupsLoading.set(false);
-            this.message.error(this.translate.instant('LOST_ITEMS.CREATE.ERROR_LOOKUPS'));
-          },
-        });
-    });
-
     this.itemSearch$
       .pipe(
         debounceTime(250),
@@ -140,6 +122,28 @@ export class LostCreateModalComponent {
       });
   }
 
+  ngOnInit(): void {
+    this.resetForm();
+    this.loadDepartments();
+  }
+
+  private loadDepartments(): void {
+    this.lookupsLoading.set(true);
+    this.departmentsApi
+      .list({ take: 100, isActive: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (r) => {
+          this.departments.set(r.departments);
+          this.lookupsLoading.set(false);
+        },
+        error: () => {
+          this.lookupsLoading.set(false);
+          this.message.error(this.translate.instant('LOST_ITEMS.CREATE.ERROR_LOOKUPS'));
+        },
+      });
+  }
+
   private resetForm(): void {
     this.selectedDeptId.set('');
     this.selectedCategoryId.set('');
@@ -150,10 +154,19 @@ export class LostCreateModalComponent {
     this.lines.set([]);
     this.searchQuery.set('');
     this.selectedItemId.set('');
+    this.suggestedAction.set('HOTEL');
+    this.responsibleEmployeeName.set('');
     this.categories.set([]);
     this.locations.set([]);
     this.itemOptions.set([]);
     this.itemOptionsLoading.set(false);
+  }
+
+  onSuggestedActionChange(action: SuggestedActionType): void {
+    this.suggestedAction.set(action);
+    if (action !== 'EMPLOYEE') {
+      this.responsibleEmployeeName.set('');
+    }
   }
 
   onDepartmentChange(id: string): void {
@@ -218,7 +231,7 @@ export class LostCreateModalComponent {
   }
 
   onClose(): void {
-    this.closed.emit();
+    this.router.navigate(['/lost-items']);
   }
 
   setDocumentDate(d: Date | null): void {
@@ -332,6 +345,9 @@ export class LostCreateModalComponent {
         reason: r,
         notes: this.notes().trim() || null,
         documentDate: docDate,
+        suggestedAction: this.suggestedAction(),
+        responsibleEmployeeName:
+          this.suggestedAction() === 'EMPLOYEE' ? this.responsibleEmployeeName().trim() || null : null,
         lines: rows.map((l) => ({ itemId: l.itemId, qty: l.qty, notes: l.notes.trim() || null })),
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -346,7 +362,7 @@ export class LostCreateModalComponent {
                 : 'LOST_ITEMS.CREATE.DRAFT_SUCCESS',
             ),
           );
-          this.created.emit();
+          this.router.navigate(['/lost-items', doc.id]);
         },
         error: (e: Error) => {
           this.loading.set(false);

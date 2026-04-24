@@ -291,6 +291,14 @@ export const routes: Routes = [
             data: { breadcrumb: 'BREAKAGE.LIST.TITLE' },
           },
           {
+            path: 'new',
+            loadComponent: () =>
+              import('./features/breakage/breakage-create-modal/breakage-create-modal.component').then(
+                (m) => m.BreakageCreateModalComponent,
+              ),
+            data: { breadcrumb: 'BREAKAGE.CREATE.TITLE' },
+          },
+          {
             path: ':id',
             loadComponent: () =>
               import('./features/breakage/breakage-detail/breakage-detail.component').then(
@@ -314,6 +322,14 @@ export const routes: Routes = [
                 (m) => m.LostItemsListComponent,
               ),
             data: { breadcrumb: 'LOST_ITEMS.LIST.TITLE' },
+          },
+          {
+            path: 'new',
+            loadComponent: () =>
+              import('./features/lost-items/lost-create-modal/lost-create-modal.component').then(
+                (m) => m.LostCreateModalComponent,
+              ),
+            data: { breadcrumb: 'LOST_ITEMS.CREATE.TITLE' },
           },
           {
             path: ':id',

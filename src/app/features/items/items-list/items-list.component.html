@@ -356,30 +356,34 @@
                   <lucide-icon [img]="lucideEye" [size]="14" />
                   <span>{{ 'COMMON.VIEW_DETAILS' | translate }}</span>
                 </li>
-                <li
-                  nz-menu-item
-                  class="items-menu__item"
-                  [routerLink]="['/items', row.id, 'edit']"
-                >
-                  <lucide-icon [img]="lucidePencil" [size]="14" />
-                  <span>{{ 'COMMON.EDIT_ITEM' | translate }}</span>
-                </li>
-                <li
-                  nz-menu-item
-                  nzDanger
-                  class="items-menu__item"
-                  [nzDisabled]="deleteLockedAfterObFinalization()"
-                  nz-tooltip
-                  [nzTooltipTitle]="
-                    deleteLockedAfterObFinalization()
-                      ? ('ITEMS.DELETE_LOCKED_AFTER_OB_FINALIZED_TOOLTIP' | translate)
-                      : null
-                  "
-                  (click)="onDeleteClick(row)"
-                >
-                  <lucide-icon [img]="lucideTrash" [size]="14" />
-                  <span>{{ 'COMMON.DELETE_ITEM' | translate }}</span>
-                </li>
+                @if (canEditItems()) {
+                  <li
+                    nz-menu-item
+                    class="items-menu__item"
+                    [routerLink]="['/items', row.id, 'edit']"
+                  >
+                    <lucide-icon [img]="lucidePencil" [size]="14" />
+                    <span>{{ 'COMMON.EDIT_ITEM' | translate }}</span>
+                  </li>
+                }
+                @if (canDeleteItems()) {
+                  <li
+                    nz-menu-item
+                    nzDanger
+                    class="items-menu__item"
+                    [nzDisabled]="deleteLockedAfterObFinalization()"
+                    nz-tooltip
+                    [nzTooltipTitle]="
+                      deleteLockedAfterObFinalization()
+                        ? ('ITEMS.DELETE_LOCKED_AFTER_OB_FINALIZED_TOOLTIP' | translate)
+                        : null
+                    "
+                    (click)="onDeleteClick(row)"
+                  >
+                    <lucide-icon [img]="lucideTrash" [size]="14" />
+                    <span>{{ 'COMMON.DELETE_ITEM' | translate }}</span>
+                  </li>
+                }
               </ul>
             </nz-dropdown-menu>
           </td>

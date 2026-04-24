@@ -1,6 +1,7 @@
 import type { ReturnsAccountabilityType } from '../../../shared/models/returns-accountability.model';
 
 export type LostSourceType = 'INTERNAL' | 'GET_PASS_RETURN';
+export type SuggestedActionType = 'EMPLOYEE' | 'HOTEL';
 
 /** Body for returns-tab approval steps (get-pass accountability). */
 export type LostApprovePayload = { accountability: ReturnsAccountabilityType };
@@ -19,6 +20,8 @@ export interface LostItemsListRow {
   getPassId?: string | null;
   getPass?: { id: string; passNo: string } | null;
   reason?: string | null;
+  suggestedAction?: SuggestedActionType | null;
+  responsibleEmployeeName?: string | null;
   notes?: string | null;
   createdAt: string;
   createdByUser?: { id?: string; firstName: string; lastName: string } | null;
@@ -35,6 +38,8 @@ export interface LostCreatePayload {
   reason: string;
   notes?: string | null;
   documentDate?: string;
+  suggestedAction: SuggestedActionType;
+  responsibleEmployeeName?: string | null;
   lines: Array<{ itemId: string; qty: number; notes?: string | null }>;
 }
 

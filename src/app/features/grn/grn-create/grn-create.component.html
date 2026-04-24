@@ -26,7 +26,7 @@
   <nz-card class="grn-create-page__card" [nzBordered]="true">
     <div class="grn-create-page__grid-4">
       <div class="grn-create-page__field">
-        <label class="grn-create-page__label">{{ 'GRN.CREATE.SUPPLIER' | translate }} *</label>
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.SUPPLIER' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
         <nz-select
           class="grn-create-page__control"
           [nzPlaceHolder]="'GRN.CREATE.SUPPLIER_PH' | translate"
@@ -41,7 +41,7 @@
         </nz-select>
       </div>
       <div class="grn-create-page__field">
-        <label class="grn-create-page__label">{{ 'GRN.CREATE.WAREHOUSE' | translate }} *</label>
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.WAREHOUSE' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
         <nz-select
           class="grn-create-page__control"
           [nzPlaceHolder]="'GRN.CREATE.WAREHOUSE_PH' | translate"
@@ -56,7 +56,7 @@
         </nz-select>
       </div>
       <div class="grn-create-page__field">
-        <label class="grn-create-page__label">{{ 'GRN.CREATE.GRN_NO' | translate }} *</label>
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.GRN_NO' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
         <input
           nz-input
           class="grn-create-page__control"
@@ -66,7 +66,7 @@
         />
       </div>
       <div class="grn-create-page__field">
-        <label class="grn-create-page__label">{{ 'GRN.CREATE.RECEIVING_DATE' | translate }} *</label>
+        <label class="grn-create-page__label">{{ 'GRN.CREATE.RECEIVING_DATE' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
         <nz-date-picker
           class="grn-create-page__control grn-create-page__date"
           [ngModel]="receivingDatePicker()"
@@ -241,7 +241,7 @@
               ></textarea>
             </div>
             <div class="grn-create-page__field">
-              <label class="grn-create-page__label">{{ 'GRN.CREATE.INVOICE' | translate }} *</label>
+              <label class="grn-create-page__label">{{ 'GRN.CREATE.INVOICE' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
               <button
                 type="button"
                 class="grn-create-page__upload"
@@ -425,7 +425,7 @@
               ></textarea>
             </div>
             <div class="grn-create-page__field">
-              <label class="grn-create-page__label">{{ 'GRN.CREATE.INVOICE' | translate }} *</label>
+              <label class="grn-create-page__label">{{ 'GRN.CREATE.INVOICE' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
               <button
                 type="button"
                 class="grn-create-page__upload"

@@ -13,7 +13,7 @@
         nz-button
         nzType="primary"
         type="button"
-        (click)="setCreateOpen(true)"
+        (click)="openCreate()"
       >
         <lucide-icon [img]="lucidePlus" [size]="16" [strokeWidth]="2" />
         {{ 'LOST_ITEMS.LIST.NEW' | translate }}
@@ -281,12 +281,6 @@
     </button>
   </div>
 </div>
-
-<app-lost-create-modal
-  [open]="createOpen()"
-  (closed)="setCreateOpen(false)"
-  (created)="onCreated()"
-/>
 
 <app-returns-workflow-approve-modal
   [open]="returnsModalOpen()"

@@ -3,7 +3,7 @@
     <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
       <div>
         <label class="mb-1 block text-xs font-medium text-subtle">
-          {{ 'REPORTS.VALUATION.AS_OF' | translate }} <span class="text-red-500">*</span>
+          {{ 'REPORTS.VALUATION.AS_OF' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span>
         </label>
         <nz-date-picker class="w-full" [(ngModel)]="asOfDate" nzFormat="dd/MM/yyyy" [nzInputReadOnly]="true" />
       </div>
@@ -50,7 +50,7 @@
     </div>
     <div class="mt-4 flex flex-wrap items-center justify-end gap-3">
       @if (queried() && rows().length > 0) {
-        <button type="button" nz-button nzType="primary" class="!bg-brand-success border-0" (click)="exportExcel()">
+        <button type="button" nz-button nzType="default" class="valuation-report__btn valuation-report__btn--secondary" (click)="exportExcel()">
           {{ 'COMMON.EXPORT_EXCEL' | translate }}
         </button>
       }
@@ -58,7 +58,7 @@
         type="button"
         nz-button
         nzType="primary"
-        class="!bg-brand-success border-0"
+        class="valuation-report__btn valuation-report__btn--primary"
         [disabled]="loading()"
         (click)="run()"
       >
@@ -107,10 +107,10 @@
         <p class="text-xs uppercase tracking-wide text-subtle">{{ 'REPORTS.VALUATION.CARD_QTY' | translate }}</p>
         <p class="mt-1 text-2xl font-bold text-brand-dark">{{ fmtQty(totalQtyOnHand()) }}</p>
       </div>
-      <div class="rounded-[6px] bg-brand-success p-4 text-white shadow-sm">
-        <p class="text-xs uppercase tracking-wide text-emerald-100">{{ 'REPORTS.VALUATION.CARD_VALUE' | translate }}</p>
-        <p class="mt-1 text-2xl font-bold">SAR {{ fmt(totalValue()) }}</p>
-        <p class="mt-1 text-xs text-emerald-100">
+      <div class="valuation-report__value-card rounded-[6px] border border-[var(--ose-border)] bg-surface-elevated p-4 shadow-sm">
+        <p class="text-xs uppercase tracking-wide text-subtle">{{ 'REPORTS.VALUATION.CARD_VALUE' | translate }}</p>
+        <p class="valuation-report__value-amount mt-1 text-2xl font-bold">SAR {{ fmt(totalValue()) }}</p>
+        <p class="mt-1 text-xs text-subtle">
           {{ 'REPORTS.VALUATION.AS_OF' | translate }} {{ toIso(asOfDate) }}
         </p>
       </div>
@@ -141,11 +141,11 @@
             </thead>
             <tbody class="divide-y divide-[var(--ose-border)]">
               @for (entry of groupedEntries(); track entry.key) {
-                <tr class="bg-emerald-50">
-                  <td colspan="7" class="px-4 py-2 text-xs font-bold uppercase tracking-wide text-emerald-900">
+                <tr class="valuation-table__group-row">
+                  <td colspan="7" class="px-4 py-2 text-xs font-bold uppercase tracking-wide">
                     {{ entry.key }}
                   </td>
-                  <td class="px-4 py-2 text-right text-xs font-bold text-emerald-900">
+                  <td class="px-4 py-2 text-right text-xs font-bold">
                     SAR {{ fmt(deptGroupTotal(entry.rows)) }}
                   </td>
                 </tr>
@@ -164,21 +164,21 @@
                     <td class="px-4 py-2.5 font-medium text-brand-dark">{{ row['itemName'] }}</td>
                     <td class="px-4 py-2.5 text-right font-mono text-brand-dark">{{ fmtQty(row['qtyOnHand']) }}</td>
                     <td class="px-4 py-2.5 text-right font-mono text-subtle">SAR {{ fmt(row['unitCost']) }}</td>
-                    <td class="px-4 py-2.5 text-right font-mono font-semibold text-emerald-700">
+                    <td class="valuation-table__value-cell px-4 py-2.5 text-right font-mono font-semibold">
                       SAR {{ fmt(row['totalValue']) }}
                     </td>
                   </tr>
                 }
               }
             </tbody>
-            <tfoot class="border-t-2 border-[var(--ose-border)] bg-surface-muted">
+            <tfoot class="valuation-table__foot border-t-2 border-[var(--ose-border)] bg-surface-muted">
               <tr>
                 <td colspan="5" class="px-4 py-3 text-sm font-bold text-brand-dark">
                   {{ 'REPORTS.VALUATION.GRAND_TOTAL' | translate }}
                 </td>
                 <td class="px-4 py-3 text-right text-sm font-bold font-mono">{{ fmtQty(totalQtyOnHand()) }}</td>
                 <td class="px-4 py-3"></td>
-                <td class="px-4 py-3 text-right text-sm font-bold text-emerald-700 font-mono">SAR {{ fmt(totalValue()) }}</td>
+                <td class="valuation-table__foot-value px-4 py-3 text-right text-sm font-bold font-mono">SAR {{ fmt(totalValue()) }}</td>
               </tr>
             </tfoot>
           </table>

@@ -103,6 +103,8 @@ export class BreakageDetailComponent implements OnInit {
   /** Unified workflow: reject with comment. */
   readonly rejectModalOpen = signal(false);
   readonly rejectComment = signal('');
+  readonly imagePreviewOpen = signal(false);
+  readonly imagePreviewUrl = signal<string | null>(null);
 
   readonly attachments = signal<BreakageAttachmentMeta[]>([]);
 
@@ -466,5 +468,16 @@ export class BreakageDetailComponent implements OnInit {
   attachmentHref(a: BreakageAttachmentMeta): string {
     const name = a.url.replace(/\\/g, '/').split('/').pop() ?? a.filename;
     return `${this.serverOrigin}/uploads/attachments/${name}`;
+  }
+
+  openImageModal(url?: string | null): void {
+    if (!url) return;
+    this.imagePreviewUrl.set(url);
+    this.imagePreviewOpen.set(true);
+  }
+
+  closeImageModal(): void {
+    this.imagePreviewOpen.set(false);
+    this.imagePreviewUrl.set(null);
   }
 }

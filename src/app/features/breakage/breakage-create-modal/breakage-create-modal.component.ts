@@ -1,14 +1,13 @@
 import {
   Component,
   DestroyRef,
-  effect,
   inject,
-  input,
-  output,
+  OnInit,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { NzButtonModule } from 'ng-zorro-antd/button';
@@ -16,13 +15,13 @@ import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzMessageService } from 'ng-zorro-antd/message';
-import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { NzRadioModule } from 'ng-zorro-antd/radio';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { AlertTriangle, Camera, Plus, Trash2, XCircle } from 'lucide-angular';
+import { AlertTriangle, Plus, Trash2 } from 'lucide-angular';
 import type { CategoryRow } from '../../master-data/models/category.model';
 import type { DepartmentRow } from '../../master-data/models/department.model';
 import type { LocationRow } from '../../master-data/models/location.model';
@@ -34,6 +33,8 @@ import {
   type ItemByLocationSelectRow,
 } from '../../inventory/services/inventory.service';
 import { BreakageService } from '../services/breakage.service';
+import { SharedUploadComponent } from '../../../shared/components/shared-upload/shared-upload.component';
+import type { SuggestedActionType } from '../models/breakage.model';
 
 interface LineDraft {
   itemId: string;
@@ -53,35 +54,31 @@ interface LineDraft {
     NzDatePickerModule,
     NzInputModule,
     NzInputNumberModule,
-    NzModalModule,
     NzSelectModule,
     NzSpinModule,
     NzTableModule,
+    NzRadioModule,
     TranslatePipe,
     LucideAngularModule,
+    SharedUploadComponent,
   ],
   templateUrl: './breakage-create-modal.component.html',
   styleUrl: './breakage-create-modal.component.scss',
 })
-export class BreakageCreateModalComponent {
+export class BreakageCreateModalComponent implements OnInit {
   private readonly departmentsApi = inject(DepartmentsService);
   private readonly categoriesApi = inject(CategoriesService);
   private readonly locationsApi = inject(LocationsService);
   private readonly inventoryApi = inject(InventoryService);
   private readonly breakageApi = inject(BreakageService);
+  private readonly router = inject(Router);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly open = input.required<boolean>();
-  readonly closed = output<void>();
-  readonly created = output<string>();
-
   readonly lucideAlert = AlertTriangle;
   readonly lucidePlus = Plus;
   readonly lucideTrash = Trash2;
-  readonly lucideCamera = Camera;
-  readonly lucideXCircle = XCircle;
 
   readonly departments = signal<DepartmentRow[]>([]);
   readonly categories = signal<CategoryRow[]>([]);
@@ -97,7 +94,10 @@ export class BreakageCreateModalComponent {
   readonly lines = signal<LineDraft[]>([]);
   readonly searchQuery = signal('');
   readonly selectedItemId = signal('');
-  readonly photos = signal<File[]>([]);
+  readonly photo = signal<File | null>(null);
+  readonly suggestedAction = signal<SuggestedActionType>('HOTEL');
+  readonly responsibleEmployeeName = signal('');
+  readonly photoUploading = signal(false);
 
   readonly loading = signal(false);
   readonly lookupsLoading = signal(false);
@@ -105,25 +105,6 @@ export class BreakageCreateModalComponent {
   private readonly itemSearch$ = new Subject<string>();
 
   constructor() {
-    effect(() => {
-      if (!this.open()) return;
-      this.resetForm();
-      this.lookupsLoading.set(true);
-      this.departmentsApi
-        .list({ take: 100, isActive: true })
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: (r) => {
-            this.departments.set(r.departments);
-            this.lookupsLoading.set(false);
-          },
-          error: () => {
-            this.message.error(this.translate.instant('BREAKAGE.CREATE.ERROR_LOOKUPS'));
-            this.lookupsLoading.set(false);
-          },
-        });
-    });
-
     this.itemSearch$
       .pipe(
         debounceTime(250),
@@ -152,6 +133,28 @@ export class BreakageCreateModalComponent {
       });
   }
 
+  ngOnInit(): void {
+    this.resetForm();
+    this.loadDepartments();
+  }
+
+  private loadDepartments(): void {
+    this.lookupsLoading.set(true);
+    this.departmentsApi
+      .list({ take: 100, isActive: true })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (r) => {
+          this.departments.set(r.departments);
+          this.lookupsLoading.set(false);
+        },
+        error: () => {
+          this.message.error(this.translate.instant('BREAKAGE.CREATE.ERROR_LOOKUPS'));
+          this.lookupsLoading.set(false);
+        },
+      });
+  }
+
   private resetForm(): void {
     this.selectedDeptId.set('');
     this.selectedCategoryId.set('');
@@ -162,11 +165,20 @@ export class BreakageCreateModalComponent {
     this.lines.set([]);
     this.searchQuery.set('');
     this.selectedItemId.set('');
-    this.photos.set([]);
+    this.suggestedAction.set('HOTEL');
+    this.responsibleEmployeeName.set('');
+    this.clearPhoto();
     this.categories.set([]);
     this.locations.set([]);
     this.itemOptions.set([]);
     this.itemOptionsLoading.set(false);
+  }
+
+  onSuggestedActionChange(action: SuggestedActionType): void {
+    this.suggestedAction.set(action);
+    if (action !== 'EMPLOYEE') {
+      this.responsibleEmployeeName.set('');
+    }
   }
 
   onDepartmentChange(id: string): void {
@@ -236,7 +248,8 @@ export class BreakageCreateModalComponent {
   }
 
   onClose(): void {
-    this.closed.emit();
+    this.clearPhoto();
+    this.router.navigate(['/breakage']);
   }
 
   setDocumentDate(d: Date | null): void {
@@ -331,16 +344,16 @@ export class BreakageCreateModalComponent {
     });
   }
 
-  onPhotoPick(e: Event): void {
-    const input = e.target as HTMLInputElement;
-    const files = input.files ? Array.from(input.files) : [];
-    input.value = '';
-    if (!files.length) return;
-    this.photos.update((prev) => [...prev, ...files].slice(0, 6));
+  onPhotoFileChanged(file: File | null): void {
+    this.photo.set(file);
   }
 
-  removePhoto(index: number): void {
-    this.photos.update((p) => p.filter((_, i) => i !== index));
+  removePhoto(): void {
+    this.clearPhoto();
+  }
+
+  private clearPhoto(): void {
+    this.photo.set(null);
   }
 
   submit(): void {
@@ -362,6 +375,7 @@ export class BreakageCreateModalComponent {
       return;
     }
     this.loading.set(true);
+    this.photoUploading.set(!!this.photo());
     const docDate =
       this.documentDate() instanceof Date
         ? this.documentDate().toISOString().slice(0, 10)
@@ -372,27 +386,21 @@ export class BreakageCreateModalComponent {
         reason: r,
         notes: this.notes().trim() || null,
         documentDate: docDate,
+        suggestedAction: this.suggestedAction(),
+        responsibleEmployeeName:
+          this.suggestedAction() === 'EMPLOYEE' ? this.responsibleEmployeeName().trim() || null : null,
         lines: rows.map((l) => ({
           itemId: l.itemId,
           qty: l.qty,
           notes: l.notes.trim() || null,
         })),
+        photo: this.photo(),
       })
-      .pipe(
-        switchMap((doc) => {
-          const files = this.photos();
-          if (!files.length) return of(doc);
-          let chain = of(doc);
-          for (const f of files) {
-            chain = chain.pipe(switchMap((d) => this.breakageApi.uploadAttachment(d.id, f)));
-          }
-          return chain;
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
           this.loading.set(false);
+          this.photoUploading.set(false);
           const isAutoApproved = doc.status === 'DEPT_APPROVED';
           this.message.success(
             this.translate.instant(
@@ -401,10 +409,11 @@ export class BreakageCreateModalComponent {
                 : 'BREAKAGE.CREATE.DRAFT_SUCCESS',
             ),
           );
-          this.created.emit(doc.id);
+          this.router.navigate(['/breakage', doc.id]);
         },
         error: (err: Error) => {
           this.loading.set(false);
+          this.photoUploading.set(false);
           this.message.error(err.message || this.translate.instant('BREAKAGE.CREATE.ERROR'));
         },
       });

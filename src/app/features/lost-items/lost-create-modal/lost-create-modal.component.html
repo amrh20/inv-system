@@ -1,176 +1,186 @@
-<nz-modal
-  [nzVisible]="open()"
-  [nzTitle]="titleTpl"
-  [nzFooter]="footerTpl"
-  [nzWidth]="960"
-  (nzOnCancel)="onClose()"
-  [nzMaskClosable]="false"
-  [nzBodyStyle]="{ maxHeight: '70vh', overflow: 'auto' }"
->
-  <ng-template #titleTpl>
-    <span class="lost-create__title">
+<section class="lost-create-page">
+  <header class="lost-create-page__header">
+    <h1 class="lost-create__title">
       <lucide-icon [img]="lucideAlert" [size]="20" [strokeWidth]="2" class="text-brand-error" />
       {{ 'LOST_ITEMS.CREATE.TITLE' | translate }}
-    </span>
-  </ng-template>
-  <ng-container *nzModalContent>
-    <nz-spin [nzSpinning]="lookupsLoading()">
-      <div class="lost-create__grid">
-        <div class="lost-create__field">
-          <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.DEPT' | translate }} *</label>
-          <nz-select
-            class="lost-create__control"
-            [ngModel]="selectedDeptId()"
-            (ngModelChange)="onDepartmentChange($event)"
-            [nzPlaceHolder]="'LOST_ITEMS.CREATE.DEPT_PH' | translate"
-          >
-            @for (d of departments(); track d.id) {
-              <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
-            }
-          </nz-select>
-        </div>
-        <div class="lost-create__field">
-          <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.CATEGORY' | translate }}</label>
-          <nz-select
-            class="lost-create__control"
-            [ngModel]="selectedCategoryId()"
-            (ngModelChange)="onCategoryChange($event)"
-            [nzDisabled]="!selectedDeptId()"
-            [nzPlaceHolder]="'LOST_ITEMS.CREATE.CATEGORY_PH' | translate"
-          >
-            <nz-option nzValue="" [nzLabel]="'LOST_ITEMS.CREATE.ALL_CATEGORIES' | translate" />
-            @for (c of categories(); track c.id) {
-              <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
-            }
-          </nz-select>
-        </div>
-        <div class="lost-create__field lost-create__field--span2">
-          <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.SOURCE_LOC' | translate }} *</label>
-          <nz-select
-            class="lost-create__control"
-            [ngModel]="sourceLocationId()"
-            (ngModelChange)="onLocationChange($event)"
-            [nzDisabled]="!selectedDeptId() || locations().length === 0"
-            [nzPlaceHolder]="'LOST_ITEMS.CREATE.SOURCE_LOC_PH' | translate"
-          >
-            @for (loc of locations(); track loc.id) {
-              <nz-option [nzValue]="loc.id" [nzLabel]="loc.name" />
-            }
-          </nz-select>
-        </div>
-        <div class="lost-create__field">
-          <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.DOC_DATE' | translate }}</label>
-          <nz-date-picker
-            class="lost-create__control"
-            [ngModel]="documentDate()"
-            (ngModelChange)="setDocumentDate($event)"
-            nzFormat="yyyy-MM-dd"
-          />
-        </div>
-        <div class="lost-create__field lost-create__field--full">
-          <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.REASON' | translate }} *</label>
-          <textarea
-            nz-input
-            class="lost-create__control"
-            rows="2"
-            [ngModel]="reason()"
-            (ngModelChange)="reason.set($event)"
-            [placeholder]="'LOST_ITEMS.CREATE.REASON_PH' | translate"
-          ></textarea>
-        </div>
-        <div class="lost-create__field lost-create__field--full">
-          <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.NOTES' | translate }}</label>
-          <input
-            nz-input
-            class="lost-create__control"
-            type="text"
-            [ngModel]="notes()"
-            (ngModelChange)="notes.set($event)"
-          />
-        </div>
-      </div>
+    </h1>
+  </header>
 
-      <h3>{{ 'LOST_ITEMS.CREATE.LINES_TITLE' | translate }}</h3>
-      <div class="lost-create__search">
+  <nz-spin [nzSpinning]="lookupsLoading()">
+    <div class="lost-create__grid">
+      <div class="lost-create__field">
+        <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.DEPT' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
         <nz-select
           class="lost-create__control"
-          [ngModel]="selectedItemId()"
-          (ngModelChange)="onItemPicked($event)"
-          [nzDisabled]="!sourceLocationId()"
-          [nzShowSearch]="true"
-          [nzServerSearch]="true"
-          [nzAllowClear]="true"
-          [nzLoading]="itemOptionsLoading()"
-          (nzOnSearch)="onItemSearch($event)"
-          [nzPlaceHolder]="'LOST_ITEMS.CREATE.ITEM_SEARCH_PH' | translate"
+          [ngModel]="selectedDeptId()"
+          (ngModelChange)="onDepartmentChange($event)"
+          [nzPlaceHolder]="'LOST_ITEMS.CREATE.DEPT_PH' | translate"
         >
-          @for (item of filteredPickItems(); track item.id) {
-            <nz-option [nzValue]="item.id" [nzLabel]="item.name" [nzCustomContent]="true">
-              <div class="lost-create__pick-row lost-create__pick-row--option">
-                <span>{{ item.name }}</span>
-                <span class="lost-create__pick-meta">
-                  {{ item.barcode ?? '—' }} · {{ 'LOST_ITEMS.CREATE.QTY_ON_HAND' | translate }}:
-                  {{ item.currentStock ?? 0 }}
-                </span>
-              </div>
-            </nz-option>
+          @for (d of departments(); track d.id) {
+            <nz-option [nzValue]="d.id" [nzLabel]="d.name" />
           }
         </nz-select>
       </div>
+      <div class="lost-create__field">
+        <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.CATEGORY' | translate }}</label>
+        <nz-select
+          class="lost-create__control"
+          [ngModel]="selectedCategoryId()"
+          (ngModelChange)="onCategoryChange($event)"
+          [nzDisabled]="!selectedDeptId()"
+          [nzPlaceHolder]="'LOST_ITEMS.CREATE.CATEGORY_PH' | translate"
+        >
+          <nz-option nzValue="" [nzLabel]="'LOST_ITEMS.CREATE.ALL_CATEGORIES' | translate" />
+          @for (c of categories(); track c.id) {
+            <nz-option [nzValue]="c.id" [nzLabel]="c.name" />
+          }
+        </nz-select>
+      </div>
+      <div class="lost-create__field lost-create__field--span2">
+        <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.SOURCE_LOC' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
+        <nz-select
+          class="lost-create__control"
+          [ngModel]="sourceLocationId()"
+          (ngModelChange)="onLocationChange($event)"
+          [nzDisabled]="!selectedDeptId() || locations().length === 0"
+          [nzPlaceHolder]="'LOST_ITEMS.CREATE.SOURCE_LOC_PH' | translate"
+        >
+          @for (loc of locations(); track loc.id) {
+            <nz-option [nzValue]="loc.id" [nzLabel]="loc.name" />
+          }
+        </nz-select>
+      </div>
+      <div class="lost-create__field">
+        <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.DOC_DATE' | translate }}</label>
+        <nz-date-picker
+          class="lost-create__control"
+          [ngModel]="documentDate()"
+          (ngModelChange)="setDocumentDate($event)"
+          nzFormat="yyyy-MM-dd"
+        />
+      </div>
+      <div class="lost-create__field lost-create__field--full">
+        <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.REASON' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
+        <textarea
+          nz-input
+          class="lost-create__control"
+          rows="2"
+          [ngModel]="reason()"
+          (ngModelChange)="reason.set($event)"
+          [placeholder]="'LOST_ITEMS.CREATE.REASON_PH' | translate"
+        ></textarea>
+      </div>
+      <div class="lost-create__field lost-create__field--full">
+        <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.NOTES' | translate }}</label>
+        <input
+          nz-input
+          class="lost-create__control"
+          type="text"
+          [ngModel]="notes()"
+          (ngModelChange)="notes.set($event)"
+        />
+      </div>
+      <div class="lost-create__field lost-create__field--full lost-create__responsibility">
+        <label class="lost-create__label">{{ 'LOST_ITEMS.CREATE.SUGGESTED_ACTION' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
+        <nz-radio-group [ngModel]="suggestedAction()" (ngModelChange)="onSuggestedActionChange($event)">
+          <label nz-radio nzValue="EMPLOYEE">{{ 'LOST_ITEMS.CREATE.EMPLOYEE_DEDUCTION' | translate }}</label>
+          <label nz-radio nzValue="HOTEL">{{ 'LOST_ITEMS.CREATE.HOTEL_BUDGET' | translate }}</label>
+        </nz-radio-group>
+        @if (suggestedAction() === 'EMPLOYEE') {
+          <div class="lost-create__employee-select">
+            <input
+              nz-input
+              class="lost-create__control"
+              [ngModel]="responsibleEmployeeName()"
+              (ngModelChange)="responsibleEmployeeName.set($event)"
+              [placeholder]="'LOST_ITEMS.CREATE.RESPONSIBLE_EMPLOYEE_PH' | translate"
+            />
+          </div>
+        }
+      </div>
+    </div>
 
-      @if (lines().length === 0) {
-        <div class="lost-create__empty">{{ 'LOST_ITEMS.CREATE.NO_LINES' | translate }}</div>
-      } @else {
-        <nz-table [nzData]="lines()" [nzShowPagination]="false" nzSize="small">
-          <thead>
+    <h3>{{ 'LOST_ITEMS.CREATE.LINES_TITLE' | translate }}</h3>
+    <div class="lost-create__search">
+      <nz-select
+        class="lost-create__control"
+        [ngModel]="selectedItemId()"
+        (ngModelChange)="onItemPicked($event)"
+        [nzDisabled]="!sourceLocationId()"
+        [nzShowSearch]="true"
+        [nzServerSearch]="true"
+        [nzAllowClear]="true"
+        [nzLoading]="itemOptionsLoading()"
+        (nzOnSearch)="onItemSearch($event)"
+        [nzPlaceHolder]="'LOST_ITEMS.CREATE.ITEM_SEARCH_PH' | translate"
+      >
+        @for (item of filteredPickItems(); track item.id) {
+          <nz-option [nzValue]="item.id" [nzLabel]="item.name" [nzCustomContent]="true">
+            <div class="lost-create__pick-row lost-create__pick-row--option">
+              <span>{{ item.name }}</span>
+              <span class="lost-create__pick-meta">
+                {{ item.barcode ?? '—' }} · {{ 'LOST_ITEMS.CREATE.QTY_ON_HAND' | translate }}:
+                {{ item.currentStock ?? 0 }}
+              </span>
+            </div>
+          </nz-option>
+        }
+      </nz-select>
+    </div>
+
+    @if (lines().length === 0) {
+      <div class="lost-create__empty">{{ 'LOST_ITEMS.CREATE.NO_LINES' | translate }}</div>
+    } @else {
+      <nz-table [nzData]="lines()" [nzShowPagination]="false" nzSize="small">
+        <thead>
+          <tr>
+            <th>{{ 'LOST_ITEMS.CREATE.COL_ITEM' | translate }}</th>
+            <th>{{ 'LOST_ITEMS.CREATE.COL_QTY' | translate }}</th>
+            <th>{{ 'LOST_ITEMS.CREATE.COL_NOTES' | translate }}</th>
+            <th nzAlign="right"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (line of lines(); track $index) {
             <tr>
-              <th>{{ 'LOST_ITEMS.CREATE.COL_ITEM' | translate }}</th>
-              <th>{{ 'LOST_ITEMS.CREATE.COL_QTY' | translate }}</th>
-              <th>{{ 'LOST_ITEMS.CREATE.COL_NOTES' | translate }}</th>
-              <th nzAlign="right"></th>
+              <td>
+                <div class="lost-create__item-name">{{ line.name }}</div>
+                <div class="lost-create__item-bc">{{ line.barcode }}</div>
+                <div class="lost-create__item-available">
+                  {{ 'LOST_ITEMS.CREATE.QTY_ON_HAND' | translate }}: {{ line.availableQty }}
+                </div>
+              </td>
+              <td>
+                <nz-input-number
+                  [ngModel]="line.qty"
+                  (ngModelChange)="updateLineQty($index, $event)"
+                  [nzMin]="1"
+                  [nzMax]="line.availableQty"
+                  [nzStep]="1"
+                />
+              </td>
+              <td>
+                <input nz-input type="text" [ngModel]="line.notes" (ngModelChange)="updateLineNotes($index, $event)" />
+              </td>
+              <td nzAlign="right">
+                <button nz-button nzType="text" nzDanger type="button" (click)="removeLine($index)">
+                  <lucide-icon [img]="lucideTrash" [size]="16" [strokeWidth]="2" />
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            @for (line of lines(); track $index) {
-              <tr>
-                <td>
-                  <div class="lost-create__item-name">{{ line.name }}</div>
-                  <div class="lost-create__item-bc">{{ line.barcode }}</div>
-                  <div class="lost-create__item-available">
-                    {{ 'LOST_ITEMS.CREATE.QTY_ON_HAND' | translate }}: {{ line.availableQty }}
-                  </div>
-                </td>
-                <td>
-                  <nz-input-number
-                    [ngModel]="line.qty"
-                    (ngModelChange)="updateLineQty($index, $event)"
-                    [nzMin]="1"
-                    [nzMax]="line.availableQty"
-                    [nzStep]="1"
-                  />
-                </td>
-                <td>
-                  <input nz-input type="text" [ngModel]="line.notes" (ngModelChange)="updateLineNotes($index, $event)" />
-                </td>
-                <td nzAlign="right">
-                  <button nz-button nzType="text" nzDanger type="button" (click)="removeLine($index)">
-                    <lucide-icon [img]="lucideTrash" [size]="16" [strokeWidth]="2" />
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </nz-table>
-      }
-    </nz-spin>
-  </ng-container>
-  <ng-template #footerTpl>
-    <button nz-button type="button" (click)="onClose()" [disabled]="loading()">
-      {{ 'COMMON.CANCEL' | translate }}
-    </button>
-    <button nz-button nzType="primary" type="button" [disabled]="loading() || lines().length === 0 || !reason().trim()" (click)="submit()">
-      <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
-      {{ 'LOST_ITEMS.CREATE.SUBMIT' | translate }}
-    </button>
-  </ng-template>
-</nz-modal>
+          }
+        </tbody>
+      </nz-table>
+    }
+
+    <div class="lost-create-page__actions">
+      <button nz-button type="button" (click)="onClose()" [disabled]="loading()">
+        {{ 'COMMON.CANCEL' | translate }}
+      </button>
+      <button nz-button nzType="primary" type="button" [disabled]="loading() || lines().length === 0 || !reason().trim()" (click)="submit()">
+        <lucide-icon [img]="lucidePlus" [size]="15" [strokeWidth]="2" />
+        {{ 'LOST_ITEMS.CREATE.SUBMIT' | translate }}
+      </button>
+    </div>
+  </nz-spin>
+</section>

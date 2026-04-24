@@ -29,7 +29,7 @@
       <h3 class="mb-3 text-lg font-semibold text-brand-dark">{{ 'PERIOD_CLOSE.FORM_TITLE' | translate }}</h3>
       <div class="grid grid-cols-1 items-end gap-4 md:grid-cols-4">
         <div>
-          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'PERIOD_CLOSE.YEAR' | translate }} *</label>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'PERIOD_CLOSE.YEAR' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
           <nz-select class="w-full" [(ngModel)]="year">
             @for (y of years; track y) {
               <nz-option [nzValue]="y" [nzLabel]="'' + y" />

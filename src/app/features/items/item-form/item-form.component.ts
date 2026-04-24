@@ -52,11 +52,12 @@ import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { AlertCircle, ArrowLeft, ImageIcon, Loader2, Package, Save } from 'lucide-angular';
+import { AlertCircle, ArrowLeft, Loader2, Package, Save } from 'lucide-angular';
 import { CategoriesService } from '../services/categories.service';
 import { ItemMasterLookupsService } from '../services/item-master-lookups.service';
 import { ItemsService } from '../services/items.service';
 import { UnitsService } from '../services/units.service';
+import { SharedUploadComponent } from '../../../shared/components/shared-upload/shared-upload.component';
 import {
   getMissingItemCreationRequirements,
   type CategoryOption,
@@ -116,6 +117,7 @@ function unitPriceRequiredWhenOpeningQtyValidator(control: AbstractControl): Val
     NzAlertModule,
     LucideAngularModule,
     TranslatePipe,
+    SharedUploadComponent,
   ],
   providers: [ConfirmationService],
   templateUrl: './item-form.component.html',
@@ -125,24 +127,6 @@ export class ItemFormComponent {
   private static readonly DEFAULT_OB_STATUS: ObLifecycleStatus = 'FINALIZED';
   private static readonly MOVEMENT_LIST_PAGE = 200;
   private static readonly MOVEMENT_LIST_MAX_PAGES = 25;
-  private static readonly ALLOWED_IMAGE_EXTENSIONS = new Set([
-    'png',
-    'jpg',
-    'jpeg',
-    'webp',
-    'gif',
-    'bmp',
-    'avif',
-  ]);
-  private static readonly ALLOWED_IMAGE_MIME_TYPES = new Set([
-    'image/png',
-    'image/jpeg',
-    'image/webp',
-    'image/gif',
-    'image/bmp',
-    'image/avif',
-  ]);
-
   /** Incremented on each route-driven reload so stale HTTP callbacks are ignored. */
   private dataLoadGen = 0;
 
@@ -175,7 +159,6 @@ export class ItemFormComponent {
 
   readonly lucideArrowLeft = ArrowLeft;
   readonly lucidePackage = Package;
-  readonly lucideImage = ImageIcon;
   readonly lucideSave = Save;
   readonly lucideLoader = Loader2;
   readonly lucideAlert = AlertCircle;
@@ -404,28 +387,17 @@ export class ItemFormComponent {
     );
   }
 
-  onImagePicked(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  onImageSelected(file: File | null): void {
     if (!file) {
-      return;
-    }
-    if (!this.isAllowedImageFile(file)) {
-      this.submitError.set(this.t('ITEM_FORM.ERROR_INVALID_IMAGE_TYPE'));
-      input.value = '';
+      this.imageFile.set(null);
+      this.imagePreview.set(null);
+      this.removeImage.set(true);
       return;
     }
     this.submitError.set('');
     this.imageFile.set(file);
     this.removeImage.set(false);
     this.imagePreview.set(URL.createObjectURL(file));
-    input.value = '';
-  }
-
-  clearImage(): void {
-    this.imageFile.set(null);
-    this.imagePreview.set(null);
-    this.removeImage.set(true);
   }
 
   cancel(): void {
@@ -1085,15 +1057,6 @@ export class ItemFormComponent {
     openingQty.updateValueAndValidity({ emitEvent: false });
     unitPrice.updateValueAndValidity({ emitEvent: false });
   }
-
-  private isAllowedImageFile(file: File): boolean {
-    const extension = file.name.split('.').pop()?.trim().toLowerCase() ?? '';
-    const mimeType = file.type.trim().toLowerCase();
-    const extensionAllowed = ItemFormComponent.ALLOWED_IMAGE_EXTENSIONS.has(extension);
-    const mimeAllowed = mimeType.length > 0 && ItemFormComponent.ALLOWED_IMAGE_MIME_TYPES.has(mimeType);
-    return extensionAllowed && mimeAllowed;
-  }
-
 
   missingRequirementLabelsJoined(): string {
     const req = this.requirements();

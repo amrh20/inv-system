@@ -12,6 +12,7 @@ export type WorkflowHistoryEntry = {
   roleCode: string;
   userDisplayName: string;
   accountabilityType: ReturnsAccountabilityType | null;
+  accountabilityEmployeeName?: string | null;
   comment: string | null;
 };
 
@@ -93,6 +94,8 @@ export function userMatchesCurrentApprovalChainStep(
 export type ReturnsWorkflowDocumentContext = {
   notes?: string | null;
   reason?: string | null;
+  suggestedAction?: 'EMPLOYEE' | 'HOTEL' | string | null;
+  responsibleEmployeeName?: string | null;
   approvalRequests?: Array<{
     /** API may send string or number; compared with {@link workflowStepNumbersMatch}. */
     currentStep: number | string;
@@ -104,6 +107,27 @@ function actorName(u?: { firstName?: string; lastName?: string } | null): string
   if (!u) return '';
   const t = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
   return t || '';
+}
+
+function fallbackAccountabilityTypeFromDocument(
+  step: ApprovalStepLike,
+  d: ReturnsWorkflowDocumentContext,
+): ReturnsAccountabilityType | null {
+  if (step.accountabilityType) {
+    return step.accountabilityType as ReturnsAccountabilityType;
+  }
+  // Creation step may not persist accountability in approval step logs.
+  if (Number(step.stepNumber) !== 1) {
+    return null;
+  }
+  const suggested = String(d.suggestedAction ?? '').trim().toUpperCase();
+  if (suggested === 'EMPLOYEE') {
+    return 'EMPLOYEE_DEDUCTION';
+  }
+  if (suggested === 'HOTEL') {
+    return 'COMPANY_LOSS';
+  }
+  return null;
 }
 
 /**
@@ -145,7 +169,11 @@ export function workflowApprovalTimeline(d: ReturnsWorkflowDocumentContext): Wor
       roleCode:
         typeof s.requiredRole === 'string' ? s.requiredRole : (s.requiredRole?.code ?? '—'),
       userDisplayName: actorName(s.actedByUser),
-      accountabilityType: (s.accountabilityType as ReturnsAccountabilityType | undefined) ?? null,
+      accountabilityType: fallbackAccountabilityTypeFromDocument(s, d),
+      accountabilityEmployeeName:
+        Number(s.stepNumber) === 1 && String(d.suggestedAction ?? '').trim().toUpperCase() === 'EMPLOYEE'
+          ? (d.responsibleEmployeeName?.trim() || null)
+          : null,
       comment: s.comment?.trim() || null,
       status: s.status,
     }));

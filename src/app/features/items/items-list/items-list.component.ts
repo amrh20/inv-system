@@ -37,6 +37,7 @@ import {
   Upload,
   X,
 } from 'lucide-angular';
+import { AuthService } from '../../../core/services/auth.service';
 import { ConfirmationService } from '../../../core/services/confirmation.service';
 import { EmptyStateComponent } from '../../../shared/components/empty-state/empty-state.component';
 import { StatusToggleComponent } from '../../../shared/components/status-toggle/status-toggle.component';
@@ -94,6 +95,7 @@ export class ItemsListComponent implements OnInit {
   private readonly lookups = inject(ItemMasterLookupsService);
   private readonly message = inject(NzMessageService);
   private readonly confirmation = inject(ConfirmationService);
+  private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
   private readonly router = inject(Router);
@@ -141,6 +143,12 @@ export class ItemsListComponent implements OnInit {
   readonly showObDraftColumns = computed(() => this.obStatus() === 'OPEN');
 
   readonly deleteLockedAfterObFinalization = computed(() => this.obStatus() === 'FINALIZED');
+  readonly canEditItems = computed(() =>
+    this.auth.hasRole('ADMIN', 'ORG_MANAGER', 'GENERAL_MANAGER'),
+  );
+  readonly canDeleteItems = computed(() =>
+    this.auth.hasRole('ADMIN', 'ORG_MANAGER', 'GENERAL_MANAGER'),
+  );
 
   readonly showPrerequisitesBanner = computed(
     () =>

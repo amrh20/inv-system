@@ -116,6 +116,22 @@
               <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.APPROVED_AT' | translate }}</div>
               <div>{{ d.postedAt ? (d.postedAt | date: 'medium') : ('BREAKAGE.DETAIL.NOT_APPROVED' | translate) }}</div>
             </div>
+            <div>
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.SUGGESTED_ACTION' | translate }}</div>
+              <div>
+                {{
+                  d.suggestedAction === 'EMPLOYEE'
+                    ? ('BREAKAGE.CREATE.EMPLOYEE_DEDUCTION' | translate)
+                    : d.suggestedAction === 'HOTEL'
+                      ? ('BREAKAGE.CREATE.HOTEL_BUDGET' | translate)
+                      : '—'
+                }}
+              </div>
+            </div>
+            <div>
+              <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.RESPONSIBLE_EMPLOYEE' | translate }}</div>
+              <div>{{ d.responsibleEmployeeName || '—' }}</div>
+            </div>
             <div class="brk-d__full">
               <div class="brk-d__label">{{ 'BREAKAGE.DETAIL.REASON' | translate }}</div>
               <div class="brk-d__reason">{{ d.reason }}</div>
@@ -164,6 +180,20 @@
             [documentContext]="d"
             [emptyMessageKey]="'BREAKAGE.DETAIL.NO_WORKFLOW'"
           />
+        </div>
+
+        <div class="brk-d__card">
+          <h2 class="brk-d__h2">{{ 'BREAKAGE.DETAIL.PHOTO' | translate }}</h2>
+          @if (d.photoUrl) {
+            <img
+              class="brk-d__photo-thumb"
+              [src]="d.photoUrl"
+              alt="Breakage photo"
+              (click)="openImageModal(d.photoUrl)"
+            />
+          } @else {
+            <p class="brk-d__muted">{{ 'BREAKAGE.DETAIL.NO_PHOTO' | translate }}</p>
+          }
         </div>
 
         <div class="brk-d__card">
@@ -255,6 +285,19 @@
     {{ 'BREAKAGE.DETAIL.REJECT' | translate }}
   </button>
 </ng-template>
+
+<nz-modal
+  [nzVisible]="imagePreviewOpen()"
+  [nzTitle]="'BREAKAGE.DETAIL.PHOTO_PREVIEW' | translate"
+  (nzOnCancel)="closeImageModal()"
+  [nzFooter]="null"
+>
+  <ng-container *nzModalContent>
+    @if (imagePreviewUrl()) {
+      <img class="brk-d__photo-preview" [src]="imagePreviewUrl()" alt="Breakage photo preview" />
+    }
+  </ng-container>
+</nz-modal>
 
 <nz-modal
   [nzVisible]="approvalOpen()"

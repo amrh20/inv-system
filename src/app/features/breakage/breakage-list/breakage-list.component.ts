@@ -10,7 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -19,6 +19,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzDropdownModule } from 'ng-zorro-antd/dropdown';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -48,7 +49,6 @@ import {
 } from '../../../shared/utils/returns-workflow.helpers';
 import type { BreakageListRow, BreakageSourceType, BreakageWorkflowStatus } from '../models/breakage.model';
 import { BreakageService } from '../services/breakage.service';
-import { BreakageCreateModalComponent } from '../breakage-create-modal/breakage-create-modal.component';
 import type { RequirementsResponse } from '../../items/models/item.model';
 import { ItemsService } from '../../items/services/items.service';
 import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
@@ -66,6 +66,7 @@ const SOURCE_TABS: BreakageSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
     NzButtonModule,
     NzDropdownModule,
     NzInputModule,
+    NzModalModule,
     NzMenuModule,
     NzSelectModule,
     NzTableModule,
@@ -75,7 +76,6 @@ const SOURCE_TABS: BreakageSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
     LucideAngularModule,
     HasPermissionDirective,
     EmptyStateComponent,
-    BreakageCreateModalComponent,
     ReturnsWorkflowApproveModalComponent,
   ],
   templateUrl: './breakage-list.component.html',
@@ -83,12 +83,10 @@ const SOURCE_TABS: BreakageSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
 })
 export class BreakageListComponent implements OnInit {
   private listViewReady = false;
-  private createFromQueryHandled = false;
 
   private readonly api = inject(BreakageService);
   private readonly itemsApi = inject(ItemsService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
   private readonly translate = inject(TranslateService);
   private readonly message = inject(NzMessageService);
   private readonly auth = inject(AuthService);
@@ -142,7 +140,6 @@ export class BreakageListComponent implements OnInit {
   readonly total = signal(0);
   readonly loading = signal(false);
   readonly listError = signal('');
-  readonly createOpen = signal(false);
   readonly search = signal('');
   readonly page = signal(0);
   readonly requirements = signal<RequirementsResponse | null>(null);
@@ -158,6 +155,8 @@ export class BreakageListComponent implements OnInit {
   readonly returnsModalDetail = signal<ReturnsWorkflowDocumentContext | null>(null);
   readonly returnsContextLoading = signal(false);
   readonly returnsSubmitting = signal(false);
+  readonly imagePreviewOpen = signal(false);
+  readonly imagePreviewUrl = signal<string | null>(null);
 
   private readonly search$ = new Subject<string>();
 
@@ -184,21 +183,6 @@ export class BreakageListComponent implements OnInit {
     this.loadRequirements();
     this.load();
     this.listViewReady = true;
-    this.tryOpenCreateFromQuery();
-  }
-
-  private tryOpenCreateFromQuery(): void {
-    if (this.createFromQueryHandled) return;
-    if (this.route.snapshot.queryParamMap.get('create') !== '1') return;
-    if (this.disableCreateButton()) return;
-    this.createFromQueryHandled = true;
-    this.createOpen.set(true);
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { create: null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
   }
 
   /** If the active tab is hidden for this role, switch to the first visible tab. */
@@ -227,12 +211,10 @@ export class BreakageListComponent implements OnInit {
             (res.data.isOpeningBalanceAllowed ? 'OPEN' : BreakageListComponent.DEFAULT_OB_STATUS);
           this.requirements.set(res.data);
           this.obStatus.set(normalizedObStatus);
-          this.tryOpenCreateFromQuery();
         },
         error: () => {
           this.requirements.set(null);
           this.obStatus.set(BreakageListComponent.DEFAULT_OB_STATUS);
-          this.tryOpenCreateFromQuery();
         },
       });
   }
@@ -300,16 +282,7 @@ export class BreakageListComponent implements OnInit {
     if (this.disableCreateButton()) {
       return;
     }
-    this.createOpen.set(true);
-  }
-
-  onCreateClosed(): void {
-    this.createOpen.set(false);
-  }
-
-  onCreated(id: string): void {
-    this.createOpen.set(false);
-    this.router.navigate(['/breakage', id]);
+    this.router.navigate(['/breakage/new']);
   }
 
   goDetail(doc: BreakageListRow): void {
@@ -475,5 +448,16 @@ export class BreakageListComponent implements OnInit {
       this.page.update((p) => p - 1);
       this.load();
     }
+  }
+
+  openImageModal(url?: string | null): void {
+    if (!url) return;
+    this.imagePreviewUrl.set(url);
+    this.imagePreviewOpen.set(true);
+  }
+
+  closeImageModal(): void {
+    this.imagePreviewOpen.set(false);
+    this.imagePreviewUrl.set(null);
   }
 }

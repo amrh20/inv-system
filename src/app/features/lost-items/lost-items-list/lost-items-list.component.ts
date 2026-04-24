@@ -10,7 +10,7 @@ import {
   untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Observable, Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -47,7 +47,6 @@ import {
 } from '../../../shared/utils/returns-workflow.helpers';
 import type { LostDetail, LostItemsListRow, LostSourceType, LostWorkflowStatus } from '../models/lost-items.model';
 import { LostItemsService } from '../services/lost-items.service';
-import { LostCreateModalComponent } from '../lost-create-modal/lost-create-modal.component';
 import { injectMatchMinWidth } from '../../../shared/utils/viewport-media';
 
 const SOURCE_TABS: LostSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
@@ -71,7 +70,6 @@ const SOURCE_TABS: LostSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
     LucideAngularModule,
     HasPermissionDirective,
     EmptyStateComponent,
-    LostCreateModalComponent,
     ReturnsWorkflowApproveModalComponent,
     RouterLink,
   ],
@@ -80,12 +78,10 @@ const SOURCE_TABS: LostSourceType[] = ['INTERNAL', 'GET_PASS_RETURN'];
 })
 export class LostItemsListComponent implements OnInit {
   private listViewReady = false;
-  private createFromQueryHandled = false;
 
   private readonly api = inject(LostItemsService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
   private readonly message = inject(NzMessageService);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
@@ -139,7 +135,6 @@ export class LostItemsListComponent implements OnInit {
   readonly page = signal(0);
   readonly activeSourceTab = signal<LostSourceType>('INTERNAL');
   readonly activeStatusTab = signal<ReturnsWorkflowListStatusTab>('DEPT_APPROVED');
-  readonly createOpen = signal(false);
   readonly userRole = computed(() => this.auth.userRole());
 
   readonly returnsModalOpen = signal(false);
@@ -172,20 +167,6 @@ export class LostItemsListComponent implements OnInit {
       });
     this.load();
     this.listViewReady = true;
-    this.tryOpenCreateFromQuery();
-  }
-
-  private tryOpenCreateFromQuery(): void {
-    if (this.createFromQueryHandled) return;
-    if (this.route.snapshot.queryParamMap.get('create') !== '1') return;
-    this.createFromQueryHandled = true;
-    this.createOpen.set(true);
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: { create: null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
   }
 
   /** If the active tab is hidden for this role, switch to the first visible tab. */
@@ -251,13 +232,8 @@ export class LostItemsListComponent implements OnInit {
       });
   }
 
-  setCreateOpen(open: boolean): void {
-    this.createOpen.set(open);
-  }
-
-  onCreated(): void {
-    this.createOpen.set(false);
-    this.load();
+  openCreate(): void {
+    this.router.navigate(['/lost-items/new']);
   }
 
   displayUser(row: LostItemsListRow): string {

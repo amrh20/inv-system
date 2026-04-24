@@ -52,9 +52,9 @@ export class ReturnsWorkflowTimelineComponent {
   accountabilityOptionKey(t: ReturnsAccountabilityType | null): string {
     switch (t) {
       case 'EMPLOYEE_DEDUCTION':
-        return 'GET_PASS.DETAIL.ACCOUNTABILITY_EMPLOYEE_DEDUCTION';
+        return 'BREAKAGE.CREATE.EMPLOYEE_DEDUCTION';
       case 'COMPANY_LOSS':
-        return 'GET_PASS.DETAIL.ACCOUNTABILITY_COMPANY_LOSS';
+        return 'BREAKAGE.CREATE.HOTEL_BUDGET';
       case 'TARGET_HOTEL_COMPENSATION':
         return 'GET_PASS.DETAIL.ACCOUNTABILITY_TARGET_COMPENSATION';
       default:
@@ -63,13 +63,17 @@ export class ReturnsWorkflowTimelineComponent {
   }
 
   /** Action column: accountability when approved; status otherwise. */
-  actionLabelKey(entry: WorkflowTimelineEntry): string {
-    if (entry.status === 'PENDING') return 'RETURNS_WORKFLOW.TIMELINE_ACTION_PENDING';
-    if (entry.status === 'REJECTED') return 'RETURNS_WORKFLOW.TIMELINE_ACTION_REJECTED';
+  actionLabel(entry: WorkflowTimelineEntry): string {
+    if (entry.status === 'PENDING') return this.translate.instant('RETURNS_WORKFLOW.TIMELINE_ACTION_PENDING');
+    if (entry.status === 'REJECTED') return this.translate.instant('RETURNS_WORKFLOW.TIMELINE_ACTION_REJECTED');
     if (entry.status === 'APPROVED') {
-      return this.accountabilityOptionKey(entry.accountabilityType);
+      const base = this.translate.instant(this.accountabilityOptionKey(entry.accountabilityType));
+      if (entry.accountabilityType === 'EMPLOYEE_DEDUCTION' && entry.accountabilityEmployeeName) {
+        return `${base} (${entry.accountabilityEmployeeName})`;
+      }
+      return base;
     }
-    return 'RETURNS_WORKFLOW.TIMELINE_ACTION_OTHER';
+    return this.translate.instant('RETURNS_WORKFLOW.TIMELINE_ACTION_OTHER');
   }
 
   timelineColor(entry: WorkflowTimelineEntry): string {

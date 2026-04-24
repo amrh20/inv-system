@@ -162,6 +162,7 @@
     "BARCODE": "Barcode",
     "BROWSE": "Browse",
     "PREVIEW": "Preview",
+    "INVALID_FILE_TYPE": "Unsupported file type.",
     "IMAGE": "Image",
     "REMOVE_ROW": "Remove row",
     "ON": "On",
@@ -192,13 +193,14 @@
       "SECURITY_MANAGER": "Security Manager",
       "COST_CONTROL": "Cost Control",
       "GENERAL_MANAGER": "General Manager"
-
     },
     "STATUS_VALUES": {
       "DRAFT": "Draft",
       "POSTED": "Posted",
       "REJECTED": "Rejected",
-      "PENDING": "Pending"
+      "PENDING": "Pending",
+      "DEPT_APPROVED": "Department Approved",
+      "APPROVED": "Approved"
     },
     "UNCATEGORIZED": "Uncategorized",
     "SELECTED": "selected",
@@ -499,7 +501,8 @@
       "TRANSFER": "Transfer",
       "LOAN_WRITE_OFF": "Loan Write-off",
       "GET_PASS_OUT": "Get Pass Out",
-      "GET_PASS_RETURN": "Get Pass Return"
+      "GET_PASS_RETURN": "Get Pass Return",
+      "LOST": "Lost"
     }
   },
   "LEDGER": {
@@ -1024,8 +1027,7 @@
       "REJECT": "Reject",
       "POST": "Post to Ledger",
       "FINANCE_REJECT_MODAL_TITLE": "Return for correction (before posting)",
-      "FINANCE_REJECT_MODAL_HINT":
-        "This sends the GRN back to Storekeeper / Cost Control. It will not be posted to the ledger until it is reviewed and approved again.",
+      "FINANCE_REJECT_MODAL_HINT": "This sends the GRN back to Storekeeper / Cost Control. It will not be posted to the ledger until it is reviewed and approved again.",
       "FINANCE_REJECT_REASON_PH": "Explain why this GRN is being returned…",
       "REJECT_REASON": "Rejection Reason (required)",
       "REJECT_REASON_PH": "Enter reason for rejection…",
@@ -1166,7 +1168,7 @@
     "LIST": {
       "TITLE": "Breakage",
       "RECORDS_HINT": "documents total",
-      "NEW": "New breakage document",
+      "NEW": "Create",
       "TAB_ALL": "All statuses",
       "TAB_INTERNAL": "Internal Breakage",
       "TAB_FROM_RETURNS": "Returns Breakage",
@@ -1183,7 +1185,8 @@
       "COL_ITEMS": "Items",
       "COL_QTY_DAMAGED": "Qty damaged",
       "COL_ACCOUNTABILITY": "Accountability",
-      "PAGE": "Page {{current}} · {{total}} records"
+      "PAGE": "Page {{current}} · {{total}} records",
+      "COL_PHOTO": "Photo"
     },
     "STATUS": {
       "DRAFT": "Draft",
@@ -1209,8 +1212,16 @@
       "REASON": "Reason for breakage",
       "REASON_PH": "Describe what happened…",
       "NOTES": "Additional notes",
+      "SUGGESTED_ACTION": "Responsibility",
+      "EMPLOYEE_DEDUCTION": "Employee Deduction (الخصم من جيب الموظف)",
+      "HOTEL_BUDGET": "Hotel Budget (الخصم من ميزانية الفندق)",
+      "RESPONSIBLE_EMPLOYEE_PH": "Select employee…",
+      "RESPONSIBLE_EMPLOYEE_REQUIRED": "Please select the responsible employee.",
       "PHOTOS": "Photo evidence",
       "ADD_PHOTOS": "Add photos",
+      "CLICK_OR_DRAG": "Click to upload or drag and drop",
+      "BROWSE": "Browse",
+      "PHOTO_FORMATS": "JPG, PNG or WebP",
       "LINES_TITLE": "Broken items",
       "ITEM_SEARCH_PH": "Search item name or barcode…",
       "QTY_ON_HAND": "On hand",
@@ -1218,7 +1229,7 @@
       "COL_ITEM": "Item",
       "COL_QTY": "Qty broken",
       "COL_NOTES": "Notes",
-      "SUBMIT": "Create draft",
+      "SUBMIT": "Create",
       "VALIDATION": "Select location, enter a reason, and add at least one line.",
       "SUCCESS": "Breakage document created.",
       "DRAFT_SUCCESS": "Request saved as Draft.",
@@ -1230,7 +1241,10 @@
       "ERROR_STOCK": "Failed to load stock for this location.",
       "ERROR_ITEMS": "Failed to load items for this location.",
       "ERROR_ZERO_AVAILABLE": "Cannot add \"{{item}}\" because available quantity is zero.",
-      "ERROR_QTY_EXCEEDS": "\"{{item}}\" qty broken cannot exceed available qty ({{available}})."
+      "ERROR_QTY_EXCEEDS": "\"{{item}}\" qty broken cannot exceed available qty ({{available}}).",
+      "UPLOADING": "Uploading photo...",
+      "PHOTO_INVALID_TYPE": "Only JPG, PNG or WebP images are allowed.",
+      "REMOVE_PHOTO": "Remove photo"
     },
     "DETAIL": {
       "BREADCRUMB": "Breakage",
@@ -1249,6 +1263,8 @@
       "CREATED_AT": "Created at",
       "SOURCE_LOC": "Source location",
       "APPROVED_AT": "Approved at",
+      "SUGGESTED_ACTION": "Suggested action",
+      "RESPONSIBLE_EMPLOYEE": "Responsible employee",
       "NOT_APPROVED": "Not approved yet",
       "REASON": "Reason",
       "LINES_TITLE": "Broken items",
@@ -1283,7 +1299,10 @@
       "COMMENT_PH": "Remarks (required for rejection)",
       "REJECT_REASON_REQUIRED": "Rejection reason is required.",
       "ACTION_OK": "Action completed",
-      "ACTION_FAIL": "Action failed"
+      "ACTION_FAIL": "Action failed",
+      "PHOTO": "Breakage Photo",
+      "NO_PHOTO": "No photo uploaded.",
+      "PHOTO_PREVIEW": "Photo preview"
     }
   },
   "LOST_ITEMS": {
@@ -1356,6 +1375,11 @@
       "REASON": "Reason",
       "REASON_PH": "Describe why items are considered lost…",
       "NOTES": "Notes",
+      "SUGGESTED_ACTION": "Responsibility",
+      "EMPLOYEE_DEDUCTION": "Employee Deduction (الخصم من جيب الموظف)",
+      "HOTEL_BUDGET": "Hotel Budget (الخصم من ميزانية الفندق)",
+      "RESPONSIBLE_EMPLOYEE_PH": "Select employee…",
+      "RESPONSIBLE_EMPLOYEE_REQUIRED": "Please select the responsible employee.",
       "LINES_TITLE": "Line items",
       "ITEM_SEARCH_PH": "Search item by name or barcode…",
       "QTY_ON_HAND": "On hand",
@@ -1374,6 +1398,7 @@
       "ERROR_LOCATIONS": "Failed to load locations",
       "ERROR_STOCK": "Failed to load stock balances",
       "ERROR_ITEMS": "Failed to load items for this location.",
+      "ERROR_EMPLOYEES": "Failed to load employees.",
       "ERROR_ZERO_AVAILABLE": "Cannot add \"{{item}}\" because available quantity is zero.",
       "ERROR_QTY_EXCEEDS": "\"{{item}}\" qty cannot exceed available qty ({{available}})."
     }
@@ -1419,7 +1444,7 @@
       }
     },
     "STATUS": {
-      "RECEIVED_AT_DESTINATION":"Received at destination",
+      "RECEIVED_AT_DESTINATION": "Received at destination",
       "PENDING_ARRIVAL": "Pending Arrival",
       "OVERDUE": "Overdue",
       "DRAFT": "Draft",
@@ -1438,7 +1463,7 @@
       "RETURNED": "Returned",
       "CLOSED": "Closed",
       "REJECTED": "Rejected",
-      "PENDING_SECURITY":"Pending security"
+      "PENDING_SECURITY": "Pending security"
     },
     "TYPE": {
       "TEMPORARY": "Temporary",
@@ -1455,15 +1480,15 @@
     },
     "FORM": {
       "CATERING_EXPECTED_RETURN": "Expected return date",
-      "INTERNAL_TRANSFER":"Internal transfer",
-      "RETURN_DATE_TEMP":"Expected return date",
-      "RETURN_DATE_TEMP_PH":"Select expected return date…",
-      "RETURN_DATE_CATERING":"Expected return date",
-      "RETURN_DATE_CATERING_PH":"Select expected return date…",
-      "RETURN_DATE_PERMANENT":"Expected return date",
-      "RETURN_DATE_PERMANENT_PH":"Select expected return date…",
-      "TARGET_TENANT":"Target hotel",
-      "TARGET_TENANT_PH":"Select target hotel…",
+      "INTERNAL_TRANSFER": "Internal transfer",
+      "RETURN_DATE_TEMP": "Expected return date",
+      "RETURN_DATE_TEMP_PH": "Select expected return date…",
+      "RETURN_DATE_CATERING": "Expected return date",
+      "RETURN_DATE_CATERING_PH": "Select expected return date…",
+      "RETURN_DATE_PERMANENT": "Expected return date",
+      "RETURN_DATE_PERMANENT_PH": "Select expected return date…",
+      "TARGET_TENANT": "Target hotel",
+      "TARGET_TENANT_PH": "Select target hotel…",
       "NEW_TITLE": "New get pass",
       "EDIT_TITLE": "Edit get pass (draft)",
       "LOADING": "Loading…",
@@ -2095,9 +2120,9 @@
     }
   },
   "SETTINGS": {
-    "TAB_PROFILE":"Profile",
-    "TAB_SECURITY":"Security",
-    "TAB_INVENTORY":"Inventory",
+    "TAB_PROFILE": "Profile",
+    "TAB_SECURITY": "Security",
+    "TAB_INVENTORY": "Inventory",
     "TITLE": "Settings",
     "SUBTITLE": "Manage your profile and account settings",
     "PROFILE_TITLE": "Profile",

@@ -53,7 +53,18 @@ export class BreakageService {
   }
 
   create(body: BreakageCreatePayload): Observable<BreakageDetail> {
-    return this.http.post<ApiResponse<BreakageDetail>>(this.base, body).pipe(
+    const formData = new FormData();
+    formData.append('sourceLocationId', body.sourceLocationId);
+    formData.append('reason', body.reason);
+    if (body.notes) formData.append('notes', body.notes);
+    if (body.documentDate) formData.append('documentDate', body.documentDate);
+    formData.append('suggestedAction', body.suggestedAction);
+    if (body.responsibleEmployeeName) {
+      formData.append('responsibleEmployeeName', body.responsibleEmployeeName);
+    }
+    formData.append('lines', JSON.stringify(body.lines));
+    if (body.photo) formData.append('photo', body.photo);
+    return this.http.post<ApiResponse<BreakageDetail>>(this.base, formData).pipe(
       map((res) => {
         if (!res.success || !res.data) throw new Error(res.message || 'Create failed');
         return res.data;

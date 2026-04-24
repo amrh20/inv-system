@@ -1,7 +1,18 @@
+.lost-create-page {
+  padding: 16px;
+  background: #fff;
+  border-radius: var(--radius-brand, 6px);
+}
+
+.lost-create-page__header {
+  margin-bottom: 16px;
+}
+
 .lost-create__title {
   display: inline-flex;
   gap: 8px;
   align-items: center;
+  margin: 0;
 }
 
 .lost-create__grid {
@@ -25,6 +36,16 @@
 
 .lost-create__control {
   width: 100%;
+}
+
+.lost-create__responsibility {
+  border: 1px solid #f0f0f0;
+  border-radius: var(--radius-brand, 6px);
+  padding: 12px;
+}
+
+.lost-create__employee-select {
+  margin-top: 10px;
 }
 
 .lost-create__search {
@@ -78,4 +99,11 @@
 
 :host ::ng-deep .ant-select-item-option-content {
   overflow: visible;
+}
+
+.lost-create-page__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }

@@ -37,7 +37,7 @@
     <div class="stock-report-filter-panel rounded-[6px] bg-surface-elevated p-4 shadow-sm">
       <div class="grid grid-cols-1 items-end gap-4 md:grid-cols-3">
         <div>
-          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'COMMON.DEPARTMENT' | translate }} *</label>
+          <label class="mb-1 block text-sm font-medium text-subtle">{{ 'COMMON.DEPARTMENT' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
           <nz-select
             class="w-full"
             [(ngModel)]="departmentId"

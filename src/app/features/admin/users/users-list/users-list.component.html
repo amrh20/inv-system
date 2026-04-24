@@ -206,11 +206,11 @@
     }
     <div class="admin-users__form">
       <div class="admin-users__form-row">
-        <label class="admin-users__label">{{ 'USERS.FORM.FIRST_NAME' | translate }} *</label>
+        <label class="admin-users__label">{{ 'USERS.FORM.FIRST_NAME' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
         <input nz-input [(ngModel)]="formFirstName" name="fn" />
       </div>
       <div class="admin-users__form-row">
-        <label class="admin-users__label">{{ 'USERS.FORM.LAST_NAME' | translate }}*</label>
+        <label class="admin-users__label">{{ 'USERS.FORM.LAST_NAME' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></label>
         <input nz-input [(ngModel)]="formLastName" name="ln" />
       </div>
       @if (!editRow()) {
@@ -236,7 +236,7 @@
       </div>
       <div class="admin-users__form-row">
         <label class="admin-users__label admin-users__label--with-tag">
-          <span>{{ 'USERS.FORM.EMAIL' | translate }} *</span>
+          <span>{{ 'USERS.FORM.EMAIL' | translate }} <span class="app-required-asterisk" aria-hidden="true">*</span></span>
           @if (!editRow() && isImporting()) {
             <nz-tag nzColor="processing" class="admin-users__import-badge">{{ 'USERS.FORM.IMPORT_BADGE' | translate }}</nz-tag>
           }

@@ -162,6 +162,7 @@
     "BARCODE": "الباركود",
     "BROWSE": "استعراض",
     "PREVIEW": "معاينة",
+    "INVALID_FILE_TYPE": "نوع الملف غير مدعوم.",
     "IMAGE": "صورة",
     "REMOVE_ROW": "حذف الصف",
     "ON": "تشغيل",
@@ -177,8 +178,8 @@
     "ENGLISH": "English",
     "ARABIC": "العربية",
     "ROLES": {
-      "ORG_MANAGER":"رئيس المؤسسه",
-      "STOREKEEPER":"أمين مخزن",
+      "ORG_MANAGER": "رئيس المؤسسه",
+      "STOREKEEPER": "أمين مخزن",
       "ADMIN": "مدير",
       "SUPER_ADMIN": "المشرف الأعلى",
       "MANAGER": "مدير",
@@ -189,7 +190,9 @@
       "DRAFT": "مسودة",
       "POSTED": "مُرحّل",
       "REJECTED": "مرفوض",
-      "PENDING": "معلّق"
+      "PENDING": "معلّق",
+      "DEPT_APPROVED": "اعتماد القسم",
+      "APPROVED": "معتمد"
     },
     "UNCATEGORIZED": "غير مصنف",
     "SELECTED": "محدد",
@@ -490,7 +493,8 @@
       "TRANSFER": "تحويل",
       "LOAN_WRITE_OFF": "شطب عهدة",
       "GET_PASS_OUT": "خروج تصريح",
-      "GET_PASS_RETURN": "إرجاع تصريح"
+      "GET_PASS_RETURN": "إرجاع تصريح",
+      "LOST": "مفقود"
     }
   },
   "LEDGER": {
@@ -1015,8 +1019,7 @@
       "REJECT": "رفض",
       "POST": "ترحيل إلى الدفتر",
       "FINANCE_REJECT_MODAL_TITLE": "إرجاع للتصحيح (قبل الترحيل)",
-      "FINANCE_REJECT_MODAL_HINT":
-        "يُعاد الإيصال إلى أمين المخزن / مراقب التكاليف. لن يُرحَّل إلى الدفتر حتى تتم مراجعته والموافقة عليه من جديد.",
+      "FINANCE_REJECT_MODAL_HINT": "يُعاد الإيصال إلى أمين المخزن / مراقب التكاليف. لن يُرحَّل إلى الدفتر حتى تتم مراجعته والموافقة عليه من جديد.",
       "FINANCE_REJECT_REASON_PH": "اشرح سبب إرجاع هذا الإيصال…",
       "REJECT_REASON": "سبب الرفض (مطلوب)",
       "REJECT_REASON_PH": "أدخل سبب الرفض…",
@@ -1157,7 +1160,7 @@
     "LIST": {
       "TITLE": "التلف والفقدان",
       "RECORDS_HINT": "إجمالي المستندات",
-      "NEW": "مستند تلف جديد",
+      "NEW": "إنشاء",
       "TAB_ALL": "كل الحالات",
       "TAB_INTERNAL": "تلف داخلي",
       "TAB_FROM_RETURNS": "تلف من المرتجعات",
@@ -1174,7 +1177,8 @@
       "COL_ITEMS": "الأصناف",
       "COL_QTY_DAMAGED": "الكمية التالفة",
       "COL_ACCOUNTABILITY": "المسؤولية / الملاحظات",
-      "PAGE": "صفحة {{current}} · {{total}} سجلًا"
+      "PAGE": "صفحة {{current}} · {{total}} سجلًا",
+      "COL_PHOTO": "الصورة"
     },
     "STATUS": {
       "DRAFT": "مسودة",
@@ -1200,8 +1204,16 @@
       "REASON": "سبب التلف",
       "REASON_PH": "صف ما حدث…",
       "NOTES": "ملاحظات إضافية",
+      "SUGGESTED_ACTION": "المسؤولية المقترحة",
+      "EMPLOYEE_DEDUCTION": "الخصم من جيب الموظف",
+      "HOTEL_BUDGET": "الخصم من ميزانية الفندق",
+      "RESPONSIBLE_EMPLOYEE_PH": "اختر الموظف…",
+      "RESPONSIBLE_EMPLOYEE_REQUIRED": "يرجى اختيار الموظف المسؤول.",
       "PHOTOS": "أدلة بالصور",
       "ADD_PHOTOS": "إضافة صور",
+      "CLICK_OR_DRAG": "اضغط للرفع أو اسحب وأفلت",
+      "BROWSE": "استعراض",
+      "PHOTO_FORMATS": "JPG أو PNG أو WebP",
       "LINES_TITLE": "الأصناف التالفة",
       "ITEM_SEARCH_PH": "بحث باسم الصنف أو الباركود…",
       "QTY_ON_HAND": "المتاح",
@@ -1209,7 +1221,7 @@
       "COL_ITEM": "الصنف",
       "COL_QTY": "الكمية التالفة",
       "COL_NOTES": "ملاحظات",
-      "SUBMIT": "إنشاء مسودة",
+      "SUBMIT": "إنشاء",
       "VALIDATION": "اختر الموقع وأدخل السبب وأضف سطرًا واحدًا على الأقل.",
       "SUCCESS": "تم إنشاء مستند التلف.",
       "DRAFT_SUCCESS": "تم حفظ الطلب كمسودة.",
@@ -1221,7 +1233,10 @@
       "ERROR_STOCK": "تعذر تحميل المخزون لهذا الموقع.",
       "ERROR_ITEMS": "تعذر تحميل الأصناف لهذا الموقع.",
       "ERROR_ZERO_AVAILABLE": "لا يمكن إضافة \"{{item}}\" لأن الكمية المتاحة صفر.",
-      "ERROR_QTY_EXCEEDS": "الكمية التالفة للصنف \"{{item}}\" لا يمكن أن تتجاوز المتاح ({{available}})."
+      "ERROR_QTY_EXCEEDS": "الكمية التالفة للصنف \"{{item}}\" لا يمكن أن تتجاوز المتاح ({{available}}).",
+      "UPLOADING": "جارٍ رفع الصورة...",
+      "PHOTO_INVALID_TYPE": "يسمح فقط بصور JPG أو PNG أو WebP.",
+      "REMOVE_PHOTO": "إزالة الصورة"
     },
     "DETAIL": {
       "BREADCRUMB": "التلف",
@@ -1240,6 +1255,8 @@
       "CREATED_AT": "تاريخ الإنشاء",
       "SOURCE_LOC": "الموقع المصدر",
       "APPROVED_AT": "تاريخ الاعتماد النهائي",
+      "SUGGESTED_ACTION": "الإجراء المقترح",
+      "RESPONSIBLE_EMPLOYEE": "الموظف المسؤول",
       "NOT_APPROVED": "لم يتم الاعتماد بعد",
       "REASON": "السبب",
       "LINES_TITLE": "الأصناف التالفة",
@@ -1274,7 +1291,10 @@
       "COMMENT_PH": "ملاحظات (مطلوبة عند الرفض)",
       "REJECT_REASON_REQUIRED": "سبب الرفض مطلوب.",
       "ACTION_OK": "تم تنفيذ الإجراء",
-      "ACTION_FAIL": "فشل الإجراء"
+      "ACTION_FAIL": "فشل الإجراء",
+      "PHOTO": "صورة التلف",
+      "NO_PHOTO": "لم يتم رفع صورة.",
+      "PHOTO_PREVIEW": "معاينة الصورة"
     }
   },
   "LOST_ITEMS": {
@@ -1347,6 +1367,11 @@
       "REASON": "سبب الفاقد",
       "REASON_PH": "اشرح سبب اعتبار الأصناف مفقودة…",
       "NOTES": "ملاحظات",
+      "SUGGESTED_ACTION": "المسؤولية المقترحة",
+      "EMPLOYEE_DEDUCTION": "الخصم من جيب الموظف",
+      "HOTEL_BUDGET": "الخصم من ميزانية الفندق",
+      "RESPONSIBLE_EMPLOYEE_PH": "اختر الموظف…",
+      "RESPONSIBLE_EMPLOYEE_REQUIRED": "يرجى اختيار الموظف المسؤول.",
       "LINES_TITLE": "بنود الأصناف",
       "ITEM_SEARCH_PH": "ابحث عن الصنف بالاسم أو الباركود…",
       "QTY_ON_HAND": "المتوفر",
@@ -1365,6 +1390,7 @@
       "ERROR_LOCATIONS": "تعذر تحميل المواقع",
       "ERROR_STOCK": "تعذر تحميل أرصدة المخزون",
       "ERROR_ITEMS": "تعذر تحميل الأصناف لهذا الموقع.",
+      "ERROR_EMPLOYEES": "تعذر تحميل الموظفين.",
       "ERROR_ZERO_AVAILABLE": "لا يمكن إضافة \"{{item}}\" لأن الكمية المتاحة صفر.",
       "ERROR_QTY_EXCEEDS": "كمية الصنف \"{{item}}\" لا يمكن أن تتجاوز المتاح ({{available}})."
     }
@@ -1372,7 +1398,7 @@
   "GET_PASS": {
     "LIST": {
       "EMPTY_INCOMING_TITLE": "لا توجد إذونات إنتقال داخلية",
-      "EMPTY_INCOMING_MSG": "أنشئ إذن إخراج لنقل الأصناف إلى المنشأة.", 
+      "EMPTY_INCOMING_MSG": "أنشئ إذن إخراج لنقل الأصناف إلى المنشأة.",
       "COL_SOURCE_HOTEL": "المنشأة",
       "COL_DESTINATION_HOTEL": "المقصد",
       "COL_DESTINATION_PROPERTY": "الفندق المستلم",
@@ -1411,9 +1437,9 @@
       }
     },
     "STATUS": {
-      "RECEIVED_AT_DESTINATION":"عند البوابة · بانتظار القسم",
-      "PENDING_ARRIVAL":"بانتظار الوصول",
-      "OVERDUE":"متأخر",
+      "RECEIVED_AT_DESTINATION": "عند البوابة · بانتظار القسم",
+      "PENDING_ARRIVAL": "بانتظار الوصول",
+      "OVERDUE": "متأخر",
       "DRAFT": "مسودة",
       "PENDING_DEPT": "بانتظار القسم",
       "PENDING_COST_CONTROL": "بانتظار مراقبة التكلفة",
@@ -1430,7 +1456,7 @@
       "RETURNED": "معاد",
       "CLOSED": "مغلق",
       "REJECTED": "مرفوض",
-      "PENDING_SECURITY":"بانتظار تصريح الأمن"
+      "PENDING_SECURITY": "بانتظار تصريح الأمن"
     },
     "TYPE": {
       "TEMPORARY": "مؤقت",
@@ -1447,15 +1473,15 @@
     },
     "FORM": {
       "CATERING_EXPECTED_RETURN": "تاريخ العودة المتوقع",
-      "INTERNAL_TRANSFER":"نقل داخلي",
-      "TARGET_TENANT":"الفندق المقصد",
-      "TARGET_TENANT_PH":"اختر الفندق المقصد…",
-      "RETURN_DATE_TEMP":"تاريخ العودة المتوقع",
-      "RETURN_DATE_TEMP_PH":"اختر تاريخ العودة المتوقع…",
-      "RETURN_DATE_CATERING":"تاريخ العودة المتوقع",
-      "RETURN_DATE_CATERING_PH":"اختر تاريخ العودة المتوقع…",
-      "RETURN_DATE_PERMANENT":"تاريخ العودة المتوقع",
-      "RETURN_DATE_PERMANENT_PH":"اختر تاريخ العودة المتوقع…",
+      "INTERNAL_TRANSFER": "نقل داخلي",
+      "TARGET_TENANT": "الفندق المقصد",
+      "TARGET_TENANT_PH": "اختر الفندق المقصد…",
+      "RETURN_DATE_TEMP": "تاريخ العودة المتوقع",
+      "RETURN_DATE_TEMP_PH": "اختر تاريخ العودة المتوقع…",
+      "RETURN_DATE_CATERING": "تاريخ العودة المتوقع",
+      "RETURN_DATE_CATERING_PH": "اختر تاريخ العودة المتوقع…",
+      "RETURN_DATE_PERMANENT": "تاريخ العودة المتوقع",
+      "RETURN_DATE_PERMANENT_PH": "اختر تاريخ العودة المتوقع…",
       "NEW_TITLE": "إذن إخراج جديد",
       "EDIT_TITLE": "تعديل إذن الإخراج (مسودة)",
       "LOADING": "جارٍ التحميل…",
@@ -2085,9 +2111,9 @@
     }
   },
   "SETTINGS": {
-    "TAB_PROFILE":"الملف الشخصي",
-    "TAB_SECURITY":"الأمان",
-    "TAB_INVENTORY":"المخزون",
+    "TAB_PROFILE": "الملف الشخصي",
+    "TAB_SECURITY": "الأمان",
+    "TAB_INVENTORY": "المخزون",
     "TITLE": "الإعدادات",
     "SUBTITLE": "إدارة الملف الشخصي وإعدادات الحساب",
     "PROFILE_TITLE": "الملف الشخصي",
