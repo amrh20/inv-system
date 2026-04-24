@@ -6,6 +6,7 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  OnDestroy,
   OnInit,
   signal,
   ViewChild,
@@ -86,7 +87,7 @@ type ImportPreviewTableColumn =
   templateUrl: './item-import.component.html',
   styleUrl: './item-import.component.scss',
 })
-export class ItemImportComponent implements OnInit {
+export class ItemImportComponent implements OnInit, OnDestroy {
   private static readonly DEFAULT_OB_STATUS: NonNullable<RequirementsResponse['obStatus']> = 'FINALIZED';
 
   @ViewChild('importFileInput') importFileInputRef?: ElementRef<HTMLInputElement>;
@@ -141,6 +142,7 @@ export class ItemImportComponent implements OnInit {
 
   readonly importStep = signal(0);
   readonly importFile = signal<File | null>(null);
+  readonly importFileObjectUrl = signal<string | null>(null);
   readonly importPreviewData = signal<ItemImportPreviewData | null>(null);
   readonly importResult = signal<ItemImportResult | null>(null);
   readonly importLoading = signal(false);
@@ -180,10 +182,12 @@ export class ItemImportComponent implements OnInit {
   });
 
   readonly disableConfirmImport = computed(() => {
-    const validRows = Number(this.importPreviewData()?.valid) || 0;
+    const preview = this.importPreviewData();
+    const validRows = Number(preview?.valid) || 0;
+    const hasFilePath = !!preview?.filePath?.trim();
     const obReasonMissing =
       this.importAsOpeningBalance() && !this.openingBalanceReason().trim();
-    return this.importLoading() || validRows === 0 || obReasonMissing;
+    return this.importLoading() || validRows === 0 || !hasFilePath || obReasonMissing;
   });
 
   private readonly viewportIsDesktop = injectMatchMinWidth(768);
@@ -212,6 +216,10 @@ export class ItemImportComponent implements OnInit {
         this.obLoading.set(false);
       },
     });
+  }
+
+  ngOnDestroy(): void {
+    this.revokeImportFileObjectUrl();
   }
 
   missingLabelsJoined(): string {
@@ -279,7 +287,9 @@ export class ItemImportComponent implements OnInit {
   onImportFile(event: Event): void {
     const input = event.target as HTMLInputElement;
     const f = input.files?.[0];
+    this.revokeImportFileObjectUrl();
     this.importFile.set(f ?? null);
+    this.importFileObjectUrl.set(f ? URL.createObjectURL(f) : null);
     this.importError.set('');
     input.value = '';
   }
@@ -335,12 +345,11 @@ export class ItemImportComponent implements OnInit {
     this.importLoading.set(true);
     this.importError.set('');
     this.itemsApi
-      .importItems(
-        prev.preview,
-        prev.filePath,
-        this.importAsOpeningBalance(),
-        this.importAsOpeningBalance() ? obReason : undefined,
-      )
+      .importItems({
+        filePath: prev.filePath,
+        asOpeningBalance: this.importAsOpeningBalance(),
+        openingBalanceReason: this.importAsOpeningBalance() ? obReason : undefined,
+      })
       .pipe(first())
       .subscribe({
         next: (result) => {
@@ -352,6 +361,12 @@ export class ItemImportComponent implements OnInit {
         error: (err: { error?: { message?: string } }) => {
           this.importLoading.set(false);
           const error = err as HttpErrorResponse;
+          if (error.status === 400) {
+            const expiredMessage = this.t('ITEMS.ERROR_IMPORT_PREVIEW_EXPIRED');
+            this.importError.set(expiredMessage);
+            this.message.error(expiredMessage);
+            return;
+          }
           if (error.status === 403) {
             const forbiddenMessage =
               (error.error as { message?: string } | null)?.message ??
@@ -607,5 +622,13 @@ export class ItemImportComponent implements OnInit {
       return true;
     }
     return issue.endsWith(`.${target}`);
+  }
+
+  private revokeImportFileObjectUrl(): void {
+    const currentUrl = this.importFileObjectUrl();
+    if (currentUrl) {
+      URL.revokeObjectURL(currentUrl);
+      this.importFileObjectUrl.set(null);
+    }
   }
 }

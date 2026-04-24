@@ -130,6 +130,25 @@
   word-break: break-word;
 }
 
+.admin-users__last-login-cell {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 0.35rem;
+  width: 100%;
+}
+
+.admin-users__last-login-td {
+  min-width: 120px;
+}
+
+.admin-users__last-login-text {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .admin-users__tag-inner {
   display: inline-flex;
   align-items: center;

@@ -74,11 +74,11 @@
   <div class="item-import-page__body">
     @if (importStep() === 0) {
       <div class="item-import-panel">
-        <div class="import-info-card">
+        <!-- <div class="import-info-card">
           <p class="import-info-card__title">{{ 'ITEMS.EXPECTED_COLUMNS_TITLE' | translate }}</p>
           <p class="import-info-card__body">{{ 'ITEMS.EXPECTED_COLUMNS_VALUE' | translate }}</p>
           <p class="import-info-card__hint">{{ 'ITEMS.IMPORT_HINT' | translate }}</p>
-        </div>
+        </div> -->
         @if (obLoading()) {
           <div class="ob-loading">
             <lucide-icon [img]="lucideLoader" [size]="14" [strokeWidth]="2" class="spin" />
@@ -125,6 +125,13 @@
           [disabled]="importBlocked()"
           (change)="onImportFile($event)"
         />
+        @if (importFile(); as f) {
+          @if (importFileObjectUrl(); as fileUrl) {
+            <a class="file-dropzone__file-link" [href]="fileUrl" target="_blank" rel="noopener noreferrer">
+              {{ f.name }}
+            </a>
+          }
+        }
 
         <div class="item-import-page__footer-actions">
           <button nz-button type="button" routerLink="/items">{{ 'COMMON.CANCEL' | translate }}</button>

@@ -125,6 +125,23 @@ export class ItemFormComponent {
   private static readonly DEFAULT_OB_STATUS: ObLifecycleStatus = 'FINALIZED';
   private static readonly MOVEMENT_LIST_PAGE = 200;
   private static readonly MOVEMENT_LIST_MAX_PAGES = 25;
+  private static readonly ALLOWED_IMAGE_EXTENSIONS = new Set([
+    'png',
+    'jpg',
+    'jpeg',
+    'webp',
+    'gif',
+    'bmp',
+    'avif',
+  ]);
+  private static readonly ALLOWED_IMAGE_MIME_TYPES = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/webp',
+    'image/gif',
+    'image/bmp',
+    'image/avif',
+  ]);
 
   /** Incremented on each route-driven reload so stale HTTP callbacks are ignored. */
   private dataLoadGen = 0;
@@ -393,6 +410,12 @@ export class ItemFormComponent {
     if (!file) {
       return;
     }
+    if (!this.isAllowedImageFile(file)) {
+      this.submitError.set(this.t('ITEM_FORM.ERROR_INVALID_IMAGE_TYPE'));
+      input.value = '';
+      return;
+    }
+    this.submitError.set('');
     this.imageFile.set(file);
     this.removeImage.set(false);
     this.imagePreview.set(URL.createObjectURL(file));
@@ -1061,6 +1084,14 @@ export class ItemFormComponent {
     }
     openingQty.updateValueAndValidity({ emitEvent: false });
     unitPrice.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private isAllowedImageFile(file: File): boolean {
+    const extension = file.name.split('.').pop()?.trim().toLowerCase() ?? '';
+    const mimeType = file.type.trim().toLowerCase();
+    const extensionAllowed = ItemFormComponent.ALLOWED_IMAGE_EXTENSIONS.has(extension);
+    const mimeAllowed = mimeType.length > 0 && ItemFormComponent.ALLOWED_IMAGE_MIME_TYPES.has(mimeType);
+    return extensionAllowed && mimeAllowed;
   }
 
 

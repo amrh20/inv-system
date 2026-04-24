@@ -200,6 +200,7 @@
           nzType="text"
           nz-dropdown
           [nzDropdownMenu]="profileMenu"
+          [nzOverlayClassName]="'profile-menu-overlay'"
           nzTrigger="click"
           nzPlacement="bottomRight"
           class="profile-trigger"
@@ -217,12 +218,13 @@
         <nz-dropdown-menu #profileMenu="nzDropdownMenu">
           <ul nz-menu>
             <li nz-menu-item class="profile-menu-head" nzDisabled>
-              <div>{{ auth.currentUser()?.email }}</div>
-              <div class="muted">{{ currentTenantName() }}</div>
+              <div class="profile-menu-head__name">{{ displayName() }}</div>
+              <div class="profile-menu-head__email">{{ auth.currentUser()?.email }}</div>
+              <div class="profile-menu-head__tenant muted">{{ currentTenantName() }}</div>
             </li>
             <li nz-menu-divider></li>
             <li nz-menu-item nzDanger (click)="logout()">
-              <span class="menu-item-row">
+              <span class="menu-item-row profile-menu-action-row w-100 d-flex align-items-center gap-1">
                 <lucide-icon [img]="lucideLogOut" [size]="14" />
                 {{ 'COMMON.LOGOUT' | translate }}
               </span>

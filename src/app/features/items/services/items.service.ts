@@ -117,19 +117,13 @@ export class ItemsService {
    * Excel import — confirm step (`POST /items/import/confirm`).
    * Alias name matches legacy `importItems` usage from the React client.
    */
-  importItems(
-    rows: unknown[],
-    filePath: string,
-    asOpeningBalance = false,
-    openingBalanceReason?: string,
-  ): Observable<ItemImportResult> {
+  importItems(payload: {
+    filePath: string;
+    asOpeningBalance?: boolean;
+    openingBalanceReason?: string;
+  }): Observable<ItemImportResult> {
     return this.http
-      .post<ApiResponse<ItemImportResult>>(`${this.base}/import/confirm`, {
-        rows,
-        filePath,
-        asOpeningBalance,
-        openingBalanceReason,
-      })
+      .post<ApiResponse<ItemImportResult>>(`${this.base}/import/confirm`, payload)
       .pipe(
         map((res) => {
           if (!res.success) {

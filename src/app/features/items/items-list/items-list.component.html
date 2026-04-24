@@ -62,6 +62,17 @@
     </div>
   </div>
 
+  <div class="items-import-hint" role="note" aria-live="polite">
+    <lucide-icon [img]="lucideInfo" [size]="16" [strokeWidth]="2" class="items-import-hint__icon" />
+    <div class="items-import-hint__content">
+      <div class="items-import-hint__title">{{ 'ITEMS.IMPORT_HINT_TITLE' | translate }}</div>
+      <div class="items-import-hint__line">{{ 'ITEMS.IMPORT_STEP_1' | translate }}</div>
+      <div class="items-import-hint__line items-import-hint__line--note">
+        {{ 'ITEMS.IMPORT_REFRESH_NOTE' | translate }}
+      </div>
+    </div>
+  </div>
+
   <ng-template #requirementsQuickLinksTpl>
     <div class="items-requirements-links">
       <span class="items-requirements-links__intro">{{ 'ITEMS.REQUIREMENTS_QUICK_LINKS' | translate }}</span>

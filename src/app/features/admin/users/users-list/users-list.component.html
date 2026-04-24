@@ -85,7 +85,7 @@
     [nzData]="users()"
     [nzLoading]="loading()"
     nzSize="middle"
-    nzTableLayout="fixed"
+    nzTableLayout="auto"
     [nzScroll]="nzTableScroll()"
     [nzShowPagination]="true"
     [nzTotal]="total()"
@@ -118,7 +118,7 @@
         <th nzWidth="150px">{{ 'USERS.COL_DEPARTMENT' | translate }}</th>
         <th nzWidth="140px">{{ 'USERS.COL_PHONE' | translate }}</th>
         <th nzAlign="center" nzWidth="130px">{{ 'COMMON.STATUS' | translate }}</th>
-        <th nzWidth="160px">{{ 'USERS.COL_LAST_LOGIN' | translate }}</th>
+        <th nzWidth="190px">{{ 'USERS.COL_LAST_LOGIN' | translate }}</th>
         <th nzAlign="center" nzWidth="100px">{{ 'COMMON.ACTIONS' | translate }}</th>
       </tr>
     </thead>
@@ -163,11 +163,11 @@
               (statusChange)="onToggleStatusClick(u)"
             />
           </td>
-          <td>
+          <td class="admin-users__last-login-td">
             @if (u.lastLoginAt) {
-              <span class="admin-users__muted">
+              <span class="admin-users__muted admin-users__last-login-cell">
                 <lucide-icon [img]="lucideCalendar" [size]="14" />
-                {{ u.lastLoginAt | date: 'mediumDate' }}
+                <span class="admin-users__last-login-text">{{ u.lastLoginAt | date: 'mediumDate' }}</span>
               </span>
             } @else {
               {{ 'USERS.NEVER' | translate }}
@@ -220,6 +220,20 @@
           </label>
         </div>
       }
+      <div class="admin-users__form-row">
+        <label class="admin-users__label">{{ 'USERS.FORM.ROLE' | translate }}</label>
+        <nz-select
+          [(ngModel)]="formRole"
+          name="role"
+          class="admin-users__full-width"
+          [nzDropdownStyle]="modalSelectDropdownStyle"
+          nzDropdownClassName="admin-users__role-dropdown"
+        >
+          @for (r of assignableRoles; track r) {
+            <nz-option [nzValue]="r" [nzLabel]="('USERS.ROLES.' + r) | translate" />
+          }
+        </nz-select>
+      </div>
       <div class="admin-users__form-row">
         <label class="admin-users__label admin-users__label--with-tag">
           <span>{{ 'USERS.FORM.EMAIL' | translate }} *</span>
@@ -310,22 +324,8 @@
           <lucide-icon [img]="showPassword() ? lucideEyeOff : lucideEye" [size]="16" />
         </button>
       </ng-template>
-      <div class="admin-users__form-row admin-users__form-row--2">
-        <div>
-          <label class="admin-users__label">{{ 'USERS.FORM.ROLE' | translate }}</label>
-          <nz-select
-            [(ngModel)]="formRole"
-            name="role"
-            class="admin-users__full-width"
-            [nzDropdownStyle]="modalSelectDropdownStyle"
-            nzDropdownClassName="admin-users__role-dropdown"
-          >
-            @for (r of assignableRoles; track r) {
-              <nz-option [nzValue]="r" [nzLabel]="('USERS.ROLES.' + r) | translate" />
-            }
-          </nz-select>
-        </div>
-        <div>
+      @if (formRole === 'DEPT_MANAGER') {
+        <div class="admin-users__form-row">
           <label class="admin-users__label">
             {{ 'USERS.FORM.DEPARTMENT' | translate }}
             @if (isDepartmentRequired()) {
@@ -347,14 +347,11 @@
               <nz-option [nzValue]="dept.id" [nzLabel]="dept.name" />
             }
           </nz-select>
-          @if (formRole === 'GENERAL_MANAGER') {
-            <div class="admin-users__department-hint">{{ 'USERS.FORM.DEPARTMENT_OPTIONAL_GM' | translate }}</div>
-          }
           @if (!departments().length && !departmentsLoading()) {
             <div class="admin-users__department-empty">{{ 'USERS.FORM.CREATE_DEPARTMENTS_FIRST' | translate }}</div>
           }
         </div>
-      </div>
+      }
       <div class="admin-users__form-row">
         <label class="admin-users__label">{{ 'USERS.FORM.PHONE' | translate }}</label>
         <input nz-input [(ngModel)]="formPhone" name="ph" />
